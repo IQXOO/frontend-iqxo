@@ -1,0 +1,363 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import {
+  X, ImagePlus, Image as ImageIcon,
+  FilePlus, FileCheck, AlertTriangle,
+} from "lucide-react";
+import {
+  Drawer, DrawerContent, DrawerHeader, DrawerTitle,
+  DrawerDescription, DrawerFooter,
+} from "../ui/drawer";
+import { useApp } from "../../lib/store";
+import { supabase } from "../../lib/supabase";
+import type { IQXOEvent } from "../../lib/types";
+import type { ParsedEvent } from "../../lib/parse-voice-input";
+
+interface EventFormModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  editEvent?: IQXOEvent | null;
+  prefillData?: ParsedEvent | null;
+  voiceData?: ParsedEvent | null;
+  prefillImageUrl?: string;
+}
+
+async function uploadToStorage(file: File, userId: string, bucket: "event-images" | "event-pdfs"): Promise<string> {
+  const ext = file.name.split(".").pop() ?? "bin";
+  const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error } = await supabase.storage.from(bucket).upload(path, file, { cacheControl: "3600", upsert: false });
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voiceData, prefillImageUrl }: EventFormModalProps) {
+  const { addEvent, updateEvent, user, t, theme, language, events } = useApp();
+  const [workSchedule, setWorkSchedule] = useState<{day_of_week:number;start_time:string;end_time:string}[]>([]);
+
+  const [title, setTitle]       = useState("");
+  const [date, setDate]         = useState("");
+  const [time, setTime]         = useState("");
+  const [phone, setPhone]       = useState("");
+  const [email, setEmail]       = useState("");
+  const [location, setLocation] = useState("");
+  const [notes, setNotes]       = useState("");
+
+  const [imagePreview, setImagePreview]     = useState<string | null>(null);
+  const [imageFile, setImageFile]           = useState<File | null>(null);
+  const imageInputRef                       = useRef<HTMLInputElement>(null);
+  const attachInputRef                      = useRef<HTMLInputElement>(null);
+
+  const [pdfFile, setPdfFile]               = useState<File | null>(null);
+  const [pdfName, setPdfName]               = useState<string | null>(null);
+  const [existingPdfUrl, setExistingPdfUrl] = useState<string | null>(null);
+  const pdfInputRef                         = useRef<HTMLInputElement>(null);
+
+  const [isUploading, setIsUploading]     = useState(false);
+  const [uploadError, setUploadError]     = useState<string | null>(null);
+  const [conflictTitle, setConflictTitle] = useState<string | null>(null);
+
+  // ── Fill form ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!open) return;
+    setUploadError(null); setConflictTitle(null);
+    // Fetch user's work schedule for conflict checking
+    if (user) {
+      supabase.from("work_schedules").select("day_of_week,start_time,end_time").eq("user_id", user.id)
+        .then(({ data }) => { if (data) setWorkSchedule(data); });
+    }
+    if (editEvent) {
+      setTitle(editEvent.title); setDate(editEvent.date); setTime(editEvent.time);
+      setPhone(editEvent.phone || ""); setEmail((editEvent as any).email || ""); setLocation(editEvent.location || ""); setNotes(editEvent.notes || "");
+      setImagePreview(editEvent.image_url || null); setImageFile(null);
+      setExistingPdfUrl(editEvent.pdf_url || null); setPdfFile(null);
+      setPdfName(editEvent.pdf_url ? decodeURIComponent(editEvent.pdf_url.split("/").pop() ?? "document.pdf") : null);
+    } else if (prefillData) {
+      setTitle(prefillData.title || ""); setDate(prefillData.date || ""); setTime(prefillData.time || "");
+      setPhone(prefillData.phone || ""); setLocation(prefillData.location || ""); setNotes("");
+      setImagePreview(prefillImageUrl || null); setImageFile(null); setPdfFile(null); setPdfName(null); setExistingPdfUrl(null);
+    } else {
+      setTitle(""); setDate(""); setTime(""); setPhone(""); setLocation(""); setNotes("");
+      setImagePreview(null); setImageFile(null); setPdfFile(null); setPdfName(null); setExistingPdfUrl(null);
+    }
+  }, [open, editEvent, prefillData, prefillImageUrl]);
+
+  useEffect(() => {
+    if (voiceData) { setTitle(voiceData.title || ""); setDate(voiceData.date || ""); setTime(voiceData.time || ""); setLocation(voiceData.location || ""); setPhone(voiceData.phone || ""); }
+  }, [voiceData]);
+  useEffect(() => { if (voiceData && !open) onOpenChange(true); }, [voiceData, open, onOpenChange]);
+  useEffect(() => {
+    if (prefillData) { setTitle(prefillData.title || ""); setDate(prefillData.date || ""); setTime(prefillData.time || ""); setLocation(prefillData.location || ""); }
+  }, [prefillData]);
+
+  // ── Task 3: Conflict check ─────────────────────────────────────────────────
+  // Returns title of conflicting event within 60 min on the same date
+  const findConflict = (d: string, tm: string): string | null => {
+    if (!d || !tm) return null;
+    const checkDt = new Date(`${d}T${tm}`);
+    const checkMins = checkDt.getHours() * 60 + checkDt.getMinutes();
+
+    // Check against existing calendar events (within 60 min)
+    for (const ev of events) {
+      if (ev.id === editEvent?.id) continue;
+      if (ev.date !== d || !ev.time) continue;
+      const evDt = new Date(`${ev.date}T${ev.time}`);
+      if (Math.abs(checkDt.getTime() - evDt.getTime()) / 60000 < 60) return ev.title;
+    }
+
+    // Check against work schedule for that day-of-week
+    const dow = new Date(d + "T12:00:00").getDay();
+    const ws = workSchedule.find(w => w.day_of_week === dow);
+    if (ws) {
+      const [sh, sm] = ws.start_time.split(":").map(Number);
+      const [eh, em] = ws.end_time.split(":").map(Number);
+      const wsStart = sh * 60 + sm;
+      // Handle overnight shifts (e.g. 22:00 → 02:00)
+      const wsEnd = eh * 60 + em < wsStart ? eh * 60 + em + 24 * 60 : eh * 60 + em;
+      const checkAdjusted = checkMins < wsStart ? checkMins + 24 * 60 : checkMins;
+      if (checkAdjusted >= wsStart && checkAdjusted < wsEnd) {
+        return language === "ar"
+          ? `ساعات العمل (${ws.start_time}–${ws.end_time})`
+          : language === "fr"
+          ? `Heures de travail (${ws.start_time}–${ws.end_time})`
+          : `Work hours (${ws.start_time}–${ws.end_time})`;
+      }
+    }
+
+    return null;
+  };
+
+  const handleDateChange = (val: string) => { setDate(val); setConflictTitle(findConflict(val, time)); };
+  const handleTimeChange = (val: string) => { setTime(val); setConflictTitle(findConflict(date, val)); };
+
+  // ── File handlers ──────────────────────────────────────────────────────────
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = ev => setImagePreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handlePdfSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    if (file.type !== "application/pdf") { setUploadError("Only PDF files are accepted."); return; }
+    if (file.size > 10 * 1024 * 1024) { setUploadError("PDF must be under 10 MB."); return; }
+    setPdfFile(file); setPdfName(file.name); setExistingPdfUrl(null); setUploadError(null);
+  };
+
+  // ── Combined attach handler (image OR pdf) ────────────────────────────────
+  const handleAttachSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    if (file.type.startsWith("image/")) {
+      handleImageSelect(e);
+    } else if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+      handlePdfSelect(e);
+    }
+  };
+
+  // ── Save ───────────────────────────────────────────────────────────────────
+  const handleSave = async () => {
+    if (!title.trim() || !date || !user) return;
+    if (conflictTitle) {
+      setUploadError(
+        language === "ar" ? `تعارض مع "${conflictTitle}" — حدث في نفس الوقت`
+        : language === "fr" ? `Conflit avec "${conflictTitle}" — événement au même moment`
+        : `Time conflict with "${conflictTitle}" — you already have an event at this time`
+      );
+      return;
+    }
+    setIsUploading(true); setUploadError(null);
+    try {
+      let finalImageUrl: string | undefined = imageFile ? undefined : (imagePreview ?? undefined);
+      if (imageFile) finalImageUrl = await uploadToStorage(imageFile, user.id, "event-images");
+      let finalPdfUrl: string | undefined = pdfFile ? undefined : (existingPdfUrl ?? undefined);
+      if (pdfFile) finalPdfUrl = await uploadToStorage(pdfFile, user.id, "event-pdfs");
+      const payload = {
+        title: title.trim(), date, time,
+        phone: phone.trim() || undefined, email: email.trim() || undefined, location: location.trim() || undefined,
+        notes: notes.trim(), image_url: finalImageUrl, pdf_url: finalPdfUrl,
+        source: "manual", is_done: false,
+      };
+      if (editEvent) { await updateEvent(editEvent.id, payload); }
+      else           { await addEvent(payload); }
+      onOpenChange(false);
+    } catch (err) {
+      setUploadError((err as Error).message ?? "Failed to save.");
+    } finally { setIsUploading(false); }
+  };
+
+  const isValid = title.trim().length > 0 && date.length > 0;
+  const hasPdf  = !!pdfName;
+
+  const lbl = {
+    uploading:   language === "ar" ? "جاري الرفع..." : language === "fr" ? "Envoi..." : "Uploading...",
+    addPhoto:    language === "ar" ? "أضف صورة" : language === "fr" ? "Ajouter photo" : "Add Photo",
+    changePhoto: language === "ar" ? "تغيير" : language === "fr" ? "Changer" : "Change",
+  };
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="bg-background border-border max-h-[92vh]">
+        <DrawerHeader>
+          <DrawerTitle className="text-foreground">{editEvent ? t("editEvent") : t("addEvent")}</DrawerTitle>
+          <DrawerDescription className="sr-only">{editEvent ? t("editEvent") : t("addEvent")}</DrawerDescription>
+        </DrawerHeader>
+
+        <div className="px-4 overflow-y-auto flex flex-col gap-4">
+
+          {/* ── Attachments — single button ─────────────────────────────── */}
+          <div className="space-y-2">
+            {/* Preview when photo attached */}
+            {imagePreview && (
+              <div className="relative rounded-2xl overflow-hidden">
+                <img src={imagePreview} alt="Event" className="w-full h-36 object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                <button type="button" onClick={() => { setImagePreview(null); setImageFile(null); }}
+                  className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+                {hasPdf && (
+                  <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/65 backdrop-blur-sm rounded-xl px-2 py-1 max-w-[140px]">
+                    <FileCheck className="h-3 w-3 text-red-400 shrink-0" />
+                    <span className="text-white text-[10px] truncate">{pdfName}</span>
+                    <button type="button" onClick={() => { setPdfFile(null); setPdfName(null); setExistingPdfUrl(null); }} className="text-white/60 hover:text-white"><X className="h-2.5 w-2.5" /></button>
+                  </div>
+                )}
+              </div>
+            )}
+            {/* Small attachment icon button */}
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-center gap-1">
+                <button type="button" onClick={() => attachInputRef.current?.click()}
+                  className={`relative h-11 w-11 rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+                    imagePreview || hasPdf
+                      ? "bg-primary/15 border border-primary/30 text-primary"
+                      : "bg-secondary/50 border border-border text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5"
+                  }`}>
+                  <ImagePlus className="h-5 w-5" />
+                  {(imagePreview || hasPdf) && (
+                    <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-primary flex items-center justify-center">
+                      <span className="text-[8px] text-primary-foreground font-bold">✓</span>
+                    </span>
+                  )}
+                </button>
+                <span className="text-[10px] text-muted-foreground font-medium">
+                  {language === "ar" ? "مرفق" : language === "fr" ? "Joindre" : "Attachment"}
+                </span>
+              </div>
+              {/* Show attached file name if any */}
+              {(imagePreview || hasPdf) && (
+                <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary/30 border border-border min-w-0">
+                  <span className="text-xs text-foreground truncate flex-1">
+                    {imagePreview && hasPdf ? (language === "ar" ? "صورة + PDF" : "Photo + PDF")
+                      : imagePreview ? (language === "ar" ? "صورة مرفقة" : language === "fr" ? "Photo jointe" : "Photo attached")
+                      : pdfName || "PDF"}
+                  </span>
+                  <button type="button"
+                    onClick={() => { setImagePreview(null); setImageFile(null); setPdfFile(null); setPdfName(null); setExistingPdfUrl(null); }}
+                    className="text-muted-foreground hover:text-destructive transition-colors shrink-0">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+            {/* Single hidden input — both image and PDF */}
+            <input ref={attachInputRef} type="file" accept="image/*,application/pdf,.pdf" onChange={handleAttachSelect} className="hidden" />
+            <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
+            <input ref={pdfInputRef} type="file" accept="application/pdf" onChange={handlePdfSelect} className="hidden" />
+          </div>
+
+          {/* ── Title ─────────────────────────────────────────────────────── */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground">{t("eventTitle")}</label>
+            <input type="text" value={title} onChange={e => setTitle(e.target.value)}
+              placeholder={t("eventTitlePlaceholder")}
+              className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all" />
+          </div>
+
+          {/* ── Date + Time ───────────────────────────────────────────────── */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">{t("eventDate")}</label>
+              <input type="date" value={date} onChange={e => handleDateChange(e.target.value)}
+                className={`rounded-xl bg-input px-4 py-3 text-sm text-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">{t("eventTime")}</label>
+              <input type="time" value={time} onChange={e => handleTimeChange(e.target.value)}
+                className={`rounded-xl bg-input px-4 py-3 text-sm text-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
+            </div>
+          </div>
+
+          {/* ── TASK 3: Conflict warning ───────────────────────────────────── */}
+          {conflictTitle && (
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+              <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-400 leading-relaxed">
+                {language === "ar" ? "⚠️ تعارض مع:" : language === "fr" ? "⚠️ Conflit avec :" : "⚠️ Conflict with:"}{" "}
+                <span className="font-semibold">{conflictTitle}</span>
+              </p>
+            </div>
+          )}
+
+          {/* ── Phone + Email ─────────────────────────────────────────────── */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">{t("eventPhone")}</label>
+              <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                placeholder={t("eventPhonePlaceholder")}
+                className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                {language === "ar" ? "البريد الإلكتروني" : language === "fr" ? "E-mail" : "Email"}
+              </label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="email@..."
+                className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all" />
+            </div>
+          </div>
+
+          {/* ── Location ──────────────────────────────────────────────────── */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground">{t("eventLocation")}</label>
+            <input type="text" value={location} onChange={e => setLocation(e.target.value)}
+              placeholder={t("eventLocationPlaceholder")}
+              className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all" />
+          </div>
+
+          {/* ── Notes ─────────────────────────────────────────────────────── */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground">{t("eventNotes")}</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)}
+              placeholder={t("eventNotesPlaceholder")} rows={3}
+              className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all resize-none" />
+          </div>
+
+          {/* ── Error ─────────────────────────────────────────────────────── */}
+          {uploadError && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 border border-destructive/20">
+              <X className="h-4 w-4 text-destructive shrink-0" />
+              <p className="text-xs text-destructive">{uploadError}</p>
+            </div>
+          )}
+        </div>
+
+        <DrawerFooter className="flex-row gap-3" style={{ marginBottom: "80px" }}>
+          <button onClick={() => onOpenChange(false)}
+            className="flex-1 rounded-xl bg-secondary py-3 text-sm font-semibold text-secondary-foreground transition-all hover:bg-secondary/80 active:scale-[0.98]">
+            {t("cancel")}
+          </button>
+          {/* TASK 3: disabled when conflict active */}
+          <button onClick={handleSave}
+            disabled={!isValid || isUploading || !!conflictTitle}
+            className="flex-1 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed">
+            {isUploading ? lbl.uploading : t("save")}
+          </button>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
+  );
+}

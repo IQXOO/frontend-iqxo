@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./public/apple-icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IQXO</title>
+    <meta
+      name="description"
+      content="Your intelligent digital brain with glassmorphism UI, voice input, and smart event management"
+    />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("iqxo_theme");
+          document.documentElement.className = t === "light" ? "light" : "dark";
+        } catch (e) {
+          document.documentElement.className = "dark";
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>
