@@ -50,6 +50,7 @@ interface AIScheduleResult {
   notes?: string | null;
   raw_text?: string;
   error?: string;
+  total_usage?: string | number;
 }
 
 const DEFAULT_WORK_DAY = {
@@ -549,6 +550,7 @@ export function WorkScheduleView() {
         headers: {
           "X-User-Name": searchName,
           "X-User-Email": user?.email || "",
+          "x-user-id": user?.id || "",
         },
         body: formData,
       });

@@ -466,8 +466,8 @@ export function StripePricingPage({
           className={`w-[90vh] max-w-lg bg-[#0d0d12] rounded-t-3xl border-t border-white/[0.08] max-h-[70vh] overflow-y-auto relative ${isRTL ? "text-right" : ""}`}
           dir={isRTL ? "rtl" : "ltr"}
         >
-          {/* Ambient glow */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-48 bg-gradient-to-b from-blue-500/15 via-purple-500/8 to-transparent blur-3xl pointer-events-none rounded-full" />
+          {/* Ambient glow (subtly reduced for calmer premium feel) */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-40 bg-gradient-to-b from-blue-500/12 via-purple-500/6 to-transparent blur-2xl pointer-events-none rounded-full" />
 
           {/* Drag handle — touch target for swipe-down */}
           <div className="flex justify-center pt-3 pb-1 select-none">
@@ -516,9 +516,9 @@ export function StripePricingPage({
                     </h2>
                     <p className="text-sm text-white/40 mt-1">
                       {t(
-                        "300 AI requests / month · All features",
-                        "300 requêtes IA / mois · Tout inclus",
-                        "300 طلب AI / شهر · جميع الميزات",
+                        "Turn photos, voice & documents into smart reminders instantly.",
+                        "Transformez photos, voix et documents en rappels intelligents instantanément.",
+                        "حوّل الصور والصوت والمستندات إلى تذكيرات ذكية فورًا.",
                       )}
                     </p>
                   </div>
@@ -584,31 +584,30 @@ export function StripePricingPage({
                               exit={{ opacity: 0, y: 6 }}
                               className="flex items-baseline gap-1"
                             >
-                              <span className="text-4xl font-black text-white">
-                                {billing === "monthly"
-                                  ? `${PRICING.monthlyEUR}€`
-                                  : `${PRICING.yearlyEUR}€`}
-                              </span>
-                              <span className="text-white/30 text-sm">
-                                {billing === "monthly"
-                                  ? t("/mo", "/mois", "/شهر")
-                                  : t("/yr", "/an", "/سنة")}
-                              </span>
+                                {/* Emphasize monthly equivalent first for better psychological pricing */}
+                                <span className="text-5xl font-extrabold text-white">
+                                  {billing === "monthly"
+                                    ? `${PRICING.monthlyEUR}€`
+                                    : `${PRICING.yearlyPerMonth}€`}
+                                </span>
+                                <span className="text-white/30 text-sm">
+                                  {t("/month", "/mois", "/شهر")}
+                                </span>
                             </motion.div>
                           </AnimatePresence>
-                          <p className="text-xs text-white/30 mt-0.5">
-                            {billing === "monthly"
-                              ? t(
-                                  "billed monthly",
-                                  "facturé mensuellement",
-                                  "فوترة شهرية",
-                                )
-                              : t(
-                                  "billed once a year",
-                                  "facturé annuellement",
-                                  "فوترة سنوية",
-                                )}
-                          </p>
+                            <p className="text-xs text-white/30 mt-0.5">
+                              {billing === "monthly"
+                                ? t(
+                                    "Billed monthly",
+                                    "Facturé mensuellement",
+                                    "يُفوتر شهريًا",
+                                  )
+                                : t(
+                                    `Billed annually at ${PRICING.yearlyEUR}€`,
+                                    `Facturé annuellement ${PRICING.yearlyEUR}€`,
+                                    `يُفوتر سنويًا ${PRICING.yearlyEUR}€`,
+                                  )}
+                            </p>
                         </div>
                         {billing === "yearly" && (
                           <div className="text-right">
@@ -622,13 +621,13 @@ export function StripePricingPage({
                           </div>
                         )}
                       </div>
-                      <div className="grid items-center gap-2 mb-4 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                        <Zap className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <div className="grid items-center gap-2 mb-4 px-3 py-2 rounded-xl bg-blue-500/8 border border-white/[0.04]">
+                        <Zap className="w-3.5 h-3.5 text-blue-300 shrink-0" />
                         <p className="text-sm font-semibold text-white">
                           {t(
-                            "300 AI requests / month",
-                            "300 requêtes IA / mois",
-                            "300 طلب AI / شهر",
+                            "300 Smart Actions monthly",
+                            "300 Actions Intelligentes par mois",
+                            "300 إجراء ذكي شهريًا",
                           )}
                         </p>
                       </div>
@@ -655,21 +654,37 @@ export function StripePricingPage({
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => handleSubscribe(billing)}
-                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all flex items-center justify-center gap-2"
+                        className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold text-sm shadow-md shadow-blue-500/12 hover:shadow-blue-500/18 transition-all flex items-center justify-center gap-3"
                       >
-                        {billing === "monthly"
-                          ? t(
-                              `Subscribe · ${PRICING.monthlyEUR}€/mo`,
-                              `S'abonner · ${PRICING.monthlyEUR}€/mois`,
-                              `اشترك · ${PRICING.monthlyEUR}€/شهر`,
-                            )
-                          : t(
-                              `Subscribe · ${PRICING.yearlyEUR}€/yr`,
-                              `S'abonner · ${PRICING.yearlyEUR}€/an`,
-                              `اشترك · ${PRICING.yearlyEUR}€/سنة`,
-                            )}
+                        {/* Clear, human CTA with monthly-first emphasis */}
+                        <span>
+                          {t("Upgrade Now", "Mettre à niveau", "قم بالترقية")}
+                        </span>
+                        <span className="text-sm text-white/80 font-bold">
+                          {billing === "monthly"
+                            ? `${PRICING.monthlyEUR}€/month`
+                            : `${PRICING.yearlyPerMonth}€/month`}
+                        </span>
                         <ChevronRight className="w-4 h-4" />
                       </motion.button>
+
+                      {/* Sticky mobile CTA (keeps conversion anchor visible on small screens) */}
+                      <div className="md:hidden sticky bottom-0 left-0 right-0 mt-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] bg-transparent">
+                        <motion.button
+                          whileHover={{ scale: 1.01 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleSubscribe(billing)}
+                          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+                          className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold text-base shadow-md shadow-blue-500/12 hover:shadow-blue-500/18 transition-all flex items-center justify-center gap-3"
+                        >
+                          <span>{t("Upgrade Now", "Mettre à niveau", "قم بالترقية")}</span>
+                          <span className="text-sm text-white/80 font-bold">
+                            {billing === "monthly"
+                              ? `${PRICING.monthlyEUR}€/month`
+                              : `${PRICING.yearlyPerMonth}€/month`}
+                          </span>
+                        </motion.button>
+                      </div>
                     </div>
                   </div>
 

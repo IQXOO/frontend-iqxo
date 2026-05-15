@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useApp } from "../lib/store";
 import {
   transcribeAudio,
   startAudioRecording,
@@ -99,6 +100,7 @@ interface UseVoiceInputReturn {
 }
 
 export function useVoiceInput(): UseVoiceInputReturn {
+  const { user } = useApp();
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
@@ -296,6 +298,11 @@ export function useVoiceInput(): UseVoiceInputReturn {
               : "webm";
             formData.append("audio", audioBlob, `recording.${fileExtension}`);
 
+            // Include userId in the request payload when available
+            if (user?.id) {
+              formData.append("userId", user.id);
+            }
+
             const response = await fetch(
               `${import.meta.env.VITE_BACKEND_API}/analyze-voice`,
               {
@@ -316,6 +323,11 @@ export function useVoiceInput(): UseVoiceInputReturn {
             // Use the transcript from your server
             const transcription = result.transcript || result.text || "";
             setTranscript(transcription);
+
+            // Optional metadata: log total_usage if present (non-breaking)
+            if (result.total_usage !== undefined) {
+              console.log('[v0] analyze-voice total_usage:', result.total_usage);
+            }
           } catch (transcriptionError) {
             console.error("[v0] Transcription error:", transcriptionError);
             setError(

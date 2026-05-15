@@ -11,7 +11,7 @@ import type { ParsedEvent } from "../../lib/parse-voice-input"
 interface UploadButtonProps {
   externalOpen: boolean
   onExternalOpenChange: (open: boolean) => void
-  onExtractedData?: (data: ParsedEvent) => void
+  onExtractedData?: (data: ParsedEvent, imageUrl?: string) => void
 }
 
 type UploadState = "picking" | "preview" | "analyzing" | "error"
@@ -41,7 +41,7 @@ export function UploadButton({
   onExternalOpenChange,
   onExtractedData,
 }: UploadButtonProps) {
-  const { t, language } = useApp()
+  const { t, language, user } = useApp()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [state, setState] = useState<UploadState>("picking")
   const [preview, setPreview] = useState<FilePreview | null>(null)
@@ -210,12 +210,16 @@ const handleAnalyze = useCallback(async () => {
       size: preview.size
     })
 
-    // Convert base64 to blob for FormData
-    const response = await fetch(preview.dataUrl)
-    if (!response.ok) {
-      throw new Error("Failed to convert image to blob")
+    // Convert base64 string (we already extracted it) to a Blob without fetching
+    const base64 = preview.base64
+    const contentType = preview.mediaType || preview.type || "application/octet-stream"
+    const byteString = atob(base64)
+    const ab = new ArrayBuffer(byteString.length)
+    const ia = new Uint8Array(ab)
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i)
     }
-    const blob = await response.blob()
+    const blob = new Blob([ab], { type: contentType })
 
     console.log("[v0] Created blob:", {
       size: blob.size,
@@ -223,7 +227,9 @@ const handleAnalyze = useCallback(async () => {
     })
 
     const formData = new FormData()
-    formData.append("image", blob, preview.name) 
+    formData.append("image", blob, preview.name)
+    // Include userId when available (backwards-compatible)
+    if (user?.id) formData.append("userId", user.id)
 
     console.log("[v0] Sending to server: http://192.168.1.3:4000/analyze-image")
 
@@ -244,13 +250,18 @@ const handleAnalyze = useCallback(async () => {
       throw new Error(text || `Server error: ${res.status}`)
     }
 
-    const extractedEvent = await res.json()
-    console.log("[v0] Extracted event:", extractedEvent)
+    const raw = await res.json()
+    console.log("[v0] Extracted event raw:", raw)
 
-    // Validate the response structure
+    // Support new response shape: { event: { ... }, actualCost }
+    const extractedEvent = raw && typeof raw === 'object' ? (raw.event ?? raw) : null
+
     if (!extractedEvent || typeof extractedEvent !== 'object') {
       throw new Error("Invalid response from server")
     }
+
+    // Log any additional metadata (non-breaking)
+    if (raw.actualCost) console.log('[v0] analyze-image actualCost:', raw.actualCost)
 
     // Send extracted data + the photo dataUrl so it prefills in event form
     onExtractedData?.(extractedEvent, preview?.dataUrl ?? undefined)

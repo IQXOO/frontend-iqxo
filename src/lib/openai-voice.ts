@@ -2,10 +2,19 @@
 
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true // Required for client-side usage
-})
+function getOpenAIClient(): OpenAI | null {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
+
+  if (!apiKey) {
+    console.warn('Missing VITE_OPENAI_API_KEY env var. OpenAI-powered features are disabled.')
+    return null
+  }
+
+  return new OpenAI({
+    apiKey,
+    dangerouslyAllowBrowser: true // Required for client-side usage
+  })
+}
 
 export interface VoiceTranscriptionOptions {
   language?: string
@@ -18,6 +27,11 @@ export async function transcribeAudio(
   options: VoiceTranscriptionOptions = {}
 ): Promise<string> {
   try {
+    const openai = getOpenAIClient()
+    if (!openai) {
+      throw new Error('Missing VITE_OPENAI_API_KEY')
+    }
+
     const file = new File([audioBlob], 'audio.webm', { type: audioBlob.type })
     
     const transcription = await openai.audio.transcriptions.create({
@@ -49,6 +63,11 @@ export async function parseEventFromText(text: string): Promise<{
   location?: string
 }> {
   try {
+    const openai = getOpenAIClient()
+    if (!openai) {
+      throw new Error('Missing VITE_OPENAI_API_KEY')
+    }
+
     const response = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [
@@ -130,6 +149,11 @@ export async function analyzeEventFromImage(imageBase64: string, imageType: stri
   location?: string
 }> {
   try {
+    const openai = getOpenAIClient()
+    if (!openai) {
+      throw new Error('Missing VITE_OPENAI_API_KEY')
+    }
+
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
