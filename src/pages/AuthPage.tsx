@@ -13,7 +13,6 @@ export default function AuthPage() {
   const { signIn, signUp, language } = useApp();
   const { toast } = useToast();
   const isRTL = language === "ar";
-
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
