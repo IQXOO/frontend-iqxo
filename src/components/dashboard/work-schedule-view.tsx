@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { useApp } from "../../lib/store";
 import { supabase } from "../../lib/supabase";
+import { devError, devLog, getFriendlyErrorMessage, withAsyncDiagnostics } from "../../lib/logger";
+import { useToast } from "../../hooks/use-toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface WorkDay {
@@ -125,6 +127,7 @@ function fmtDate(iso: string, language: string): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 export function WorkScheduleView() {
   const { user, language, addEvent, events } = useApp();
+  const { toast } = useToast();
   const isRTL = language === "ar";
 
   const displayName: string =
@@ -209,11 +212,15 @@ export function WorkScheduleView() {
     if (!user) return;
     setLoading(true);
     try {
+      // SECURITY: ensure Supabase Row Level Security (RLS) is enabled for
+      // `work_schedules` so users cannot access other users' rows. Client-side
+      // filters (eq("user_id", ...)) are not a security boundary.
       const { data } = await supabase
         .from("work_schedules")
-        .select("*")
+        .select("id,user_id,day_of_week,start_time,end_time,is_active,location,schedule_label,updated_at")
         .eq("user_id", user.id)
         .order("day_of_week");
+      devLog('WorkSchedule', 'Schedule load completed', { rowCount: data?.length ?? 0 })
       if (data?.length) {
         const rows: WorkDay[] = data.map((r) => ({
           id: r.id,
@@ -235,6 +242,14 @@ export function WorkScheduleView() {
         const first = rows.find((r) => r.is_active && r.location);
         if (first?.location) setGlobalLocation(first.location);
       }
+    } catch (error) {
+      devError('WorkSchedule', 'Failed to load schedule', error, { userId: user.id })
+      toast({
+        title: "Couldn't load work schedule",
+        description: "Please refresh and try again.",
+        variant: "destructive",
+      });
+      setError('Could not load work schedule. Please try again.')
     } finally {
       setLoading(false);
     }
@@ -335,7 +350,13 @@ export function WorkScheduleView() {
       }, 1800);
       await loadSchedule();
     } catch (e) {
-      setError((e as Error).message);
+      const message = getFriendlyErrorMessage(e, "Could not save work schedule. Please try again.");
+      setError(message);
+      toast({
+        title: "Couldn't save work schedule",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -359,7 +380,13 @@ export function WorkScheduleView() {
       setActiveLabel(remainingLabels[0]);
       setShowEditor(false);
     } catch (e) {
-      setError((e as Error).message);
+      const message = getFriendlyErrorMessage(e, "Could not delete this schedule. Please try again.");
+      setError(message);
+      toast({
+        title: "Couldn't delete schedule",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setDeleting(false);
     }
@@ -379,7 +406,13 @@ export function WorkScheduleView() {
       setUploadState("idle");
       setAiResult(null);
     } catch (e) {
-      setError((e as Error).message);
+      const message = getFriendlyErrorMessage(e, "Could not delete schedules. Please try again.");
+      setError(message);
+      toast({
+        title: "Couldn't delete schedules",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setDeleting(false);
     }
@@ -417,33 +450,52 @@ export function WorkScheduleView() {
     );
     setLabels((prev) => prev.map((l) => (l === renamingLabel ? trimmed : l)));
     if (activeLabel === renamingLabel) setActiveLabel(trimmed);
-    if (user) {
-      await supabase
-        .from("work_schedules")
-        .update({ schedule_label: trimmed })
-        .eq("user_id", user.id)
-        .eq("schedule_label", renamingLabel!);
+    try {
+      if (user) {
+        const { error } = await supabase
+          .from("work_schedules")
+          .update({ schedule_label: trimmed })
+          .eq("user_id", user.id)
+          .eq("schedule_label", renamingLabel!);
+        if (error) throw error;
+      }
+      setRenamingLabel(null);
+    } catch (e) {
+      const message = getFriendlyErrorMessage(e, "Could not rename this schedule. Please try again.");
+      toast({
+        title: "Couldn't rename schedule",
+        description: message,
+        variant: "destructive",
+      });
     }
-    setRenamingLabel(null);
   };
 
   // ── Calendar event helpers ─────────────────────────────────────────────────
   const addTodayAsEvent = async () => {
     if (!todaySchedule) return;
-    await addEvent({
-      title:
-        language === "ar"
-          ? "يوم عمل"
-          : language === "fr"
-            ? "Journée de travail"
-            : "Work Day",
-      date: new Date().toISOString().split("T")[0],
-      time: todaySchedule.start_time,
-      location: todaySchedule.location || globalLocation || undefined,
-      notes: `${todaySchedule.start_time} – ${todaySchedule.end_time}`,
-      source: "work_schedule",
-      is_done: false,
-    });
+    try {
+      await addEvent({
+        title:
+          language === "ar"
+            ? "يوم عمل"
+            : language === "fr"
+              ? "Journée de travail"
+              : "Work Day",
+        date: new Date().toISOString().split("T")[0],
+        time: todaySchedule.start_time,
+        location: todaySchedule.location || globalLocation || undefined,
+        notes: `${todaySchedule.start_time} – ${todaySchedule.end_time}`,
+        source: "work_schedule",
+        is_done: false,
+      });
+    } catch (e) {
+      const message = getFriendlyErrorMessage(e, "Could not add this work day to your calendar.");
+      toast({
+        title: "Couldn't add event",
+        description: message,
+        variant: "destructive",
+      });
+    }
   };
 
   const addDateAsEvent = async (dateStr: string, ws: WorkDay) => {
@@ -467,20 +519,29 @@ export function WorkScheduleView() {
             : `⚠️ You have "${conflict.title}" around this time. Add anyway?`;
       if (!window.confirm(msg)) return;
     }
-    await addEvent({
-      title:
-        language === "ar"
-          ? "يوم عمل"
-          : language === "fr"
-            ? "Journée de travail"
-            : "Work Day",
-      date: dateStr,
-      time: ws.start_time,
-      location: ws.location || globalLocation || undefined,
-      notes: `${ws.start_time} – ${ws.end_time}`,
-      source: "work_schedule",
-      is_done: false,
-    });
+    try {
+      await addEvent({
+        title:
+          language === "ar"
+            ? "يوم عمل"
+            : language === "fr"
+              ? "Journée de travail"
+              : "Work Day",
+        date: dateStr,
+        time: ws.start_time,
+        location: ws.location || globalLocation || undefined,
+        notes: `${ws.start_time} – ${ws.end_time}`,
+        source: "work_schedule",
+        is_done: false,
+      });
+    } catch (e) {
+      const message = getFriendlyErrorMessage(e, "Could not add this work day to your calendar.");
+      toast({
+        title: "Couldn't add event",
+        description: message,
+        variant: "destructive",
+      });
+    }
   };
 
   // ── AI: apply result to current label ─────────────────────────────────────
@@ -541,34 +602,61 @@ export function WorkScheduleView() {
     setUploadError("");
     setAiResult(null);
     try {
-      const backendUrl =
-        (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4000";
-      const formData = new FormData();
-      formData.append("image", file);
-      const r = await fetch(`${backendUrl}/analyze-schedule`, {
-        method: "POST",
-        headers: {
-          "X-User-Name": searchName,
-          "X-User-Email": user?.email || "",
-          "x-user-id": user?.id || "",
+      await withAsyncDiagnostics(
+        'WorkSchedule',
+        'Analyze schedule image',
+        async () => {
+          const backendUrl =
+            (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4000";
+          const formData = new FormData();
+          formData.append("image", file);
+          const r = await fetch(`${backendUrl}/analyze-schedule`, {
+            method: "POST",
+            headers: {
+              "X-User-Name": searchName,
+              "X-User-Email": user?.email || "",
+              "x-user-id": user?.id || "",
+            },
+            body: formData,
+          });
+          if (r.ok) {
+            const result: AIScheduleResult = await r.json();
+            setAiResult(result);
+            applyAIResult(result);
+            setUploadState("review");
+            return;
+          }
+          if (r.status === 404) {
+            const body = await r.json().catch(() => ({}));
+            throw new Error(
+              body.error || `"${searchName}" was not found in this schedule`,
+            );
+          }
+          throw new Error("Server error");
         },
-        body: formData,
-      });
-      if (r.ok) {
-        const result: AIScheduleResult = await r.json();
-        setAiResult(result);
-        applyAIResult(result);
-        setUploadState("review");
-      } else if (r.status === 404) {
-        const body = await r.json().catch(() => ({}));
-        throw new Error(
-          body.error || `"${searchName}" was not found in this schedule`,
-        );
-      } else {
-        throw new Error("Server error");
-      }
+        {
+          method: 'POST',
+          context: { searchName, userId: user?.id || "" },
+          timeoutMs: 60000,
+          onError: (message) => {
+            const friendly = getFriendlyErrorMessage(message, "Failed to analyze file");
+            setUploadError(friendly);
+            toast({
+              title: "Couldn't analyze schedule",
+              description: friendly,
+              variant: "destructive",
+            });
+          },
+        },
+      )
     } catch (e) {
-      setUploadError((e as Error).message || "Failed to analyze file");
+      const message = getFriendlyErrorMessage(e, "Failed to analyze file");
+      setUploadError(message);
+      toast({
+        title: "Couldn't analyze schedule",
+        description: message,
+        variant: "destructive",
+      });
       setUploadState("error");
     }
   };

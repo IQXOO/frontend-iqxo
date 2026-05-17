@@ -4,7 +4,6 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Settings, LogOut, Loader2, X } from "lucide-react";
 import { useApp } from "../../lib/store";
-import { useToast } from "../../hooks/use-toast";
 import { ProfileIdentityHub } from "./profile-identity-hub";
 import { SettingsBentoGrid } from "./settings-bento-grid";
 import { StripePricingPage } from "./stripe-pricing-page";
@@ -16,7 +15,6 @@ interface SettingsViewProps {
 }
 
 export function SettingsView({ onClose }: SettingsViewProps) {
-  const { toast } = useToast();
   const { user, language, t, signOut } = useApp();
   const [isPending, setIsPending] = useState(false);
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
@@ -27,13 +25,7 @@ export function SettingsView({ onClose }: SettingsViewProps) {
     setIsPending(true);
     try {
       await signOut();
-    } catch {
-      toast({
-        title:
-          language === "fr" ? "Erreur" : language === "ar" ? "خطأ" : "Error",
-        description: t("logout_error"),
-        variant: "destructive",
-      });
+    } finally {
       setIsPending(false);
     }
   };

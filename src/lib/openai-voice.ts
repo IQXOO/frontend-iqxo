@@ -1,19 +1,27 @@
 /// <reference types="vite/client" />
 
-import OpenAI from 'openai'
+/**
+ * Security note:
+ * This module used to call OpenAI directly from the browser which exposed the
+ * OpenAI API key (`VITE_OPENAI_API_KEY`) in client bundles. That behavior
+ * has been removed. All OpenAI calls are now proxied through a trusted
+ * backend (configured via `VITE_BACKEND_API`). The frontend will never
+ * instantiate an OpenAI client or hold secrets.
+ */
 
-function getOpenAIClient(): OpenAI | null {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
+import { supabase } from './supabase'
+import { devLog, devWarn, fetchWithDiagnostics, readResponseText } from './logger'
 
-  if (!apiKey) {
-    console.warn('Missing VITE_OPENAI_API_KEY env var. OpenAI-powered features are disabled.')
-    return null
+/** Helper: include auth token when available */
+async function getAuthHeader(): Promise<Record<string, string>> {
+  try {
+    const { data } = await supabase.auth.getSession()
+    const token = data?.session?.access_token
+    if (token) return { Authorization: `Bearer ${token}` }
+  } catch (e) {
+    devWarn('Voice', 'Could not read auth session for request header')
   }
-
-  return new OpenAI({
-    apiKey,
-    dangerouslyAllowBrowser: true // Required for client-side usage
-  })
+  return {}
 }
 
 export interface VoiceTranscriptionOptions {
@@ -26,267 +34,138 @@ export async function transcribeAudio(
   audioBlob: Blob,
   options: VoiceTranscriptionOptions = {}
 ): Promise<string> {
-  try {
-    const openai = getOpenAIClient()
-    if (!openai) {
-      throw new Error('Missing VITE_OPENAI_API_KEY')
-    }
+  // Proxy the audio to the backend; backend should call OpenAI securely.
+  devLog('Voice', 'Transcription request prepared', {
+    mimeType: audioBlob.type,
+    size: audioBlob.size,
+    language: options.language,
+  })
+  const form = new FormData()
+  form.append('file', audioBlob, 'audio.webm')
+  if (options.language) form.append('language', options.language)
+  if (options.prompt) form.append('prompt', options.prompt)
 
-    const file = new File([audioBlob], 'audio.webm', { type: audioBlob.type })
-    
-    const transcription = await openai.audio.transcriptions.create({
-      file: file,
-      model: 'whisper-1',
-      language: options.language || 'en',
-      prompt: options.prompt || 'This is a voice recording for creating a calendar event. The user will speak about meetings, appointments, tasks, or reminders. Common phrases include "meeting with", "appointment at", "call with", "deadline for", "remind me to", "schedule", "book", "reserve". Transcribe accurately for event creation.',
-      temperature: options.temperature || 0.1,
-      response_format: 'text'
-    })
+  const headers = await getAuthHeader()
 
-    return transcription
-  } catch (error) {
-    console.error('OpenAI transcription error:', error)
-    throw new Error(
-      error instanceof Error 
-        ? error.message 
-        : 'Failed to transcribe audio with OpenAI'
-    )
+  const res = await fetchWithDiagnostics(
+    'Voice',
+    'POST /analyze-voice',
+    `${import.meta.env.VITE_BACKEND_API}/analyze-voice`,
+    {
+      method: 'POST',
+      headers,
+      body: form,
+    },
+    { timeoutMs: 60000 },
+  )
+
+  if (!res.ok) {
+    const text = await readResponseText(res)
+    throw new Error(text || `Transcription failed with ${res.status}`)
   }
+
+  const data = await res.json()
+  devLog('Voice', 'Transcription response received', {
+    hasTranscript: Boolean(data.transcript || data.text),
+    hasEvent: Boolean(data.event),
+  })
+  // Expecting { transcript: string, event?: {...} }
+  return data.transcript || data.text || ''
 }
 
-export async function parseEventFromText(text: string): Promise<{
-  title: string
-  notes?: string
-  date?: string
-  time?: string
-  phone?: string
-  location?: string
-}> {
-  try {
-    const openai = getOpenAIClient()
-    if (!openai) {
-      throw new Error('Missing VITE_OPENAI_API_KEY')
-    }
-
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an event parsing assistant. Extract event details from the user's speech and return a JSON object with the following structure:
-{
-  "title": "Brief event title (required)",
-  "notes": "Additional details or description (optional)",
-  "date": "Date in YYYY-MM-DD format (optional, use today if not specified)",
-  "time": "Time in HH:MM format (optional)",
-  "phone": "Phone number if mentioned (optional)",
-  "location": "Location if mentioned (optional)"
+/**
+ * TODO: Text-to-event parsing via backend
+ * 
+ * This function is currently dead code (never called by frontend).
+ * It was designed to parse user-spoken text into structured event data
+ * using OpenAI GPT-3.5-turbo.
+ * 
+ * To implement:
+ * 1. Backend must create POST /parse-text endpoint
+ * 2. Endpoint should accept { text: string, userId: string }
+ * 3. Validate Authorization header (Supabase JWT)
+ * 4. Call OpenAI gpt-3.5-turbo with event parsing prompt
+ * 5. Return { title, date?, time?, phone?, location?, notes? }
+ * 
+ * Backend Contract:
+ * - Method: POST
+ * - Endpoint: POST /parse-text
+ * - Headers: { Authorization: Bearer <JWT> }
+ * - Body: { text: string }
+ * - Response: { title: string, date?: string, time?: string, ... }
+ * 
+ * Security:
+ * - Backend MUST validate Authorization header
+ * - Backend MUST NOT trust client-sent userId
+ * - Frontend will attach Authorization header when available
+ */
+export async function parseEventFromText(text: string) {
+  devWarn('Voice', 'parseEventFromText called but POST /parse-text is not implemented')
+  // PLACEHOLDER: Backend endpoint not yet implemented
+  // Throwing error to prevent silent failures if this code path is activated
+  throw new Error(
+    'parseEventFromText: Backend endpoint POST /parse-text is not yet implemented. ' +
+    'This function is currently dead code and should not be called.'
+  )
 }
 
-Rules:
-- Title is required and should be concise
-- If no date is mentioned, assume today
-- If no time is mentioned, leave it empty
-- Extract phone numbers and locations if clearly mentioned
-- Keep the title under 50 characters
-- Notes can include additional context or details
-- Return ONLY valid JSON, no explanations`
-        },
-        {
-          role: 'user',
-          content: `Parse this event request: "${text}"`
-        }
-      ],
-      temperature: 0.2,
-      max_tokens: 200
-    })
+export async function analyzeEventFromImage(imageBase64: string, imageType: string) {
+  // Proxy image analysis to backend — backend calls OpenAI/CV safely.
+  devLog('Upload', 'Image analysis request prepared', {
+    imageType,
+    imageBytes: Math.floor((imageBase64.length * 3) / 4),
+  })
+  const byteString = atob(imageBase64)
+  const ab = new ArrayBuffer(byteString.length)
+  const ia = new Uint8Array(ab)
+  for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i)
+  const blob = new Blob([ab], { type: imageType })
 
-    const content = response.choices[0]?.message?.content
-    if (!content) {
-      throw new Error('No response from AI')
-    }
+  const form = new FormData()
+  form.append('image', blob, 'upload')
 
-    try {
-      // Remove markdown code blocks if present
-      let cleanContent = content
-      if (content.includes('```')) {
-        cleanContent = content.replace(/```json\s*/, '').replace(/```\s*$/, '')
-      }
-      
-      const parsed = JSON.parse(cleanContent)
-      return {
-        title: parsed.title || 'New Event',
-        notes: parsed.notes,
-        date: parsed.date,
-        time: parsed.time,
-        phone: parsed.phone,
-        location: parsed.location
-      }
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', content)
-      // Fallback to simple title extraction
-      return {
-        title: text.trim().substring(0, 50) || 'New Event',
-        notes: text
-      }
-    }
-  } catch (error) {
-    console.error('Event parsing error:', error)
-    // Fallback to basic extraction
-    return {
-      title: text.trim().substring(0, 50) || 'New Event',
-      notes: text
-    }
+  const headers = await getAuthHeader()
+
+  const res = await fetchWithDiagnostics(
+    'Upload',
+    'POST /analyze-image',
+    `${import.meta.env.VITE_BACKEND_API}/analyze-image`,
+    {
+      method: 'POST',
+      headers,
+      body: form,
+    },
+    { timeoutMs: 60000 },
+  )
+
+  if (!res.ok) {
+    const txt = await readResponseText(res)
+    throw new Error(txt || `Image analysis failed ${res.status}`)
   }
-}
 
-export async function analyzeEventFromImage(imageBase64: string, imageType: string): Promise<{
-  title: string
-  notes?: string
-  date?: string
-  time?: string
-  phone?: string
-  location?: string
-}> {
-  try {
-    const openai = getOpenAIClient()
-    if (!openai) {
-      throw new Error('Missing VITE_OPENAI_API_KEY')
-    }
-
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert event extraction assistant. Analyze the provided image and extract event details. Return a JSON object with the following structure:
-{
-  "title": "Brief event title (required)",
-  "notes": "Additional details or description (optional)",
-  "date": "Date in YYYY-MM-DD format (optional, use today if not specified)",
-  "time": "Time in HH:MM format (optional)",
-  "phone": "Phone number if visible (optional)",
-  "location": "Location if visible (optional)"
-}
-
-Rules:
-- Look for text, dates, times, locations, phone numbers in the image
-- If no date is visible, assume today's date
-- If no time is visible, leave it empty
-- Extract phone numbers and locations if clearly visible
-- Handle common date formats: MM/DD/YYYY, DD/MM/YYYY, "Jan 15", etc.
-- Handle time formats: "3 PM", "15:00", "2:30 PM", etc.
-- Notes should describe what you see in the image relevant to the event
-- Return ONLY valid JSON, no explanations or extra text`
-        },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: 'Extract event details from this image:'
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:${imageType};base64,${imageBase64}`
-              }
-            }
-          ]
-        }
-      ],
-      temperature: 0.1,
-      max_tokens: 300
-    })
-
-    const content = response.choices[0]?.message?.content
-    if (!content) {
-      throw new Error('No response from AI')
-    }
-
-    try {
-      // Remove markdown code blocks if present
-      let cleanContent = content
-      if (content.includes('```')) {
-        cleanContent = content.replace(/```json\s*/, '').replace(/```\s*$/, '')
-      }
-      
-      const parsed = JSON.parse(cleanContent)
-      return {
-        title: parsed.title || 'Event from Photo',
-        notes: parsed.notes,
-        date: parsed.date,
-        time: parsed.time,
-        phone: parsed.phone,
-        location: parsed.location
-      }
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', content)
-      // Fallback to basic event
-      return {
-        title: 'Event from Photo',
-        notes: 'Event extracted from image'
-      }
-    }
-  } catch (error) {
-    console.error('Image analysis error:', error)
-    // Fallback to basic event
-    return {
-      title: 'Event from Photo',
-      notes: 'Event extracted from image'
-    }
-  }
+  const data = await res.json()
+  devLog('Upload', 'Image analysis response received', {
+    hasEvent: Boolean(data.event),
+  })
+  return data.event ?? data
 }
 
 export function isAudioSupported(): boolean {
-  return typeof MediaRecorder !== 'undefined' && 
-         !!navigator.mediaDevices && 
-         !!navigator.mediaDevices.getUserMedia
+  return typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices && !!navigator.mediaDevices.getUserMedia
 }
 
 export async function startAudioRecording(): Promise<MediaRecorder> {
-  if (!isAudioSupported()) {
-    throw new Error('Audio recording is not supported in this browser')
-  }
+  if (!isAudioSupported()) throw new Error('Audio recording is not supported in this browser')
 
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ 
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      } 
-    })
-    
-    const mediaRecorder = new MediaRecorder(stream, {
-      mimeType: 'audio/webm;codecs=opus'
-    })
-    
-    return mediaRecorder
-  } catch (error) {
-    console.error('Error accessing microphone:', error)
-    throw new Error(
-      error instanceof Error 
-        ? error.message 
-        : 'Failed to access microphone'
-    )
-  }
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+  })
+
+  return new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
 }
 
 export function getSupportedMimeType(): string {
-  const types = [
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/ogg;codecs=opus',
-    'audio/mp4',
-    'audio/wav'
-  ]
-  
-  for (const type of types) {
-    if (MediaRecorder.isTypeSupported(type)) {
-      return type
-    }
-  }
-  
-  return 'audio/webm' // fallback
+  const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4', 'audio/wav']
+  for (const type of types) if (MediaRecorder.isTypeSupported(type)) return type
+  return 'audio/webm'
 }

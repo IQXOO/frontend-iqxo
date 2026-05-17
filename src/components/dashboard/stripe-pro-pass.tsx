@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Crown, Sparkles, Shield, Zap, Infinity, Check, CreditCard, Lock, X } from "lucide-react"
 import { useApp } from "@/lib/store"
 import { useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { getFriendlyErrorMessage } from "@/lib/logger"
 
 interface StripeProPassProps {
   open?: boolean
@@ -12,6 +14,7 @@ interface StripeProPassProps {
 
 export function StripeProPass({ open = true, onClose }: StripeProPassProps) {
   const { language } = useApp()
+  const { toast } = useToast()
   const isRTL = language === "ar"
   const [isLoading, setIsLoading] = useState(false)
   const [cardNumber, setCardNumber] = useState("")
@@ -43,10 +46,20 @@ export function StripeProPass({ open = true, onClose }: StripeProPassProps) {
 
   const handleCheckout = async () => {
     setIsLoading(true)
-    // Simulate Stripe checkout
-    await new Promise((r) => setTimeout(r, 2000))
-    setIsLoading(false)
-    // In production, this would redirect to Stripe
+    try {
+      // Simulate Stripe checkout
+      await new Promise((r) => setTimeout(r, 2000))
+      // In production, this would redirect to Stripe
+    } catch (error) {
+      const message = getFriendlyErrorMessage(error, "Could not start checkout. Please try again.")
+      toast({
+        title: "Checkout failed",
+        description: message,
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Format card number with spaces

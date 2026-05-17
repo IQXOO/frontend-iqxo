@@ -11,6 +11,8 @@ import {
 } from "../ui/drawer";
 import { useApp } from "../../lib/store";
 import { supabase } from "../../lib/supabase";
+import { devError, devLog, devWarn, getFriendlyErrorMessage } from "../../lib/logger";
+import { useToast } from "../../hooks/use-toast";
 import type { IQXOEvent } from "../../lib/types";
 import type { ParsedEvent } from "../../lib/parse-voice-input";
 
@@ -34,6 +36,7 @@ async function uploadToStorage(file: File, userId: string, bucket: "event-images
 
 export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voiceData, prefillImageUrl }: EventFormModalProps) {
   const { addEvent, updateEvent, user, t, theme, language, events } = useApp();
+  const { toast } = useToast();
   const [workSchedule, setWorkSchedule] = useState<{day_of_week:number;start_time:string;end_time:string}[]>([]);
 
   const [title, setTitle]       = useState("");
@@ -63,9 +66,28 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
     if (!open) return;
     setUploadError(null); setConflictTitle(null);
     // Fetch user's work schedule for conflict checking
+    // SECURITY: this client-side call requires Supabase Row Level Security (RLS)
+    // to be configured. Do not rely on client filtering as a security boundary.
     if (user) {
-      supabase.from("work_schedules").select("day_of_week,start_time,end_time").eq("user_id", user.id)
-        .then(({ data }) => { if (data) setWorkSchedule(data); });
+      devLog('EventForm', 'Loading work schedule for conflict checks')
+      supabase
+        .from("work_schedules")
+        .select("day_of_week,start_time,end_time")
+        .eq("user_id", user.id)
+        .then(({ data, error }) => {
+          if (error) {
+            devError('EventForm', 'Failed to load work schedule', error)
+            toast({
+              title: "Couldn't load work schedule",
+              description: "Conflict checks may be incomplete. Please try again.",
+              variant: "destructive",
+            });
+            return;
+          }
+          if (data) setWorkSchedule(data);
+        });
+    } else {
+      devWarn('EventForm', 'work_schedules fetch skipped: no authenticated user')
     }
     if (editEvent) {
       setTitle(editEvent.title); setDate(editEvent.date); setTime(editEvent.time);
@@ -86,10 +108,6 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
   useEffect(() => {
     if (voiceData) { setTitle(voiceData.title || ""); setDate(voiceData.date || ""); setTime(voiceData.time || ""); setLocation(voiceData.location || ""); setPhone(voiceData.phone || ""); }
   }, [voiceData]);
-  useEffect(() => { if (voiceData && !open) onOpenChange(true); }, [voiceData, open, onOpenChange]);
-  useEffect(() => {
-    if (prefillData) { setTitle(prefillData.title || ""); setDate(prefillData.date || ""); setTime(prefillData.time || ""); setLocation(prefillData.location || ""); }
-  }, [prefillData]);
 
   // ── Task 3: Conflict check ─────────────────────────────────────────────────
   // Returns title of conflicting event within 60 min on the same date
@@ -161,11 +179,15 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
   const handleSave = async () => {
     if (!title.trim() || !date || !user) return;
     if (conflictTitle) {
-      setUploadError(
-        language === "ar" ? `تعارض مع "${conflictTitle}" — حدث في نفس الوقت`
+      const message = language === "ar" ? `تعارض مع "${conflictTitle}" — حدث في نفس الوقت`
         : language === "fr" ? `Conflit avec "${conflictTitle}" — événement au même moment`
         : `Time conflict with "${conflictTitle}" — you already have an event at this time`
-      );
+      setUploadError(message);
+      toast({
+        title: "Time conflict",
+        description: message,
+        variant: "destructive",
+      });
       return;
     }
     setIsUploading(true); setUploadError(null);
@@ -184,7 +206,13 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
       else           { await addEvent(payload); }
       onOpenChange(false);
     } catch (err) {
-      setUploadError((err as Error).message ?? "Failed to save.");
+      const message = getFriendlyErrorMessage(err, "Failed to save. Please try again.");
+      setUploadError(message);
+      toast({
+        title: "Couldn't save event",
+        description: message,
+        variant: "destructive",
+      });
     } finally { setIsUploading(false); }
   };
 

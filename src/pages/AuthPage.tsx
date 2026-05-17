@@ -4,11 +4,14 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, User, Eye, EyeOff, Sparkles, AlertCircle } from "lucide-react";
 import { useApp } from "../lib/store";
+import { devError, devLog, getFriendlyErrorMessage } from "../lib/logger";
+import { useToast } from "../hooks/use-toast";
 
 type Mode = "signin" | "signup";
 
 export default function AuthPage() {
   const { signIn, signUp, language } = useApp();
+  const { toast } = useToast();
   const isRTL = language === "ar";
 
   const [mode, setMode] = useState<Mode>("signin");
@@ -76,27 +79,58 @@ export default function AuthPage() {
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
+      toast({
+        title: language === "fr" ? "Formulaire incomplet" : language === "ar" ? "النموذج غير مكتمل" : "Please check the form",
+        description: validationError,
+        variant: "destructive",
+      });
       return;
     }
 
     setLoading(true);
 
-    if (mode === "signin") {
-      const { error: err } = await signIn(email, password);
-      if (err) {
-        // Make Supabase error messages more user-friendly
-        if (err.toLowerCase().includes("invalid login")) {
-          setError("Incorrect email or password. Please try again.");
-        } else {
-          setError(err);
+    try {
+      devLog('Auth', mode === "signin" ? 'Login form submitted' : 'Signup form submitted');
+
+      if (mode === "signin") {
+        const { error: err } = await signIn(email, password);
+        if (err) {
+          // Make Supabase error messages more user-friendly
+          const message = err.toLowerCase().includes("invalid login")
+            ? "Incorrect email or password. Please try again."
+            : getFriendlyErrorMessage(err, err);
+          setError(message);
+          toast({
+            title: mode === "signin" ? "Couldn't sign in" : "Couldn't create account",
+            description: message,
+            variant: "destructive",
+          });
         }
+      } else {
+        const { error: err } = await signUp(email, password, fullName);
+        if (err) {
+          const message = getFriendlyErrorMessage(err, err);
+          setError(message);
+          toast({
+            title: "Couldn't create account",
+            description: message,
+            variant: "destructive",
+          });
+        }
+        // No email confirmation — Supabase session fires immediately via onAuthStateChange
       }
-    } else {
-      const { error: err } = await signUp(email, password, fullName);
-      if (err) setError(err);
-      // No email confirmation — Supabase session fires immediately via onAuthStateChange
+    } catch (error) {
+      devError('Auth', 'Auth form submission failed', error)
+      const message = getFriendlyErrorMessage(error, 'Authentication failed')
+      setError(message)
+      toast({
+        title: mode === "signin" ? "Couldn't sign in" : "Couldn't create account",
+        description: message,
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

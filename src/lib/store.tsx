@@ -9,6 +9,8 @@ import React, {
 } from "react";
 import { supabase } from "./supabase";
 import type { User, Session } from "@supabase/supabase-js";
+import { devError, devLog, devWarn, fetchWithDiagnostics, getFriendlyErrorMessage } from "./logger";
+import { toast } from "../hooks/use-toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type Priority = "urgent" | "upcoming" | "later" | "past";
@@ -578,11 +580,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ── Bootstrap auth session ──────────────────────────────────────────────────
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      setAuthLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+      })
+      .catch((error) => {
+        devError("Auth", "Failed to restore session", error);
+        toast({
+          title: "Session issue",
+          description:
+            "We couldn't restore your session. Please log in again.",
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        setAuthLoading(false);
+      });
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, sess) => {
@@ -621,16 +636,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const fetchEvents = useCallback(async (uid: string) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("events")
-        .select("*")
-        .eq("user_id", uid)
-        .order("date", { ascending: true });
+        // SECURITY: rely on Supabase Row Level Security (RLS) to enforce
+        // per-user access. Client-side filtering (eq("user_id", uid)) is
+        // NOT a security boundary. Ensure RLS policies exist in the DB.
+
+        if (!uid) {
+          devWarn('Events', 'fetchEvents called without uid — aborting')
+          setEvents([])
+          return
+        }
+
+        // Explicit column projection to avoid overfetching sensitive fields
+        const { data, error } = await supabase
+          .from("events")
+          .select("id,user_id,title,notes,date,time,phone,location,source,image_url,pdf_url,is_done,created_at,updated_at")
+          .eq("user_id", uid)
+          .order("date", { ascending: true });
 
       if (error) throw error;
+      devLog('Events', 'Events loaded', { count: (data ?? []).length })
       setEvents((data ?? []).map(rowToEvent));
     } catch (err) {
-      console.error("fetchEvents error:", err);
+      devError('Events', 'Failed to load events', err, { userId: uid });
+      toast({
+        title: "Couldn't load your events",
+        description:
+          getFriendlyErrorMessage(
+            err,
+            "Please refresh the page and try again.",
+          ),
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -645,16 +681,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4000";
       (async () => {
         try {
-          const r = await fetch(`${backendUrl}/plan-status?userId=${user.id}`);
+          // Prefer Authorization header (backend should validate token)
+          const headers: Record<string, string> = {}
+          try {
+            const { data } = await supabase.auth.getSession()
+            const token = data?.session?.access_token
+            if (token) headers['Authorization'] = `Bearer ${token}`
+          } catch (_) {}
+
+          const r = await fetchWithDiagnostics(
+            'Billing',
+            'GET /plan-status',
+            `${backendUrl}/plan-status?userId=${user.id}`,
+            { headers },
+            { timeoutMs: 15000, context: { userId: user.id } },
+          );
           if (r.ok) {
             const { planStatus, trialEndsAt: trialEnd } = await r.json();
             setPlanStatusState((planStatus as PlanStatus) || "none");
             if (trialEnd) setTrialEndsAt(new Date(trialEnd));
+            devLog('Billing', 'Plan status loaded', { planStatus: planStatus || 'none', hasTrialEnd: Boolean(trialEnd) })
           } else {
+            devWarn('Billing', 'Plan status request failed, falling back to none', { status: r.status })
+            toast({
+              title: "Couldn't load billing status",
+              description: "We'll keep the app usable, but billing details may be stale. Please try again later.",
+              variant: "destructive",
+            });
             setPlanStatusState("none");
           }
         } catch {
           // Server unreachable — fall back to localStorage
+          devWarn('Billing', 'Plan status server unreachable, using local fallback')
+          toast({
+            title: "Couldn't reach billing service",
+            description: "We'll use the cached plan status for now.",
+            variant: "destructive",
+          });
           const savedPlan = localStorage.getItem(
             `iqxo_plan_${user.id}`,
           ) as PlanStatus | null;
@@ -670,33 +733,79 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ── Auth actions ──────────────────────────────────────────────────────────────
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error: error?.message ?? null };
+    devLog('Auth', 'Login started', { emailDomain: email.split('@')[1] || '' })
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) {
+        devError('Auth', 'Login failed', error, { emailDomain: email.split('@')[1] || '' })
+      } else {
+        devLog('Auth', 'Login succeeded', { emailDomain: email.split('@')[1] || '' })
+      }
+      return { error: error?.message ?? null };
+    } catch (error) {
+      devError('Auth', 'Login threw unexpectedly', error, { emailDomain: email.split('@')[1] || '' })
+      return { error: error instanceof Error ? error.message : 'Login failed' };
+    }
   }, []);
 
   const signUp = useCallback(
     async (email: string, password: string, fullName?: string) => {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: fullName ?? "" },
-          // Email confirmation is disabled — user is logged in immediately after sign-up
-        },
-      });
+      devLog('Auth', 'Signup started', { emailDomain: email.split('@')[1] || '' })
+      try {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: fullName ?? "" },
+            // Email confirmation is disabled — user is logged in immediately after sign-up
+          },
+        });
 
-      if (error) return { error: error.message };
-      return { error: null };
+        if (error) {
+          devError('Auth', 'Signup failed', error, { emailDomain: email.split('@')[1] || '' })
+          return { error: error.message };
+        }
+
+        devLog('Auth', 'Signup succeeded', { emailDomain: email.split('@')[1] || '' })
+        return { error: null };
+      } catch (error) {
+        devError('Auth', 'Signup threw unexpectedly', error, { emailDomain: email.split('@')[1] || '' })
+        return { error: error instanceof Error ? error.message : 'Signup failed' };
+      }
     },
     [],
   );
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-    setEvents([]);
+    devLog('Auth', 'Logout started')
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        devError('Auth', 'Logout failed', error);
+        toast({
+          title: "Couldn't sign out",
+          description: getFriendlyErrorMessage(error, "Please try again."),
+          variant: "destructive",
+        });
+        throw error;
+      }
+      devLog('Auth', 'Logout succeeded')
+      setEvents([]);
+    } catch (error) {
+      devError('Auth', 'Logout threw unexpectedly', error);
+      toast({
+        title: "Couldn't sign out",
+        description: getFriendlyErrorMessage(
+          error,
+          "Please try again.",
+        ),
+        variant: "destructive",
+      });
+      throw error;
+    }
   }, []);
 
   // ── Plan helpers ──────────────────────────────────────────────────────────────
@@ -722,7 +831,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     async (
       data: Omit<IQXOEvent, "id" | "user_id" | "createdAt" | "updatedAt">,
     ) => {
-      if (!user) return;
+      if (!user) {
+        console.warn('addEvent prevented: no authenticated user')
+        throw new Error('No authenticated user')
+      }
       const { data: row, error } = await supabase
         .from("events")
         .insert({
@@ -743,7 +855,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("addEvent:", error);
-        return;
+        throw error;
       }
       setEvents((prev) => [rowToEvent(row), ...prev]);
     },
@@ -752,7 +864,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateEvent = useCallback(
     async (id: string, data: Partial<IQXOEvent>) => {
-      if (!user) return;
+      if (!user) {
+        console.warn('updateEvent prevented: no authenticated user')
+        throw new Error('No authenticated user')
+      }
       const { data: row, error } = await supabase
         .from("events")
         .update({
@@ -774,7 +889,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("updateEvent:", error);
-        return;
+        throw error;
       }
       setEvents((prev) => prev.map((e) => (e.id === id ? rowToEvent(row) : e)));
     },
@@ -783,7 +898,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const deleteEvent = useCallback(
     async (id: string) => {
-      if (!user) return;
+      if (!user) {
+        console.warn('deleteEvent prevented: no authenticated user')
+        throw new Error('No authenticated user')
+      }
       const { error } = await supabase
         .from("events")
         .delete()
@@ -792,7 +910,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("deleteEvent:", error);
-        return;
+        throw error;
       }
       setEvents((prev) => prev.filter((e) => e.id !== id));
     },

@@ -9,6 +9,8 @@ import {
   getSupportedMimeType,
 } from "../lib/openai-voice";
 import { ParsedEvent } from "../lib/parse-voice-input";
+import { devError, devLog, devWarn, fetchWithDiagnostics, getFriendlyErrorMessage, readResponseText } from "../lib/logger";
+import { useToast } from "../hooks/use-toast";
 
 // Type declarations for Web Speech API (for interim results)
 declare global {
@@ -100,7 +102,8 @@ interface UseVoiceInputReturn {
 }
 
 export function useVoiceInput(): UseVoiceInputReturn {
-  const { user } = useApp();
+  const { user, session } = useApp();
+  const { toast } = useToast();
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
@@ -143,23 +146,27 @@ export function useVoiceInput(): UseVoiceInputReturn {
 
     const supported = audioSupported || speechSupported;
 
-    console.log("[v0] Audio recording support:", audioSupported);
-    console.log("[v0] Speech recognition support:", speechSupported);
+    devLog('Voice', 'Audio support check completed', { audioSupported, speechSupported, supported });
     setIsSupported(supported);
 
     if (!supported) {
-      console.error("[v0] Voice input is not supported in this browser");
+      devWarn('Voice', 'Voice input is not supported in this browser');
     }
   }, []);
 
   const startListening = useCallback(
     async (langCode?: string) => {
-      console.log("[v0] Starting voice input...");
+      devLog('Voice', 'Starting voice input');
 
       if (!isSupported) {
         const errorMsg = "Voice input is not supported in this browser";
         setError(errorMsg);
-        console.error("[v0]", errorMsg);
+        devWarn('Voice', errorMsg);
+        toast({
+          title: "Voice input unavailable",
+          description: "Your browser doesn't support voice input on this device.",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -203,11 +210,11 @@ export function useVoiceInput(): UseVoiceInputReturn {
 
           if (langCode) {
             speechRecognition.lang = langCode;
-            console.log("[v0] Speech recognition language set to:", langCode);
+            devLog('Voice', 'Speech recognition language set', { langCode });
           }
 
           speechRecognition.onstart = () => {
-            console.log("[v0] Speech recognition started for interim results");
+            devLog('Voice', 'Speech recognition started for interim results');
           };
 
           speechRecognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -226,26 +233,25 @@ export function useVoiceInput(): UseVoiceInputReturn {
             // Always update interim transcript for real-time display
             if (interim) {
               setInterimTranscript(interim);
-              console.log("[v0] Speech interim:", interim);
+              devLog('Voice', 'Speech interim result', { transcript: interim });
             }
             // Update with final results when available
             if (final) {
               setInterimTranscript(final);
-              console.log("[v0] Speech final:", final);
+              devLog('Voice', 'Speech final result', { transcript: final });
             }
           };
 
           speechRecognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-            console.warn(
-              "[v0] Speech recognition error (interim):",
-              event.error,
-            );
+            devWarn('Voice', 'Speech recognition error (interim)', { error: event.error });
             // Only show error for critical errors, not network issues
             if (event.error !== "network" && event.error !== "no-speech") {
-              console.error(
-                "[v0] Speech recognition critical error:",
-                event.error,
-              );
+              devError('Voice', 'Speech recognition critical error', event.error);
+              toast({
+                title: "Voice transcription interrupted",
+                description: "The microphone or speech recognition stopped early. Please try again.",
+                variant: "destructive",
+              });
             }
             // Mark as failed but don't stop recording
             setSpeechRecognitionFailed(true);
@@ -257,7 +263,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
         }
 
         mediaRecorder.onstart = () => {
-          console.log("[v0] Audio recording started");
+          devLog('Voice', 'Audio recording started');
           setIsListening(true);
         };
 
@@ -268,7 +274,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
         };
 
         mediaRecorder.onstop = async () => {
-          console.log("[v0] Audio recording stopped");
+          devLog('Voice', 'Audio recording stopped');
           setIsListening(false);
           setIsProcessing(true);
           setInterimTranscript(""); // Clear interim transcript
@@ -284,7 +290,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
             const audioBlob = new Blob(audioChunksRef.current, {
               type: mediaRecorderRef.current?.mimeType || "audio/webm",
             });
-            console.log("[v0] Sending audio to server:", {
+            devLog('Voice', 'Sending audio to server', {
               mimeType: audioBlob.type,
               size: audioBlob.size,
             });
@@ -303,20 +309,31 @@ export function useVoiceInput(): UseVoiceInputReturn {
               formData.append("userId", user.id);
             }
 
-            const response = await fetch(
+            const headers: Record<string, string> = {}
+            if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+
+            const response = await fetchWithDiagnostics(
+              'Voice',
+              'POST /analyze-voice',
               `${import.meta.env.VITE_BACKEND_API}/analyze-voice`,
               {
                 method: "POST",
+                headers,
                 body: formData,
               },
+              { timeoutMs: 60000, context: { mimeType: audioBlob.type, size: audioBlob.size } },
             );
 
             if (!response.ok) {
-              throw new Error(`Server error: ${response.status}`);
+              const responseText = await readResponseText(response);
+              throw new Error(responseText || `Server error: ${response.status}`);
             }
 
             const result = await response.json();
-            console.log("[v0] Server response:", result);
+            devLog('Voice', 'Voice analysis response received', {
+              hasTranscript: Boolean(result.transcript || result.text),
+              hasEvent: Boolean(result.event),
+            });
             if (result.event) {
               setEventData(result.event);
             }
@@ -326,23 +343,34 @@ export function useVoiceInput(): UseVoiceInputReturn {
 
             // Optional metadata: log total_usage if present (non-breaking)
             if (result.total_usage !== undefined) {
-              console.log('[v0] analyze-voice total_usage:', result.total_usage);
+              devLog('Voice', 'analyze-voice total_usage received', { total_usage: result.total_usage });
             }
           } catch (transcriptionError) {
-            console.error("[v0] Transcription error:", transcriptionError);
-            setError(
-              transcriptionError instanceof Error
-                ? transcriptionError.message
-                : "Failed to transcribe audio",
+            devError('Voice', 'Transcription failed', transcriptionError);
+            const message = getFriendlyErrorMessage(
+              transcriptionError,
+              "Failed to transcribe audio",
             );
+            setError(message);
+            toast({
+              title: "Couldn't process voice message",
+              description: message,
+              variant: "destructive",
+            });
           } finally {
             setIsProcessing(false);
           }
         };
 
         mediaRecorder.onerror = (event: Event) => {
-          console.error("[v0] MediaRecorder error:", event);
-          setError("Audio recording failed");
+          devError('Voice', 'MediaRecorder error', event);
+          const message = "Audio recording failed. Please try again.";
+          setError(message);
+          toast({
+            title: "Recording failed",
+            description: message,
+            variant: "destructive",
+          });
           setIsListening(false);
           setIsProcessing(false);
 
@@ -354,12 +382,16 @@ export function useVoiceInput(): UseVoiceInputReturn {
         };
 
         mediaRecorder.start(1000); // Collect data every second
-        console.log("[v0] MediaRecorder start() called");
+        devLog('Voice', 'MediaRecorder start() called');
       } catch (err) {
-        console.error("[v0] Error starting voice input:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to start voice input",
-        );
+        devError('Voice', 'Error starting voice input', err);
+        const message = getFriendlyErrorMessage(err, "Failed to start voice input");
+        setError(message);
+        toast({
+          title: "Couldn't start voice input",
+          description: message,
+          variant: "destructive",
+        });
         setIsListening(false);
         setIsProcessing(false);
 
@@ -370,11 +402,11 @@ export function useVoiceInput(): UseVoiceInputReturn {
         }
       }
     },
-    [isSupported],
+    [isSupported, toast],
   );
 
   const stopListening = useCallback(() => {
-    console.log("[v0] Stopping voice input...");
+    devLog('Voice', 'Stopping voice input');
 
     // Stop audio recording
     if (

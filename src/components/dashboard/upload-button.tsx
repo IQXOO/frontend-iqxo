@@ -4,9 +4,10 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import { Upload, X, FileText, Image, Loader2, AlertCircle, CheckCircle, Globe, ChevronDown, ImageIcon, Sparkles } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { VOICE_LANGUAGES, type VoiceLang } from "../../hooks/use-voice-input"
-import { analyzeEventFromImage } from "../../lib/openai-voice"
 import { useApp } from "../../lib/store"
 import type { ParsedEvent } from "../../lib/parse-voice-input"
+import { devError, devLog, fetchWithDiagnostics, getFriendlyErrorMessage, readResponseText, withAsyncDiagnostics } from "../../lib/logger"
+import { useToast } from "../../hooks/use-toast"
 
 interface UploadButtonProps {
   externalOpen: boolean
@@ -41,7 +42,8 @@ export function UploadButton({
   onExternalOpenChange,
   onExtractedData,
 }: UploadButtonProps) {
-  const { t, language, user } = useApp()
+  const { t, language, user, session } = useApp()
+  const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [state, setState] = useState<UploadState>("picking")
   const [preview, setPreview] = useState<FilePreview | null>(null)
@@ -128,12 +130,22 @@ export function UploadButton({
 
       if (!ACCEPTED_TYPES.includes(file.type)) {
         setErrorMessage(t("uploadUnsupported"))
+        toast({
+          title: "Unsupported file type",
+          description: t("uploadUnsupported"),
+          variant: "destructive",
+        })
         setState("error")
         return
       }
 
       if (file.size > MAX_SIZE) {
         setErrorMessage(t("uploadTooLarge"))
+        toast({
+          title: "File is too large",
+          description: t("uploadTooLarge"),
+          variant: "destructive",
+        })
         setState("error")
         return
       }
@@ -153,7 +165,14 @@ export function UploadButton({
         setState("preview")
       }
       reader.onerror = () => {
-        setErrorMessage("Failed to read file")
+        devError('Upload', 'Failed to read selected file')
+        const message = "Couldn't read the selected file. Please choose another one."
+        setErrorMessage(message)
+        toast({
+          title: "Couldn't read file",
+          description: message,
+          variant: "destructive",
+        })
         setState("error")
       }
       reader.readAsDataURL(file)
@@ -163,117 +182,100 @@ export function UploadButton({
     [t, handleClose] // Remove preview from dependencies
   )
 
-//   const handleAnalyze = useCallback(async () => {
-//     if (!preview) return
-//     setState("analyzing")
-//     setErrorMessage("")
+  const handleAnalyze = useCallback(async () => {
+    if (!preview) return
 
-//     try {
-      
-//       console.log("[v0] Analyzing image with AI vision...")
-      
-//       // Use real AI vision analysis
-//       // const extractedEvent = await analyzeEventFromImage(preview.base64, preview.type)
-//       const response = await fetch("http://localhost:3001/analyze-image", {
-//   method: "POST",
-//   headers: {
-//     "Content-Type": "application/json",
-//   },
-//   body: JSON.stringify({
-//     imageBase64: preview.base64,
-//     mimeType: preview.type,
-//   }),
-// })
+    setState("analyzing")
+    setErrorMessage("")
 
-// const extractedEvent = await response.json()
-//       console.log("[v0] Extracted event from image:", extractedEvent)
+    try {
+      await withAsyncDiagnostics(
+        'Upload',
+        'Analyze image',
+        async () => {
+          devLog('Upload', 'Starting image analysis', {
+            name: preview.name,
+            type: preview.type,
+            size: preview.size,
+          })
 
-//       onExtractedData?.(extractedEvent)
-//       handleClose()
-//     } catch (err) {
-//       const msg = err instanceof Error ? err.message : t("uploadError")
-//       console.error("[v0] Image analysis error:", err)
-//       setErrorMessage(msg)
-//       setState("error")
-//     }
-//   }, [preview, t, handleClose, onExtractedData])
-const handleAnalyze = useCallback(async () => {
-  if (!preview) return
+          const base64 = preview.base64
+          const contentType = preview.mediaType || preview.type || "application/octet-stream"
+          const byteString = atob(base64)
+          const ab = new ArrayBuffer(byteString.length)
+          const ia = new Uint8Array(ab)
+          for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i)
+          }
+          const blob = new Blob([ab], { type: contentType })
 
-  setState("analyzing")
-  setErrorMessage("")
+          devLog('Upload', 'Image blob created', { size: blob.size, type: blob.type })
 
-  try {
-    console.log("[v0] Starting image analysis:", {
-      name: preview.name,
-      type: preview.type,
-      size: preview.size
-    })
+          const formData = new FormData()
+          formData.append("image", blob, preview.name)
+          if (user?.id) formData.append("userId", user.id)
 
-    // Convert base64 string (we already extracted it) to a Blob without fetching
-    const base64 = preview.base64
-    const contentType = preview.mediaType || preview.type || "application/octet-stream"
-    const byteString = atob(base64)
-    const ab = new ArrayBuffer(byteString.length)
-    const ia = new Uint8Array(ab)
-    for (let i = 0; i < byteString.length; i++) {
-      ia[i] = byteString.charCodeAt(i)
+          const headers: Record<string, string> = {}
+          if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`
+
+          const res = await fetchWithDiagnostics(
+            'Upload',
+            'POST /analyze-image',
+            `${import.meta.env.VITE_BACKEND_API}/analyze-image`,
+            {
+              method: "POST",
+              headers,
+              body: formData,
+            },
+            { timeoutMs: 60000, context: { name: preview.name, type: preview.type } },
+          )
+
+          if (!res.ok) {
+            const text = await readResponseText(res)
+            devError('Upload', 'Image analysis failed', text, { status: res.status, statusText: res.statusText })
+            throw new Error(text || `Server error: ${res.status}`)
+          }
+
+          const raw = await res.json()
+          devLog('Upload', 'Image analysis response received', { hasEvent: Boolean(raw?.event), hasActualCost: Boolean(raw?.actualCost) })
+
+          const extractedEvent = raw && typeof raw === "object" ? (raw.event ?? raw) : null
+          if (!extractedEvent || typeof extractedEvent !== "object") {
+            throw new Error("Invalid response from server")
+          }
+
+          if (raw.actualCost) devLog('Upload', 'analyze-image actualCost received', { actualCost: raw.actualCost })
+
+          onExtractedData?.(extractedEvent, preview?.dataUrl ?? undefined)
+          handleClose()
+        },
+        {
+          method: 'POST',
+          context: { name: preview.name, type: preview.type },
+          timeoutMs: 60000,
+          onError: (message) => {
+            const friendly = getFriendlyErrorMessage(message, t("uploadError"))
+            setErrorMessage(friendly)
+            toast({
+              title: "Couldn't analyze image",
+              description: friendly,
+              variant: "destructive",
+            })
+          },
+        },
+      )
+    } catch (err) {
+      const msg = getFriendlyErrorMessage(err, "Analysis failed")
+      devError('Upload', 'Image analysis failed', err)
+      setErrorMessage(msg)
+      toast({
+        title: "Couldn't analyze image",
+        description: msg,
+        variant: "destructive",
+      })
+      setState("error")
     }
-    const blob = new Blob([ab], { type: contentType })
-
-    console.log("[v0] Created blob:", {
-      size: blob.size,
-      type: blob.type
-    })
-
-    const formData = new FormData()
-    formData.append("image", blob, preview.name)
-    // Include userId when available (backwards-compatible)
-    if (user?.id) formData.append("userId", user.id)
-
-    console.log("[v0] Sending to server: http://192.168.1.3:4000/analyze-image")
-
-    const res = await fetch(`${import.meta.env.VITE_BACKEND_API}/analyze-image`, {
-      method: "POST",
-      body: formData,
-    })
-
-    console.log("[v0] Server response:", {
-      status: res.status,
-      statusText: res.statusText,
-      ok: res.ok
-    })
-
-    if (!res.ok) {
-      const text = await res.text()
-      console.error("[v0] Server error response:", text)
-      throw new Error(text || `Server error: ${res.status}`)
-    }
-
-    const raw = await res.json()
-    console.log("[v0] Extracted event raw:", raw)
-
-    // Support new response shape: { event: { ... }, actualCost }
-    const extractedEvent = raw && typeof raw === 'object' ? (raw.event ?? raw) : null
-
-    if (!extractedEvent || typeof extractedEvent !== 'object') {
-      throw new Error("Invalid response from server")
-    }
-
-    // Log any additional metadata (non-breaking)
-    if (raw.actualCost) console.log('[v0] analyze-image actualCost:', raw.actualCost)
-
-    // Send extracted data + the photo dataUrl so it prefills in event form
-    onExtractedData?.(extractedEvent, preview?.dataUrl ?? undefined)
-
-    handleClose()
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Analysis failed"
-    console.error("[v0] Image analysis error:", err)
-    setErrorMessage(msg)
-    setState("error")
-  }
-}, [preview, onExtractedData, handleClose])
+  }, [preview, onExtractedData, handleClose, session?.access_token, user?.id, toast, t])
   const isImage = preview?.type.startsWith("image/")
 
   return (

@@ -23,6 +23,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useApp } from "../../lib/store";
+import { devError, devLog, devWarn, fetchWithDiagnostics, getFriendlyErrorMessage, readResponseText } from "../../lib/logger";
+import { useToast } from "../../hooks/use-toast";
 
 type BillingCycle = "monthly" | "yearly";
 
@@ -271,7 +273,8 @@ export function StripePricingPage({
   planStatus,
   trialEndsAt,
 }: StripePricingPageProps) {
-  const { language, setPlanStatus, user } = useApp();
+  const { language, setPlanStatus, user, session } = useApp();
+  const { toast } = useToast();
   const isRTL = language === "ar";
   const t = useTranslate(language);
 
@@ -337,6 +340,15 @@ export function StripePricingPage({
   const handleSubscribe = (cycle: BillingCycle) => {
     const base = PAYMENT_LINKS[cycle];
     if (!base) {
+      devWarn('Billing', 'Missing payment link for billing cycle', { cycle })
+      toast({
+        title: "Payment link unavailable",
+        description:
+          cycle === "yearly"
+            ? "Yearly billing isn't configured yet. Please try monthly or contact support."
+            : "Monthly billing isn't configured yet. Please contact support.",
+        variant: "destructive",
+      });
       setErrorMessage(
         t(
           "Yearly payment link not configured yet. Please try monthly or contact support.",
@@ -357,6 +369,7 @@ export function StripePricingPage({
   const handleTrial = async () => {
     if (!user) return;
     setTrialError(null);
+    devLog('Billing', 'Free trial request started', { hasExistingTrial: planStatus === 'free_trial' })
 
     // Already on active trial → just close the screen, open the app
     if (
@@ -369,15 +382,25 @@ export function StripePricingPage({
     }
 
     try {
-      const res = await fetch(`${BACKEND_URL}/start-trial`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id }),
-      });
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+      const res = await fetchWithDiagnostics(
+        'Billing',
+        'POST /start-trial',
+        `${BACKEND_URL}/start-trial`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ userId: user.id }),
+        },
+        { timeoutMs: 15000, context: { userId: user.id } },
+      );
 
       // Server endpoint not ready — activate locally and close
       const contentType = res.headers.get("content-type") || "";
       if (!contentType.includes("application/json")) {
+        devWarn('Billing', 'Trial endpoint returned non-JSON response; using local fallback')
         const trialEnd = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
         setPlanStatus("free_trial", trialEnd);
         onClose?.();
@@ -388,29 +411,46 @@ export function StripePricingPage({
 
       if (res.status === 409) {
         // Trial already used — show inline warning with dismiss X
-        setTrialError(
-          t(
-            "This account has already used its free trial. Please subscribe to continue.",
-            "Ce compte a déjà utilisé l'essai gratuit. Veuillez vous abonner.",
-            "هذا الحساب استخدم التجربة المجانية من قبل. يرجى الاشتراك للمتابعة.",
-          ),
+        devWarn('Billing', 'Trial already active or already used', { status: res.status })
+        const message = t(
+          "This account has already used its free trial. Please subscribe to continue.",
+          "Ce compte a déjà utilisé l'essai gratuit. Veuillez vous abonner.",
+          "هذا الحساب استخدم التجربة المجانية من قبل. يرجى الاشتراك للمتابعة.",
         );
+        setTrialError(message);
+        toast({
+          title: "Trial unavailable",
+          description: message,
+          variant: "destructive",
+        });
         return;
       }
 
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        const responseText = await readResponseText(res);
+        throw new Error(data.error || responseText || `Trial request failed (${res.status})`);
+      }
 
       // ✅ Trial started — activate + close immediately, no success screen
+      devLog('Billing', 'Free trial activated')
       setPlanStatus("free_trial", new Date(data.trialEndsAt));
       onClose?.();
     } catch (err: any) {
-      setTrialError(
+      devError('Billing', 'Free trial request failed', err)
+      const message = getFriendlyErrorMessage(
+        err,
         t(
           "Something went wrong. Please try again.",
           "Une erreur est survenue.",
           "حدث خطأ.",
         ),
       );
+      setTrialError(message);
+      toast({
+        title: "Couldn't start free trial",
+        description: message,
+        variant: "destructive",
+      });
     }
   };
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { AppProvider, useApp } from "./lib/store";
 import { ThemeProvider } from "./components/theme-provider";
+import { Toaster } from "./components/ui/toaster";
 import HomePage from "./pages/HomePage";
 import AuthPage from "./pages/AuthPage";
 import OnboardingPage from "./pages/OnboardingPage";
@@ -107,6 +108,7 @@ function App() {
       <div className="min-h-screen bg-background text-foreground">
         <AppProvider>
           <AppShell />
+          <Toaster />
         </AppProvider>
       </div>
     </ThemeProvider>

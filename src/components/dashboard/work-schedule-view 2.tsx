@@ -207,9 +207,11 @@ export function WorkScheduleView() {
     if (!user) return;
     setLoading(true);
     try {
+      // SECURITY: ensure RLS is enabled for `work_schedules` in Supabase.
+      // Client-side filters are not sufficient to protect user data.
       const { data } = await supabase
         .from("work_schedules")
-        .select("*")
+        .select("id,user_id,day_of_week,start_time,end_time,is_active,location,updated_at")
         .eq("user_id", user.id)
         .order("day_of_week");
       if (data?.length) {
