@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IQXO Weekly Event Summary Preview</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f2ec;
+      --surface: #ffffff;
+      --surface-soft: #fbf8f4;
+      --line: #e7dfd4;
+      --line-strong: #d8cec0;
+      --text: #171717;
+      --text-muted: #6b6258;
+      --navy: #18233a;
+      --primary: #3f6efb;
+      --primary-soft: #eaf0ff;
+      --success: #1f9d68;
+      --success-soft: #e7f7ef;
+      --warning: #d9822b;
+      --warning-soft: #fff1df;
+      --danger: #d0464b;
+      --danger-soft: #fde8e9;
+      --shadow-lg: 0 28px 70px rgba(24, 35, 58, 0.12);
+      --shadow-md: 0 14px 34px rgba(24, 35, 58, 0.08);
+      --radius-xl: 30px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background:
+        radial-gradient(circle at top left, rgba(63, 110, 251, 0.08), transparent 26%),
+        radial-gradient(circle at top right, rgba(180, 107, 58, 0.10), transparent 22%),
+        linear-gradient(180deg, #f8f4ee 0%, #f1ece4 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      padding: 30px 16px 44px;
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .frame {
+      overflow: hidden;
+      border-radius: 32px;
+      border: 1px solid rgba(231, 223, 212, 0.95);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .hero {
+      position: relative;
+      padding: 42px 40px 34px;
+      color: #fff;
+      background:
+        linear-gradient(135deg, rgba(24, 35, 58, 0.98), rgba(37, 50, 85, 0.96)),
+        radial-gradient(circle at 20% 20%, rgba(180, 107, 58, 0.42), transparent 20%),
+        radial-gradient(circle at 82% 10%, rgba(255, 255, 255, 0.12), transparent 18%);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, rgba(255,255,255,0.05), transparent 42%);
+      pointer-events: none;
+    }
+
+    .hero-top {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 30px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-mark {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #1d1d1d;
+      background: linear-gradient(135deg, #f6d9c2, #c57b4a);
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
+    }
+
+    .brand-copy .eyebrow {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      color: rgba(255,255,255,0.68);
+      margin-bottom: 4px;
+    }
+
+    .brand-copy .name {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .meta {
+      text-align: right;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .meta .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.08);
+      margin-bottom: 10px;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.85fr);
+      gap: 24px;
+      align-items: end;
+    }
+
+    .hero h1 {
+      margin: 0 0 12px;
+      font-size: clamp(36px, 4.5vw, 56px);
+      line-height: 0.98;
+      letter-spacing: -0.055em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 60ch;
+      font-size: 15px;
+      color: rgba(255,255,255,0.78);
+    }
+
+    .hero-card {
+      padding: 20px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    .hero-card .label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: rgba(255,255,255,0.66);
+      margin-bottom: 8px;
+    }
+
+    .hero-card .value {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      margin-bottom: 6px;
+    }
+
+    .hero-card .note {
+      font-size: 13px;
+      color: rgba(255,255,255,0.74);
+    }
+
+    .content {
+      padding: 32px 28px 34px;
+      background: linear-gradient(180deg, #fff 0%, #fcf9f5 100%);
+    }
+
+    .section {
+      margin-bottom: 28px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+      letter-spacing: -0.03em;
+      color: var(--navy);
+    }
+
+    .section-head p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .kpi {
+      position: relative;
+      overflow: hidden;
+      padding: 18px 16px 16px;
+      border-radius: 20px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-md);
+    }
+
+    .kpi::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, rgba(63,110,251,0.92), rgba(180,107,58,0.92));
+    }
+
+    .kpi .label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+
+    .kpi .value {
+      margin-bottom: 8px;
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      color: var(--navy);
+    }
+
+    .kpi .detail {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .events {
+      display: grid;
+      gap: 16px;
+    }
+
+    .event {
+      overflow: hidden;
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,247,242,0.98));
+      box-shadow: 0 12px 28px rgba(24, 35, 58, 0.07);
+    }
+
+    .event-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 20px 0;
+    }
+
+    .event-title {
+      margin: 0 0 8px;
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: -0.03em;
+      color: var(--navy);
+    }
+
+    .event-subtitle {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .priority {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .priority.urgent {
+      color: #b23a3f;
+      background: var(--danger-soft);
+      border-color: rgba(208,70,75,0.18);
+    }
+
+    .priority.upcoming {
+      color: #2f59e8;
+      background: var(--primary-soft);
+      border-color: rgba(63,110,251,0.18);
+    }
+
+    .priority.later {
+      color: #1d8a60;
+      background: var(--success-soft);
+      border-color: rgba(31,157,104,0.18);
+    }
+
+    .priority.past {
+      color: #7f6f5b;
+      background: #f1ebe3;
+      border-color: rgba(216,206,192,0.8);
+    }
+
+    .event-body {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 16px;
+      padding: 16px 20px 20px;
+    }
+
+    .info-panel,
+    .side-panel {
+      border-radius: 18px;
+      border: 1px solid rgba(231,223,212,0.92);
+      background: rgba(255,255,255,0.74);
+    }
+
+    .info-panel {
+      padding: 14px 16px;
+    }
+
+    .side-panel {
+      padding: 14px;
+      background: linear-gradient(180deg, #fbf8f4 0%, #f6f0ea 100%);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 138px 1fr;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(231,223,212,0.74);
+    }
+
+    .row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .key {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(231,223,212,0.9);
+      background: #f7f4ef;
+      color: #3d332c;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .side-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .mini {
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(231,223,212,0.84);
+      background: rgba(255,255,255,0.82);
+    }
+
+    .mini .label {
+      margin-bottom: 4px;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .mini .value {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--navy);
+    }
+
+    .notes {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(231,223,212,0.8);
+    }
+
+    .notes .label {
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .notes .body {
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--text);
+    }
+
+    .attachments {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .attach {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid rgba(231,223,212,0.9);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .footer {
+      padding: 24px 32px 28px;
+      border-top: 1px solid rgba(231,223,212,0.9);
+      background: linear-gradient(180deg, #f7f3ed 0%, #efe8de 100%);
+      color: var(--text-muted);
+    }
+
+    .footer-grid {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--navy);
+    }
+
+    .footer-brand .mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: #fff;
+      background: linear-gradient(135deg, #b46b3a, #e1aa7b);
+    }
+
+    .footer-brand .copy strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 15px;
+      color: var(--navy);
+    }
+
+    .footer-brand .copy span {
+      display: block;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .footer-meta {
+      text-align: right;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .footer-meta strong {
+      color: var(--navy);
+    }
+
+    @media (max-width: 920px) {
+      .hero-content,
+      .event-body,
+      .kpis {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      body { padding: 16px 10px 26px; }
+      .hero,
+      .content,
+      .footer { padding-left: 18px; padding-right: 18px; }
+      .hero-top,
+      .section-head,
+      .event-top,
+      .footer-grid {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .meta,
+      .footer-meta { text-align: left; }
+      .hero-content,
+      .kpis,
+      .event-body { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="frame" aria-label="IQXO weekly event summary email preview">
+      <header class="hero">
+          <div class="hero-top">
+          <div class="brand">
+            <div class="brand-mark">IQXO</div>
+            <div class="brand-copy">
+              <div class="eyebrow">Enterprise event intelligence</div>
+              <div class="name">IQXO Weekly Summary</div>
+            </div>
+          </div>
+          <div class="meta">
+            <div class="pill">Next Week • May 25	6-31, 2026</div>
+            <div>Summary of scheduled items for the upcoming week</div>
+          </div>
+        </div>
+
+        <div class="hero-content">
+          <div>
+            <h1>Next Week Summary</h1>
+            <p>
+              A concise summary of what will happen next week, generated from the
+              IQXO event schema (using only real event fields and priority logic).
+            </p>
+          </div>
+
+          <aside class="hero-card">
+            <div class="label">Next week focus</div>
+            <div class="value">1 Event</div>
+            <div class="note">0 urgent, 0 upcoming, 1 later, 0 done</div>
+          </aside>
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="section">
+          <div class="section-head">
+            <div>
+              <h2>Next Week Snapshot</h2>
+              <p>Counts reflect events scheduled between May 25–31, 2026 using only `date` and `is_done`.</p>
+            </div>
+          </div>
+
+          <div class="kpis">
+            <article class="kpi">
+              <div class="label">Total Events</div>
+              <div class="value">1</div>
+              <div class="detail">Events scheduled next week</div>
+            </article>
+            <article class="kpi">
+              <div class="label">Urgent</div>
+              <div class="value">0</div>
+              <div class="detail">Priority computed via `computePriority(date)`</div>
+            </article>
+            <article class="kpi">
+              <div class="label">Upcoming</div>
+              <div class="value">0</div>
+              <div class="detail">Short-term items within 48 hours of next week</div>
+            </article>
+            <article class="kpi">
+              <div class="label">Later</div>
+              <div class="value">1</div>
+              <div class="detail">Events scheduled during next week</div>
+            </article>
+            <article class="kpi">
+              <div class="label">Done</div>
+              <div class="value">0</div>
+              <div class="detail">Completed items from the `is_done` field</div>
+            </article>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-head">
+            <div>
+              <h2>Event Cards</h2>
+              <p>Only existing schema fields are displayed below.</p>
+            </div>
+          </div>
+
+          <div class="events">
+            <article class="event">
+              <div class="event-top">
+                <div>
+                  <h3 class="event-title">Nour & Khalid Wedding Ceremony</h3>
+                  <p class="event-subtitle">Rosewood Grand Hall • Dubai Marina</p>
+                </div>
+                <span class="priority urgent">Urgent</span>
+              </div>
+
+              <div class="event-body">
+                <div class="info-panel">
+                  <div class="row">
+                    <div class="key">Date & Time</div>
+                    <div class="events">
+                      <!-- Only events that fall within May 25-31, 2026 are shown here -->
+                      <article class="event">
+                        <div class="event-top">
+                          <div>
+                            <h3 class="event-title">Leila & Omar Rehearsal Dinner</h3>
+                            <p class="event-subtitle">Saffron Terrace • Palm Jumeirah</p>
+                          </div>
+                          <span class="priority later">Later</span>
+                        </div>
+
+                        <div class="event-body">
+                          <div class="info-panel">
+                            <div class="row">
+                              <div class="key">Date & Time</div>
+                              <div class="value">Tue, May 27 • 7:00 PM</div>
+                            </div>
+                            <div class="row">
+                              <div class="key">Location</div>
+                              <div class="value">Saffron Terrace, Sea View Deck</div>
+                            </div>
+                            <div class="row">
+                              <div class="key">Phone</div>
+                              <div class="value">+971 50 888 9999</div>
+                            </div>
+                            <div class="row">
+                              <div class="key">Source</div>
+                              <div class="value">manual</div>
+                            </div>
+                            <div class="row">
+                              <div class="key">Created / Updated</div>
+                              <div class="value">2026-05-10 • 2026-05-18</div>
+                            </div>
+                          </div>
+
+                          <aside class="side-panel">
+                            <div class="side-stack">
+                              <div class="mini">
+                                <div class="label">Priority</div>
+                                <div class="value">Later</div>
+                              </div>
+                              <div class="mini">
+                                <div class="label">Status</div>
+                                <div class="value">Confirmed</div>
+                              </div>
+                              <div class="mini">
+                                <div class="label">Attachments</div>
+                                <div class="value">1 PDF</div>
+                              </div>
+                            </div>
+
+                            <div class="notes">
+                              <div class="label">Notes</div>
+                              <div class="body">Service timing, welcome signage, and dessert station arrangement are confirmed. Waiting on the final music list from the couple.</div>
+                              <div class="attachments">
+                                <span class="attach">PDF: seating-plan.pdf</span>
+                              </div>
+                            </div>
+                          </aside>
+                        </div>
+                      </article>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="key">Source</div>
+                    <div class="value">manual</div>
+                  </div>
+                  <div class="row">
+                    <div class="key">Created / Updated</div>
+                    <div class="value">2026-05-18 • 2026-05-18</div>
+                  </div>
+                </div>
+
+                <aside class="side-panel">
+                  <div class="side-stack">
+                    <div class="mini">
+                      <div class="label">Completion</div>
+                      <div class="value">Open</div>
+                    </div>
+                    <div class="mini">
+                      <div class="label">Attachments</div>
+                      <div class="value">image_url present</div>
+                    </div>
+                    <div class="mini">
+                      <div class="label">Priority</div>
+                      <div class="value">Urgent in app logic</div>
+                    </div>
+                  </div>
+
+                  <div class="notes">
+                    <div class="label">Notes</div>
+                    <div class="body">Venue confirmation pending before end of day. Final access timing and table layout need sign-off.</div>
+                    <div class="attachments">
+                      <span class="attach">image_url present</span>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <div class="footer-grid">
+          <div class="footer-brand">
+            <div class="mark">IQ</div>
+            <div class="copy">
+              <strong>IQXO</strong>
+              <span>Premium event intelligence for modern wedding operations</span>
+            </div>
+          </div>
+          <div class="footer-meta">
+            <strong>Generated automatically</strong><br />
+            Support: support@iqxo.example<br />
+            © 2026 IQXO. All rights reserved.
+          </div>
+        </div>
+      </footer>
+    </section>
+  </main>
+  <script>
+    // Mock event array (replace this with your Supabase fetch)
+    const events = [
+      {
+        id: 3,
+        title: "Leila & Omar Rehearsal Dinner",
+        notes: "Service timing, welcome signage, and dessert station arrangement are confirmed. Waiting on the final music list from the couple.",
+        date: "2026-05-27",
+        time: "19:00",
+        phone: "+971 50 888 9999",
+        location: "Saffron Terrace, Sea View Deck",
+        source: "manual",
+        image_url: null,
+        pdf_url: "seating-plan.pdf",
+        is_done: false,
+        created_at: "2026-05-10",
+        updated_at: "2026-05-18"
+      }
+    ];
+
+    // Compute next week's Monday-Sunday range from a reference date
+    function startOfNextWeek(ref = new Date()){
+      const day = ref.getDay(); // 0 (Sun) - 6 (Sat)
+      const daysToNextMon = ((8 - day) % 7) || 7;
+      const nextMon = new Date(ref);
+      nextMon.setDate(ref.getDate() + daysToNextMon);
+      nextMon.setHours(0,0,0,0);
+      const nextSun = new Date(nextMon);
+      nextSun.setDate(nextMon.getDate() + 6);
+      nextSun.setHours(23,59,59,999);
+      return { start: nextMon, end: nextSun };
+    }
+
+    // Simple priority logic aligned with app: urgent | upcoming | later | past
+    function computePriority(dateStr){
+      if(!dateStr) return 'later';
+      const d = new Date(dateStr);
+      const today = new Date(); today.setHours(0,0,0,0);
+      const diffDays = Math.ceil((d - today) / (1000*60*60*24));
+      if(diffDays < 0) return 'past';
+      if(diffDays <= 2) return 'urgent';
+      if(diffDays <= 7) return 'upcoming';
+      return 'later';
+    }
+
+    function renderEventCard(e){
+      const priority = computePriority(e.date);
+      return `
+        <article class="event">
+          <div class="event-top">
+            <div>
+              <h3 class="event-title">${e.title}</h3>
+              <p class="event-subtitle">${e.location || ''}</p>
+            </div>
+            <span class="priority ${priority}">${priority.charAt(0).toUpperCase()+priority.slice(1)}</span>
+          </div>
+          <div class="event-body">
+            <div class="info-panel">
+              <div class="row"><div class="key">Date & Time</div><div class="value">${new Date(e.date).toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'})} • ${e.time || ''}</div></div>
+              <div class="row"><div class="key">Location</div><div class="value">${e.location || ''}</div></div>
+              <div class="row"><div class="key">Phone</div><div class="value">${e.phone || ''}</div></div>
+              <div class="row"><div class="key">Source</div><div class="value">${e.source || ''}</div></div>
+              <div class="row"><div class="key">Created / Updated</div><div class="value">${e.created_at || ''} • ${e.updated_at || ''}</div></div>
+            </div>
+            <aside class="side-panel">
+              <div class="side-stack">
+                <div class="mini"><div class="label">Priority</div><div class="value">${priority}</div></div>
+                <div class="mini"><div class="label">Status</div><div class="value">${e.is_done ? 'Done' : 'Planned'}</div></div>
+                <div class="mini"><div class="label">Attachments</div><div class="value">${e.pdf_url ? '1 PDF' : '—'}</div></div>
+              </div>
+              <div class="notes"><div class="label">Notes</div><div class="body">${e.notes || ''}</div>
+                <div class="attachments">${e.pdf_url ? `<span class="attach">PDF: ${e.pdf_url}</span>` : ''}</div>
+              </div>
+            </aside>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderNextWeekSummary(){
+      const range = startOfNextWeek();
+      const nextWeekEvents = events.filter(e=>{
+        if(!e.date) return false;
+        const d = new Date(e.date);
+        return d >= range.start && d <= range.end;
+      });
+
+      const total = nextWeekEvents.length;
+      const counts = { urgent:0, upcoming:0, later:0, past:0, done:0 };
+      nextWeekEvents.forEach(e=>{
+        if(e.is_done) counts.done++;
+        const p = computePriority(e.date);
+        counts[p] = (counts[p]||0) + 1;
+      });
+
+      const heroValue = document.querySelector('.hero-card .value');
+      const heroNote = document.querySelector('.hero-card .note');
+      if(heroValue) heroValue.textContent = `${total} Event${total!==1?'s':''}`;
+      if(heroNote) heroNote.textContent = `${counts.urgent} urgent, ${counts.upcoming} upcoming, ${counts.later} later, ${counts.done} done`;
+
+      const kpiValues = document.querySelectorAll('.kpi .value');
+      if(kpiValues.length >= 5){
+        kpiValues[0].textContent = total;
+        kpiValues[1].textContent = counts.urgent;
+        kpiValues[2].textContent = counts.upcoming;
+        kpiValues[3].textContent = counts.later;
+        kpiValues[4].textContent = counts.done;
+      }
+
+      const container = document.querySelector('.events');
+      if(container){
+        if(nextWeekEvents.length === 0) {
+          container.innerHTML = '<p style="padding:18px;color:#6b6258">No events scheduled for next week.</p>';
+        } else {
+          container.innerHTML = nextWeekEvents.map(renderEventCard).join('');
+        }
+      }
+    }
+
+    // Initial render
+    renderNextWeekSummary();
+
+    // Supabase integration: replace the `events` array with a fetch from your backend or
+    // with a Supabase client query that selects the exact columns used here. Example (pseudo):
+    // const { data } = await supabase.from('events').select('id,title,notes,date,time,phone,location,source,image_url,pdf_url,is_done,created_at,updated_at');
+    // events.splice(0, events.length, ...(data || [])); renderNextWeekSummary();
+  </script>
+</body>
+</html>

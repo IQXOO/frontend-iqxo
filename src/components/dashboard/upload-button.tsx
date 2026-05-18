@@ -13,6 +13,8 @@ interface UploadButtonProps {
   externalOpen: boolean
   onExternalOpenChange: (open: boolean) => void
   onExtractedData?: (data: ParsedEvent, imageUrl?: string) => void
+  autoOpenPicker?: boolean
+  incomingFile?: File | null
 }
 
 type UploadState = "picking" | "preview" | "analyzing" | "error"
@@ -41,14 +43,17 @@ export function UploadButton({
   externalOpen,
   onExternalOpenChange,
   onExtractedData,
+  autoOpenPicker = true,
+  incomingFile = null,
 }: UploadButtonProps) {
-  const { t, language, user, session } = useApp()
+  const { t, language, user, session, refreshUsage } = useApp()
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [state, setState] = useState<UploadState>("picking")
   const [preview, setPreview] = useState<FilePreview | null>(null)
   const [errorMessage, setErrorMessage] = useState("")
   const hasAutoTriggered = useRef(false)
+  const lastIncomingFileRef = useRef<File | null>(null)
   
   // Language selection state
   const [selectedLang, setSelectedLang] = useState<VoiceLang>(() => {
@@ -102,15 +107,16 @@ export function UploadButton({
 
   // Auto-trigger file picker when externally opened
   useEffect(() => {
+    if (!autoOpenPicker) return
     if (externalOpen && state === "picking" && !preview && !hasAutoTriggered.current) {
       hasAutoTriggered.current = true // Mark as triggered
-      // Slight delay to let the modal render first
-      const timer = setTimeout(() => {
+      devLog('Upload', 'File picker auto-opened')
+      const frame = requestAnimationFrame(() => {
         fileInputRef.current?.click()
-      }, 100)
-      return () => clearTimeout(timer)
+      })
+      return () => cancelAnimationFrame(frame)
     }
-  }, [externalOpen, state, preview])
+  }, [autoOpenPicker, externalOpen, state, preview])
 
   // Reset auto-trigger flag when modal is closed
   useEffect(() => {
@@ -119,68 +125,84 @@ export function UploadButton({
     }
   }, [externalOpen])
 
+  const processFile = useCallback(async (file: File) => {
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setErrorMessage(t("uploadUnsupported"))
+      toast({
+        title: "Unsupported file type",
+        description: t("uploadUnsupported"),
+        variant: "destructive",
+      })
+      setState("error")
+      return
+    }
+
+    if (file.size > MAX_SIZE) {
+      setErrorMessage(t("uploadTooLarge"))
+      toast({
+        title: "File is too large",
+        description: t("uploadTooLarge"),
+        variant: "destructive",
+      })
+      setState("error")
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      const base64 = dataUrl.split(",")[1]
+      setPreview({
+        name: file.name,
+        type: file.type,
+        size: formatSize(file.size),
+        dataUrl,
+        base64,
+        mediaType: file.type,
+      })
+      setState("preview")
+    }
+    reader.onerror = () => {
+      devError('Upload', 'Failed to read selected file')
+      const message = "Couldn't read the selected file. Please choose another one."
+      setErrorMessage(message)
+      toast({
+        title: "Couldn't read file",
+        description: message,
+        variant: "destructive",
+      })
+      setState("error")
+    }
+    reader.readAsDataURL(file)
+  }, [toast, t])
+
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
       if (!file) {
         // User cancelled the file picker
         if (!preview) handleClose()
+        devLog('Upload', 'File picker cancelled')
         return
       }
 
-      if (!ACCEPTED_TYPES.includes(file.type)) {
-        setErrorMessage(t("uploadUnsupported"))
-        toast({
-          title: "Unsupported file type",
-          description: t("uploadUnsupported"),
-          variant: "destructive",
-        })
-        setState("error")
-        return
-      }
+      devLog('Upload', 'File selected', { name: file.name, type: file.type, size: file.size })
 
-      if (file.size > MAX_SIZE) {
-        setErrorMessage(t("uploadTooLarge"))
-        toast({
-          title: "File is too large",
-          description: t("uploadTooLarge"),
-          variant: "destructive",
-        })
-        setState("error")
-        return
-      }
-
-      const reader = new FileReader()
-      reader.onload = () => {
-        const dataUrl = reader.result as string
-        const base64 = dataUrl.split(",")[1]
-        setPreview({
-          name: file.name,
-          type: file.type,
-          size: formatSize(file.size),
-          dataUrl,
-          base64,
-          mediaType: file.type,
-        })
-        setState("preview")
-      }
-      reader.onerror = () => {
-        devError('Upload', 'Failed to read selected file')
-        const message = "Couldn't read the selected file. Please choose another one."
-        setErrorMessage(message)
-        toast({
-          title: "Couldn't read file",
-          description: message,
-          variant: "destructive",
-        })
-        setState("error")
-      }
-      reader.readAsDataURL(file)
+      void processFile(file)
       // Reset input value to allow selecting the same file again
       e.target.value = ""
     },
-    [t, handleClose] // Remove preview from dependencies
+    [handleClose, preview, processFile]
   )
+
+  useEffect(() => {
+    if (!incomingFile) return
+    if (!externalOpen) return
+    if (incomingFile === lastIncomingFileRef.current) return
+    lastIncomingFileRef.current = incomingFile
+    devLog('Upload', 'Processing externally supplied file', { name: incomingFile.name, type: incomingFile.type, size: incomingFile.size })
+    void processFile(incomingFile)
+  }, [incomingFile, externalOpen, processFile])
 
   const handleAnalyze = useCallback(async () => {
     if (!preview) return
@@ -244,7 +266,11 @@ export function UploadButton({
             throw new Error("Invalid response from server")
           }
 
-          if (raw.actualCost) devLog('Upload', 'analyze-image actualCost received', { actualCost: raw.actualCost })
+          if (raw.actualCost) {
+            devLog('Upload', 'analyze-image actualCost received', { actualCost: raw.actualCost })
+            // Refresh usage in context to update UI
+            await refreshUsage()
+          }
 
           onExtractedData?.(extractedEvent, preview?.dataUrl ?? undefined)
           handleClose()

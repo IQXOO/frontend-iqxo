@@ -21,7 +21,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
     if (!selected) return;
     setLanguage(selected);
     setLeaving(true);
-    setTimeout(onDone, 500);
+    void onDone();
   };
 
   const langs = [
@@ -50,13 +50,12 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
 
   return (
     <AnimatePresence>
-      {!leaving && (
-        <motion.div
-          className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background px-6"
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0, scale: 0.96 }}
-          transition={{ duration: 0.4 }}
-        >
+      <motion.div
+        className={`fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background px-6 transition-opacity duration-300 ${leaving ? "pointer-events-none" : ""}`}
+        initial={{ opacity: 1 }}
+        animate={{ opacity: leaving ? 0 : 1, scale: leaving ? 0.98 : 1 }}
+        transition={{ duration: 0.3 }}
+      >
           {/* Ambient glow */}
           <div
             className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 h-[300px] w-[300px] rounded-full opacity-20 blur-[100px]"
@@ -141,8 +140,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
           >
             {selected === "fr" ? "Continuer" : "Continue"}
           </motion.button>
-        </motion.div>
-      )}
+      </motion.div>
     </AnimatePresence>
   );
 }

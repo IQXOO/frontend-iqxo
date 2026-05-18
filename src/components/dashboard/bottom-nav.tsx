@@ -550,7 +550,7 @@ function CalendarImportSheet({
 interface BottomNavProps {
   active: NavTab;
   onTabChange: (tab: NavTab) => void;
-  onUploadClick: () => void;
+  onUploadClick: (options?: { autoOpenPicker?: boolean; file?: File | null }) => void;
   onManualAdd: () => void;
   onMicClick?: () => void;
   onImportEvents?: (
@@ -592,18 +592,7 @@ export function BottomNav({
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        onUploadClick();
-        setTimeout(() => {
-          const uploadInput = document.getElementById(
-            "iqxo-upload-input",
-          ) as HTMLInputElement;
-          if (uploadInput) {
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            uploadInput.files = dataTransfer.files;
-            uploadInput.dispatchEvent(new Event("change", { bubbles: true }));
-          }
-        }, 150);
+        onUploadClick({ autoOpenPicker: false, file });
       }
     };
     input.click();
@@ -879,7 +868,7 @@ export function BottomNav({
                         onClick={() => {
                           setMenuOpen(false);
                           setShowPhotoOptions(false);
-                          onUploadClick();
+                          onUploadClick({ autoOpenPicker: true });
                         }}
                         className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-secondary/60 transition-colors text-left"
                         whileTap={{ scale: 0.98 }}

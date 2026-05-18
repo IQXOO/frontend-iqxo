@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CalendarPlus } from "lucide-react";
 import { DashboardHeader } from "../components/dashboard/header";
@@ -54,6 +54,8 @@ export default function Page() {
     undefined,
   );
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadAutoOpenPicker, setUploadAutoOpenPicker] = useState(true);
+  const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmData, setConfirmData] = useState<ParsedEvent | null>(null);
   const [confirmSource, setConfirmSource] = useState<"voice" | "photo">(
@@ -164,6 +166,12 @@ export default function Page() {
       setPrefillImageUrl(undefined);
     }
   }, []);
+
+  useEffect(() => {
+    if (!uploadOpen) {
+      setPendingUploadFile(null);
+    }
+  }, [uploadOpen]);
 
   // Count non-past events for empty state
   const activeEvents = events.filter((e) => computePriority(e.date) !== "past");
@@ -317,6 +325,8 @@ export default function Page() {
       <UploadButton
         externalOpen={uploadOpen}
         onExternalOpenChange={setUploadOpen}
+        autoOpenPicker={uploadAutoOpenPicker}
+        incomingFile={pendingUploadFile}
         onExtractedData={handlePhotoExtracted}
       />
 
@@ -333,7 +343,11 @@ export default function Page() {
       <BottomNav
         active={activeTab}
         onTabChange={setActiveTab}
-        onUploadClick={() => setUploadOpen(true)}
+        onUploadClick={({ autoOpenPicker = true, file = null } = {}) => {
+          setUploadAutoOpenPicker(autoOpenPicker);
+          setPendingUploadFile(file);
+          setUploadOpen(true);
+        }}
         onManualAdd={handleManualAdd}
         onMicClick={() => setVoiceModalOpen(true)}
         showFab={isOnHome && navigationTab === "today"}

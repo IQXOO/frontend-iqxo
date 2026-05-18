@@ -93,8 +93,8 @@
 
 **Before:**
 ```env
-VITE_OPENAI_API_KEY=sk-proj-...  ❌ EXPOSED IN FRONTEND BUNDLE
-OPENAI_API_KEY=sk-proj-...       ❌ EXPOSED IN ENV
+VITE_OPENAI_API_KEY=[REDACTED]  ❌ EXPOSED IN FRONTEND BUNDLE (REDACTED)
+OPENAI_API_KEY=[REDACTED]       ❌ EXPOSED IN ENV (REDACTED)
 ```
 
 **After:**
@@ -184,18 +184,18 @@ if (!user) {
 ### ⚠️ FOUND IN `.env.local` (SHOULD NEVER BE IN REPO)
 
 ```
-❌ VITE_OPENAI_API_KEY=sk-proj-...   (EXPOSED! Remove immediately)
-❌ OPENAI_API_KEY=sk-proj-...         (EXPOSED! Remove immediately)  
+❌ VITE_OPENAI_API_KEY=[REDACTED]   (EXPOSED! Remove immediately)
+❌ OPENAI_API_KEY=[REDACTED]         (EXPOSED! Remove immediately)  
 ⚠️ VITE_SUPABASE_ANON_KEY=...         (OK if just anon key, but check CI/CD)
-⚠️ VITE_STRIPE_*=...                  (Stripe key should never be in Frontend)
+⚠️ VITE_STRIPE_*=...                  (Stripe public identifiers are allowed; do not commit private Stripe secrets)
 ```
 
 ### Recommendations
 
-1. **IMMEDIATE:** Remove `.env.local` from git
-2. **IMMEDIATE:** Delete exposed OpenAI keys from Vault/git history
-3. **BEFORE PRODUCTION:** Ensure `.gitignore` includes `.env.local`
-4. **BEFORE PRODUCTION:** Add `.env.example` with placeholder values
+1. **IMMEDIATE:** Remove any secret environment variables from frontend files and templates (done).
+2. **IMMEDIATE:** Rotate any OpenAI or Supabase secret keys that were exposed.
+3. **BEFORE PRODUCTION:** Ensure `.gitignore` includes `.env.local` (do not commit real env files).
+4. **BEFORE PRODUCTION:** Provide real secret values to backend via secure vault or CI secrets and use `.env.backend.example` as template.
 
 ---
 

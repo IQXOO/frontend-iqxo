@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Lock, User, Eye, EyeOff, Sparkles, AlertCircle } from "lucide-react";
+import { Mail, Lock, User, Eye, EyeOff, Sparkles, AlertCircle, X, Send, CheckCircle2 } from "lucide-react";
 import { useApp } from "../lib/store";
-import { devError, devLog, getFriendlyErrorMessage } from "../lib/logger";
+import { supabase } from "../lib/supabase";
+import { buildAppUrl } from "../lib/auth-urls";
+import { devError, devLog, getFriendlyErrorMessage, withAsyncDiagnostics } from "../lib/logger";
 import { useToast } from "../hooks/use-toast";
 
 type Mode = "signin" | "signup";
@@ -20,6 +22,12 @@ export default function AuthPage() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [signupNotice, setSignupNotice] = useState(false);
 
   const L = {
     en: {
@@ -34,6 +42,18 @@ export default function AuthPage() {
       signinLink: "Sign In",
       checkEmail: "Account created! Check your email to confirm, then sign in.",
       tagline: "Your intelligent event companion",
+      forgotPassword: "Forgot password?",
+      forgotTitle: "Reset your password",
+      forgotSubtitle: "We'll send a secure link to your email address.",
+      forgotEmailLabel: "Email address",
+      forgotEmailPlaceholder: "you@example.com",
+      forgotSend: "Send reset link",
+      forgotSending: "Sending...",
+      forgotSuccessTitle: "Password reset email sent",
+      forgotSuccessBody:
+        "If that email is registered, check your inbox and spam folder for the reset link.",
+      forgotRetry: "Send another link",
+      forgotCancel: "Back to sign in",
     },
     fr: {
       signin: "Se connecter",
@@ -47,6 +67,18 @@ export default function AuthPage() {
       signinLink: "Se connecter",
       checkEmail: "Compte créé ! Vérifiez votre e-mail, puis connectez-vous.",
       tagline: "Votre assistant événementiel intelligent",
+      forgotPassword: "Mot de passe oublié ?",
+      forgotTitle: "Réinitialiser le mot de passe",
+      forgotSubtitle: "Nous enverrons un lien sécurisé à ton adresse e-mail.",
+      forgotEmailLabel: "Adresse e-mail",
+      forgotEmailPlaceholder: "vous@exemple.com",
+      forgotSend: "Envoyer le lien",
+      forgotSending: "Envoi...",
+      forgotSuccessTitle: "E-mail de réinitialisation envoyé",
+      forgotSuccessBody:
+        "Si cet e-mail existe, vérifie ta boîte de réception et les spams.",
+      forgotRetry: "Envoyer un autre lien",
+      forgotCancel: "Retour à la connexion",
     },
     ar: {
       signin: "تسجيل الدخول",
@@ -60,8 +92,43 @@ export default function AuthPage() {
       signinLink: "تسجيل الدخول",
       checkEmail: "تم إنشاء الحساب! تحقق من بريدك الإلكتروني، ثم سجّل الدخول.",
       tagline: "رفيقك الذكي للأحداث",
+      forgotPassword: "هل نسيت كلمة المرور؟",
+      forgotTitle: "إعادة تعيين كلمة المرور",
+      forgotSubtitle: "سنرسل رابطًا آمنًا إلى بريدك الإلكتروني.",
+      forgotEmailLabel: "البريد الإلكتروني",
+      forgotEmailPlaceholder: "you@example.com",
+      forgotSend: "إرسال رابط إعادة التعيين",
+      forgotSending: "جارٍ الإرسال...",
+      forgotSuccessTitle: "تم إرسال بريد إعادة التعيين",
+      forgotSuccessBody:
+        "إذا كان هذا البريد مسجلًا، فتحقق من صندوق الوارد والرسائل غير المرغوب فيها.",
+      forgotRetry: "إرسال رابط آخر",
+      forgotCancel: "العودة لتسجيل الدخول",
     },
   }[language];
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("forgot") === "1") {
+      setForgotOpen(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("forgot");
+      window.history.replaceState(window.history.state, "", url.toString());
+    }
+  }, []);
+
+  useEffect(() => {
+    // clear signup notice when switching modes
+    setSignupNotice(false);
+  }, [mode]);
+
+  useEffect(() => {
+    if (forgotOpen) {
+      setForgotEmail(email.trim());
+      setForgotError(null);
+      setForgotSuccess(false);
+    }
+  }, [forgotOpen]);
 
   const validateForm = (): string | null => {
     if (!email.trim()) return "Email is required.";
@@ -116,7 +183,15 @@ export default function AuthPage() {
             variant: "destructive",
           });
         }
-        // No email confirmation — Supabase session fires immediately via onAuthStateChange
+        // Show localized instruction to check email for confirmation
+        if (!err) {
+          setSignupNotice(true);
+          toast({
+            title: L.checkEmail,
+            description: undefined,
+          });
+        }
+        // Note: No email confirmation forced here — Supabase session may fire immediately via onAuthStateChange
       }
     } catch (error) {
       devError('Auth', 'Auth form submission failed', error)
@@ -129,6 +204,80 @@ export default function AuthPage() {
       })
     } finally {
       setLoading(false);
+    }
+  };
+
+  const validateForgotEmail = (): string | null => {
+    if (!forgotEmail.trim()) return "Email is required.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail.trim())) {
+      return "Please enter a valid email address.";
+    }
+    return null;
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError(null);
+
+    const validationError = validateForgotEmail();
+    if (validationError) {
+      setForgotError(validationError);
+      toast({
+        title: "Check the email address",
+        description: validationError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setForgotLoading(true);
+
+    try {
+      await withAsyncDiagnostics(
+        "Auth",
+        "reset-password-request",
+        async () => {
+          const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+            forgotEmail.trim(),
+            { redirectTo: buildAppUrl("/reset-password") },
+          );
+
+          if (resetError) {
+            throw resetError;
+          }
+        },
+        {
+          method: "POST",
+          context: {
+            action: "forgot-password",
+            emailDomain: forgotEmail.split("@")[1] ?? "",
+          },
+          onError: (message, resetError) => {
+            const friendlyMessage =
+              getFriendlyErrorMessage(resetError, message) ||
+              "We couldn't send the reset email right now. Please try again.";
+            setForgotError(friendlyMessage);
+            toast({
+              title: "Couldn't send reset email",
+              description: friendlyMessage,
+              variant: "destructive",
+            });
+          },
+        },
+      );
+
+      devLog("Auth", "Password reset email requested", {
+        emailDomain: forgotEmail.split("@")[1] ?? "",
+      });
+      setForgotSuccess(true);
+      toast({
+        title: L.forgotTitle,
+        description: L.forgotSuccessBody,
+      });
+    } catch (resetError) {
+      devError("Auth", "Password reset email request failed", resetError);
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -178,7 +327,7 @@ export default function AuthPage() {
             ))}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <AnimatePresence mode="wait">
               {mode === "signup" && (
                 <motion.div
@@ -220,6 +369,22 @@ export default function AuthPage() {
                   className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary/30 border border-border text-foreground placeholder:text-muted-foreground/50 text-sm focus:outline-none focus:border-primary/50 transition-colors"
                 />
               </div>
+              {mode === "signin" && (
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotEmail(email.trim());
+                      setForgotError(null);
+                      setForgotSuccess(false);
+                      setForgotOpen(true);
+                    }}
+                    className="text-xs font-medium text-primary/90 transition-colors hover:text-primary"
+                  >
+                    {L.forgotPassword}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Password */}
@@ -265,6 +430,18 @@ export default function AuthPage() {
               </motion.div>
             )}
 
+            {/* Signup success notice */}
+            {signupNotice && mode === 'signup' && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-100"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <p className="text-xs text-emerald-700">{L.checkEmail}</p>
+              </motion.div>
+            )}
+
 
 
             {/* Submit */}
@@ -288,6 +465,133 @@ export default function AuthPage() {
           </form>
         </div>
       </motion.div>
+
+      <AnimatePresence>
+        {forgotOpen && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-8 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => {
+              if (forgotLoading) return;
+              setForgotOpen(false);
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 18, scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 260, damping: 28 }}
+              onClick={(event) => event.stopPropagation()}
+              className="w-full max-w-md overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
+            >
+              <div className="relative overflow-hidden border-b border-border bg-secondary/25 px-6 py-5">
+                <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
+                <div className="flex items-start gap-4">
+                  <div className="rounded-2xl bg-primary/10 p-3">
+                    <Send className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-lg font-semibold text-foreground">{L.forgotTitle}</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">{L.forgotSubtitle}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => !forgotLoading && setForgotOpen(false)}
+                    className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground"
+                    aria-label="Close reset dialog"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="px-6 py-6">
+                {forgotSuccess ? (
+                  <div className="space-y-5 text-center">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10">
+                      <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-semibold text-foreground">{L.forgotSuccessTitle}</h3>
+                      <p className="text-sm leading-6 text-muted-foreground">{L.forgotSuccessBody}</p>
+                    </div>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForgotSuccess(false);
+                          setForgotError(null);
+                        }}
+                        className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+                      >
+                        {L.forgotRetry}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setForgotOpen(false)}
+                        className="inline-flex h-11 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                      >
+                        {L.forgotCancel}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleForgotPassword} noValidate className="space-y-5">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                        {L.forgotEmailLabel}
+                      </label>
+                      <input
+                        type="email"
+                        value={forgotEmail}
+                        onChange={(event) => setForgotEmail(event.target.value)}
+                        placeholder={L.forgotEmailPlaceholder}
+                        autoComplete="email"
+                        className="w-full rounded-xl border border-border bg-secondary/25 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 transition-colors focus:border-primary/50 focus:outline-none"
+                        disabled={forgotLoading}
+                      />
+                    </div>
+
+                    {forgotError && (
+                      <div className="flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/10 p-4">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                        <p className="text-sm text-destructive">{forgotError}</p>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={() => setForgotOpen(false)}
+                        className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+                        disabled={forgotLoading}
+                      >
+                        {L.forgotCancel}
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={forgotLoading}
+                        className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {forgotLoading ? (
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="h-4 w-4 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
+                          />
+                        ) : null}
+                        {forgotLoading ? L.forgotSending : L.forgotSend}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

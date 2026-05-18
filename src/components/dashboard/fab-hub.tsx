@@ -5,7 +5,7 @@ import { Plus, Upload, PenLine, Sparkles } from "lucide-react"
 import { useApp } from "@/lib/store"
 
 interface FabHubProps {
-  onUploadClick: () => void
+  onUploadClick: (options?: { autoOpenPicker?: boolean }) => void
   onManualAdd: () => void
 }
 
@@ -25,7 +25,7 @@ export function FabHub({ onUploadClick, onManualAdd }: FabHubProps) {
 
   const handleUpload = useCallback(() => {
     setExpanded(false)
-    onUploadClick()
+    onUploadClick({ autoOpenPicker: true })
   }, [onUploadClick])
 
   const handleManual = useCallback(() => {

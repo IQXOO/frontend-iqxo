@@ -5,20 +5,25 @@ import { Toaster } from "./components/ui/toaster";
 import HomePage from "./pages/HomePage";
 import AuthPage from "./pages/AuthPage";
 import OnboardingPage from "./pages/OnboardingPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { StripePricingPage } from "./components/dashboard/stripe-pricing-page";
 import "./styles/globals.css";
 
 function AppShell() {
-  const { user, authLoading, planStatus, trialEndsAt } = useApp();
+  const { user, authLoading, planStatus, trialEndsAt, onboardingDone, setOnboardingDone } = useApp();
   const [showPricing, setShowPricing] = useState(false);
-  const [onboardingDone, setOnboardingDone] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      !!localStorage.getItem("iqxo_onboarding_done"),
-  );
+  const [introDismissed, setIntroDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("iqxo_intro_dismissed") === "1";
+  });
 
   // Track the previous user id so we only trigger on actual login/signup transitions
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
+
+  if (pathname === "/reset-password") {
+    return <ResetPasswordPage />;
+  }
 
   // ── Trigger 1: Show pricing right after login or signup ──────────────────────
   useEffect(() => {
@@ -69,12 +74,15 @@ function AppShell() {
   }
 
   // Show onboarding (language picker) once before the auth form
-  if (!onboardingDone) {
+  if (!onboardingDone && !introDismissed) {
     return (
       <OnboardingPage
-        onDone={() => {
-          localStorage.setItem("iqxo_onboarding_done", "1");
-          setOnboardingDone(true);
+        onDone={async () => {
+          setIntroDismissed(true);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("iqxo_intro_dismissed", "1");
+          }
+          await setOnboardingDone(true);
         }}
       />
     );
@@ -89,7 +97,8 @@ function AppShell() {
         open={showPricing}
         onClose={() => {
           // Only allow closing if they have an active plan
-          // If plan is none/expired, force them to pick one
+          // If plan is none/expired, keep modal open
+          if (planStatus === "none" || planStatus === "expired") return;
           setShowPricing(false);
 
           // else: keep modal open — they must choose a plan

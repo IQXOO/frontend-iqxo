@@ -25,6 +25,7 @@ import {
 import { useApp } from "../../lib/store";
 import { devError, devLog, devWarn, fetchWithDiagnostics, getFriendlyErrorMessage, readResponseText } from "../../lib/logger";
 import { useToast } from "../../hooks/use-toast";
+import { formatUsageDisplay } from "../../lib/usage-utils";
 
 type BillingCycle = "monthly" | "yearly";
 
@@ -273,7 +274,7 @@ export function StripePricingPage({
   planStatus,
   trialEndsAt,
 }: StripePricingPageProps) {
-  const { language, setPlanStatus, user, session } = useApp();
+  const { language, setPlanStatus, user, session, totalUsage } = useApp();
   const { toast } = useToast();
   const isRTL = language === "ar";
   const t = useTranslate(language);
@@ -482,6 +483,23 @@ export function StripePricingPage({
     },
   ];
 
+  // Prevent Escape key from closing the modal when it's forced open
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (forceOpen) {
+          e.preventDefault();
+          e.stopPropagation();
+        } else {
+          onClose?.();
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, forceOpen, onClose]);
+
   if (!open) return null;
 
   return (
@@ -514,14 +532,15 @@ export function StripePricingPage({
             <div className="w-10 h-1 rounded-full bg-white/30" />
           </div>
 
-          {/* Close button — always visible (not just when !forceOpen) */}
-
-          <button
-            onClick={onClose}
-            className="absolute top-10 right-4 z-10 p-2 rounded-full bg-white/[0.06] hover:bg-white/10 transition-colors"
-          >
-            <X className="w-4 h-4 text-white/50" />
-          </button>
+          {/* Close button — hidden when modal is forced open */}
+          {!forceOpen && (
+            <button
+              onClick={() => onClose?.()}
+              className="absolute top-10 right-4 z-10 p-2 rounded-full bg-white/[0.06] hover:bg-white/10 transition-colors"
+            >
+              <X className="w-4 h-4 text-white/50" />
+            </button>
+          )}
 
           <div className="relative px-5 pb-8 pt-2">
             <AnimatePresence mode="wait">
@@ -664,11 +683,7 @@ export function StripePricingPage({
                       <div className="grid items-center gap-2 mb-4 px-3 py-2 rounded-xl bg-blue-500/8 border border-white/[0.04]">
                         <Zap className="w-3.5 h-3.5 text-blue-300 shrink-0" />
                         <p className="text-sm font-semibold text-white">
-                          {t(
-                            "300 Smart Actions monthly",
-                            "300 Actions Intelligentes par mois",
-                            "300 إجراء ذكي شهريًا",
-                          )}
+                          {formatUsageDisplay(totalUsage)}
                         </p>
                       </div>
                       <div className="space-y-2 mb-5">
@@ -775,7 +790,7 @@ export function StripePricingPage({
                         <button
                           onClick={() => {
                             setTrialError(null);
-                            onClose?.();
+                            // keep modal open when forced; users must pick a plan
                           }}
                           className="text-red-400/60 hover:text-red-300 shrink-0 transition-colors ml-1"
                         >

@@ -2,8 +2,8 @@
 
 /**
  * Security note:
- * This module used to call OpenAI directly from the browser which exposed the
- * OpenAI API key (`VITE_OPENAI_API_KEY`) in client bundles. That behavior
+ * This module used to call OpenAI directly from the browser which exposed an
+ * OpenAI API key in client bundles. That behavior
  * has been removed. All OpenAI calls are now proxied through a trusted
  * backend (configured via `VITE_BACKEND_API`). The frontend will never
  * instantiate an OpenAI client or hold secrets.

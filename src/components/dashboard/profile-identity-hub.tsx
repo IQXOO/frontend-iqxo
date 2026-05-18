@@ -1,14 +1,16 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Sparkles, Clock, Archive, CalendarCheck, TrendingUp, Heart, Download, Shield } from "lucide-react"
+import { Sparkles, Clock, Archive, CalendarCheck, TrendingUp, Heart, Download, Shield, Zap } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useApp } from "@/lib/store"
 import { BentoChart } from "./bento-chart"
+import { SmartActionsCard } from "./smart-actions-card"
 import { exportEventsToPDF } from "@/lib/export-pdf"
+import { formatUsageDisplay, getUsagePercentage, isLimitExceeded, isNearLimit } from "@/lib/usage-utils"
 
 export function ProfileIdentityHub() {
-  const { user, events, language, planStatus, trialEndsAt } = useApp()
+  const { user, events, language, planStatus, trialEndsAt, totalUsage } = useApp()
   const isRTL = language === "ar"
 
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] || 
@@ -159,6 +161,9 @@ export function ProfileIdentityHub() {
           </div>
         </div>
       </motion.div>
+
+      {/* Smart Actions Remaining Card */}
+      <SmartActionsCard />
 
       {/* Life Stats Grid */}
       <div className="grid grid-cols-2 gap-3">

@@ -63,6 +63,15 @@ interface AppContextValue {
   trialEndsAt: Date | null;
   setPlanStatus: (status: PlanStatus, trialEndsAt?: Date) => void;
 
+  // Usage tracking (in USD spent)
+  totalUsage: number;
+  usageLoading: boolean;
+  refreshUsage: () => Promise<void>;
+
+  // Onboarding state persisted in user metadata
+  onboardingDone: boolean;
+  setOnboardingDone: (done: boolean) => Promise<void>;
+
   // Events
   events: IQXOEvent[];
   loading: boolean;
@@ -577,6 +586,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Subscription state (stored in localStorage for simplicity; move to DB as needed)
   const [planStatus, setPlanStatusState] = useState<PlanStatus>("none");
   const [trialEndsAt, setTrialEndsAt] = useState<Date | null>(null);
+  const [totalUsage, setTotalUsage] = useState<number>(0);
+  const [usageLoading, setUsageLoading] = useState<boolean>(false);
+  const [onboardingDone, setOnboardingDoneState] = useState<boolean>(false);
 
   // ── Bootstrap auth session ──────────────────────────────────────────────────
   useEffect(() => {
@@ -585,6 +597,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .then(({ data }) => {
         setSession(data.session);
         setUser(data.session?.user ?? null);
+        // bootstrap onboarding flag from session user metadata
+        const onboard = !!data.session?.user?.user_metadata?.onboarding_done;
+        setOnboardingDoneState(onboard);
       })
       .catch((error) => {
         devError("Auth", "Failed to restore session", error);
@@ -697,10 +712,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             { timeoutMs: 15000, context: { userId: user.id } },
           );
           if (r.ok) {
-            const { planStatus, trialEndsAt: trialEnd } = await r.json();
+            const { planStatus, trialEndsAt: trialEnd, totalUsage: usage } = await r.json();
             setPlanStatusState((planStatus as PlanStatus) || "none");
             if (trialEnd) setTrialEndsAt(new Date(trialEnd));
-            devLog('Billing', 'Plan status loaded', { planStatus: planStatus || 'none', hasTrialEnd: Boolean(trialEnd) })
+            if (usage !== undefined) setTotalUsage(typeof usage === 'number' ? usage : 0);
+            devLog('Billing', 'Plan status loaded', { planStatus: planStatus || 'none', hasTrialEnd: Boolean(trialEnd), usage })
           } else {
             devWarn('Billing', 'Plan status request failed, falling back to none', { status: r.status })
             toast({
@@ -728,8 +744,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setEvents([]);
       setPlanStatusState("none");
       setTrialEndsAt(null);
+      setTotalUsage(0);
     }
   }, [user, fetchEvents]);
+
+  // keep onboarding flag in sync with current user metadata
+  useEffect(() => {
+    setOnboardingDoneState(!!user?.user_metadata?.onboarding_done);
+  }, [user]);
 
   // ── Auth actions ──────────────────────────────────────────────────────────────
   const signIn = useCallback(async (email: string, password: string) => {
@@ -825,6 +847,67 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     },
     [user],
   );
+
+  // Refresh usage from server
+  const refreshUsage = useCallback(async () => {
+    if (!user) return;
+    
+    setUsageLoading(true);
+    try {
+      const backendUrl = (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4000";
+      const headers: Record<string, string> = {};
+      try {
+        const { data } = await supabase.auth.getSession();
+        const token = data?.session?.access_token;
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+      } catch (_) {}
+
+      const r = await fetchWithDiagnostics(
+        'Usage',
+        'GET /usage',
+        `${backendUrl}/usage?userId=${user.id}`,
+        { headers },
+        { timeoutMs: 10000, context: { userId: user.id } },
+      );
+
+      if (r.ok) {
+        const data = await r.json();
+        const usage = typeof data?.totalUsage === 'number' ? data.totalUsage : 0;
+        setTotalUsage(usage);
+        devLog('Usage', 'Usage data refreshed', { totalUsage: usage });
+      } else {
+        devWarn('Usage', 'Failed to refresh usage', { status: r.status });
+      }
+    } catch (error) {
+      devError('Usage', 'Failed to refresh usage', error);
+    } finally {
+      setUsageLoading(false);
+    }
+  }, [user]);
+
+  const setOnboardingDone = useCallback(async (done: boolean) => {
+    if (!user) return;
+
+    const previous = !!user.user_metadata?.onboarding_done;
+    setOnboardingDoneState(done);
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { onboarding_done: done ? true : null },
+      });
+      if (error) {
+        throw error;
+      }
+    } catch (err) {
+      setOnboardingDoneState(previous);
+      devError("Onboarding", "Error updating onboarding flag", err);
+      toast({
+        title: "Could not save onboarding state",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [user]);
 
   // ── Event CRUD ────────────────────────────────────────────────────────────────
   const addEvent = useCallback(
@@ -966,6 +1049,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         planStatus,
         trialEndsAt,
         setPlanStatus,
+        totalUsage,
+        usageLoading,
+        refreshUsage,
         events,
         loading,
         hydrated,
@@ -983,6 +1069,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setLanguage,
         toggleLanguage,
         t,
+        onboardingDone,
+        setOnboardingDone,
       }}
     >
       {children}
