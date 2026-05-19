@@ -1,145 +1,312 @@
 "use client"
 
-import { useEffect, useCallback, useRef } from "react"
-import type { IQXOEvent } from "../lib/types"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { supabase } from "@/lib/supabase"
+import { useApp } from "@/lib/store"
+import { devError, devLog, devWarn } from "@/lib/logger"
+import type { NotificationRecord } from "@/lib/notification-utils"
+import {
+  mergeNotificationLists,
+  sortNotificationsNewestFirst,
+} from "@/lib/notification-utils"
 
-const STORAGE_KEY = "iqxo_notified_events"
+type NotificationChangeEvent = "INSERT" | "UPDATE" | "DELETE"
 
-// Get already notified event IDs with their notification types
-function getNotifiedEvents(): Record<string, string[]> {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    return stored ? JSON.parse(stored) : {}
-  } catch {
-    return {}
+interface NotificationChangePayload {
+  eventType: NotificationChangeEvent
+  new: Partial<NotificationRecord>
+  old: Partial<NotificationRecord>
+}
+
+interface LoadResult {
+  notifications: NotificationRecord[]
+  error: string | null
+}
+
+const NOTIFICATION_COLUMNS = "id,user_id,title,body,is_read,created_at"
+
+function normalizeNotification(
+  notification: Partial<NotificationRecord> | null | undefined,
+): NotificationRecord | null {
+  if (!notification?.id || !notification.user_id || !notification.title || !notification.body || !notification.created_at) {
+    return null
+  }
+
+  return {
+    id: Number(notification.id),
+    user_id: String(notification.user_id),
+    title: String(notification.title),
+    body: String(notification.body),
+    is_read: Boolean(notification.is_read),
+    created_at: String(notification.created_at),
   }
 }
 
-// Mark an event as notified for a specific type
-function markAsNotified(eventId: string, type: string) {
-  const notified = getNotifiedEvents()
-  if (!notified[eventId]) notified[eventId] = []
-  if (!notified[eventId].includes(type)) {
-    notified[eventId].push(type)
-  }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(notified))
-}
+export function useNotifications() {
+  const { user } = useApp()
+  const [notifications, setNotifications] = useState<NotificationRecord[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [recentNotificationId, setRecentNotificationId] = useState<number | null>(null)
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const requestVersionRef = useRef(0)
+  const notificationIdsRef = useRef<Set<number>>(new Set())
+  const notificationsRef = useRef<NotificationRecord[]>([])
 
-// Check if event was already notified for a specific type
-function wasNotified(eventId: string, type: string): boolean {
-  const notified = getNotifiedEvents()
-  return notified[eventId]?.includes(type) || false
-}
+  useEffect(() => {
+    notificationsRef.current = notifications
+  }, [notifications])
 
-// Show a browser notification
-function showNotification(title: string, body: string, tag: string) {
-  if (Notification.permission !== "granted") return
+  const unreadCount = useMemo(
+    () => notifications.filter((notification) => !notification.is_read).length,
+    [notifications],
+  )
 
-  new Notification(title, {
-    body,
-    tag, // Prevents duplicate notifications
-    icon: "/favicon.ico",
-    requireInteraction: false,
-  })
-}
+  const loadNotifications = useCallback(async (userId: string): Promise<LoadResult> => {
+    const version = ++requestVersionRef.current
 
-export function useNotifications(events: IQXOEvent[]) {
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+    setLoading(true)
+    setError(null)
 
-  // Request permission on mount
-  const requestPermission = useCallback(async () => {
-    if (!("Notification" in window)) return false
+    try {
+      const { data, error: queryError } = await supabase
+        .from("notifications")
+        .select(NOTIFICATION_COLUMNS)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
 
-    if (Notification.permission === "granted") return true
-    if (Notification.permission === "denied") return false
+      if (version !== requestVersionRef.current) {
+        return { notifications: [], error: null }
+      }
 
-    const result = await Notification.requestPermission()
-    return result === "granted"
+      if (queryError) {
+        throw queryError
+      }
+
+      const rows = (data ?? [])
+        .map((item) => normalizeNotification(item as Partial<NotificationRecord>))
+        .filter((item): item is NotificationRecord => Boolean(item))
+
+      setNotifications((current) => {
+        const merged = mergeNotificationLists(current, rows)
+        notificationIdsRef.current = new Set(merged.map((notification) => notification.id))
+        return merged
+      })
+
+      devLog("Notifications", "Loaded notifications", {
+        userId,
+        count: rows.length,
+      })
+
+      return { notifications: rows, error: null }
+    } catch (loadError) {
+      if (version !== requestVersionRef.current) {
+        return { notifications: [], error: null }
+      }
+
+      devError("Notifications", "Failed to load notifications", loadError, {
+        userId,
+      })
+      const friendlyMessage = "Unable to load notifications right now."
+      setError(friendlyMessage)
+      return { notifications: [], error: friendlyMessage }
+    } finally {
+      if (version === requestVersionRef.current) {
+        setLoading(false)
+      }
+    }
   }, [])
 
-  // Check and send notifications
-  const checkNotifications = useCallback(() => {
-    if (!("Notification" in window) || Notification.permission !== "granted") {
+  const removeFromList = useCallback((id: number) => {
+    notificationIdsRef.current.delete(id)
+    setNotifications((current) => current.filter((notification) => notification.id !== id))
+  }, [])
+
+  const handleRealtimePayload = useCallback((payload: NotificationChangePayload) => {
+    const incoming = normalizeNotification(payload.new)
+    const outgoing = normalizeNotification(payload.old)
+
+    if (payload.eventType === "DELETE") {
+      if (outgoing) {
+        removeFromList(outgoing.id)
+      }
       return
     }
 
-    const now = new Date()
+    if (!incoming) return
 
-    events.forEach((event) => {
-      const eventDate = new Date(event.date)
-      const eventTime = event.time || "09:00"
-      const [hours, minutes] = eventTime.split(":").map(Number)
-      eventDate.setHours(hours, minutes, 0, 0)
+    if (notificationIdsRef.current.has(incoming.id)) {
+      setNotifications((current) =>
+        sortNotificationsNewestFirst(
+          current.map((notification) =>
+            notification.id === incoming.id ? { ...notification, ...incoming } : notification,
+          ),
+        ),
+      )
+      notificationIdsRef.current.add(incoming.id)
+      return
+    }
 
-      const msUntilEvent = eventDate.getTime() - now.getTime()
-      const minutesUntilEvent = msUntilEvent / (1000 * 60)
+    notificationIdsRef.current.add(incoming.id)
+    setNotifications((current) => mergeNotificationLists([incoming], current))
+    setRecentNotificationId(incoming.id)
+    window.setTimeout(() => {
+      setRecentNotificationId((current) => (current === incoming.id ? null : current))
+    }, 2400)
+  }, [removeFromList])
 
-      // Skip past events
-      if (msUntilEvent < 0) return
+  const markAsRead = useCallback(async (notificationId: number) => {
+    if (!user) return
 
-      // Morning reminder (9am on the day of the event)
-      const morningReminder = new Date(event.date)
-      morningReminder.setHours(9, 0, 0, 0)
-      const msUntilMorning = morningReminder.getTime() - now.getTime()
-      
-      if (
-        msUntilMorning >= 0 &&
-        msUntilMorning < 60000 && // Within 1 minute of 9am
-        !wasNotified(event.id, "morning")
-      ) {
-        showNotification(
-          "IQXO - Rappel du jour",
-          `${event.title} - ${event.time || "Aujourd'hui"}`,
-          `${event.id}-morning`
-        )
-        markAsNotified(event.id, "morning")
+    const snapshot = notificationsRef.current
+    const target = snapshot.find((notification) => notification.id === notificationId)
+    if (!target || target.is_read) return
+
+    setNotifications((current) =>
+      current.map((notification) =>
+        notification.id === notificationId ? { ...notification, is_read: true } : notification,
+      ),
+    )
+
+    try {
+      const { error: updateError } = await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("id", notificationId)
+        .eq("user_id", user.id)
+
+      if (updateError) {
+        throw updateError
       }
 
-      // 1 hour before
-      if (
-        minutesUntilEvent > 59 &&
-        minutesUntilEvent <= 60 &&
-        !wasNotified(event.id, "1h")
-      ) {
-        showNotification(
-          "IQXO - Dans 1 heure",
-          `${event.title}${event.location ? ` - ${event.location}` : ""}`,
-          `${event.id}-1h`
-        )
-        markAsNotified(event.id, "1h")
+      devLog("Notifications", "Notification marked as read", {
+        userId: user.id,
+        notificationId,
+      })
+    } catch (markError) {
+      devError("Notifications", "Failed to mark notification as read", markError, {
+        userId: user.id,
+        notificationId,
+      })
+      setNotifications(snapshot)
+      setError("Unable to update that notification right now.")
+    }
+  }, [user])
+
+  const markAllAsRead = useCallback(async () => {
+    if (!user) return
+
+    const snapshot = notificationsRef.current
+    const unreadIds = snapshot.filter((notification) => !notification.is_read).map((notification) => notification.id)
+    if (unreadIds.length === 0) return
+
+    setNotifications((current) =>
+      current.map((notification) =>
+        notification.is_read ? notification : { ...notification, is_read: true },
+      ),
+    )
+
+    try {
+      const { error: updateError } = await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false)
+
+      if (updateError) {
+        throw updateError
       }
 
-      // 30 minutes before
-      if (
-        minutesUntilEvent > 29 &&
-        minutesUntilEvent <= 30 &&
-        !wasNotified(event.id, "30m")
-      ) {
-        showNotification(
-          "IQXO - Dans 30 minutes",
-          `${event.title}${event.location ? ` - ${event.location}` : ""}`,
-          `${event.id}-30m`
-        )
-        markAsNotified(event.id, "30m")
-      }
-    })
-  }, [events])
+      devLog("Notifications", "All notifications marked as read", {
+        userId: user.id,
+        count: unreadIds.length,
+      })
+    } catch (markError) {
+      devError("Notifications", "Failed to mark all notifications as read", markError, {
+        userId: user.id,
+      })
+      setNotifications(snapshot)
+      setError("Unable to update notifications right now.")
+    }
+  }, [user])
 
-  // Initialize notifications
+  const retry = useCallback(async () => {
+    if (!user) return
+    await loadNotifications(user.id)
+  }, [loadNotifications, user])
+
   useEffect(() => {
-    // Request permission on first load
-    requestPermission()
+    const userId = user?.id
 
-    // Check notifications every minute
-    checkNotifications()
-    intervalRef.current = setInterval(checkNotifications, 60000)
+    requestVersionRef.current += 1
+
+    if (!userId) {
+      setNotifications([])
+      setLoading(false)
+      setError(null)
+      notificationIdsRef.current = new Set()
+      setRecentNotificationId(null)
+      return
+    }
+
+    const setup = () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+
+      const channel = supabase
+        .channel(`iqxo-notifications-${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            handleRealtimePayload(payload as NotificationChangePayload)
+          },
+        )
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            devLog("Notifications", "Realtime channel subscribed", { userId })
+            void loadNotifications(userId)
+            return
+          }
+
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            const message = "Notifications are temporarily unavailable."
+            setError(message)
+            devWarn("Notifications", "Realtime channel issue", { userId, status })
+          }
+        })
+
+      channelRef.current = channel
+    }
+
+    setup()
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
       }
     }
-  }, [requestPermission, checkNotifications])
+  }, [handleRealtimePayload, loadNotifications, user?.id])
 
-  return { requestPermission }
+  return {
+    notifications,
+    unreadCount,
+    loading,
+    error,
+    recentNotificationId,
+    markAsRead,
+    markAllAsRead,
+    retry,
+    refresh: retry,
+  }
 }
+
+

@@ -29,7 +29,7 @@ import { CommandPalette } from "../components/dashboard/command-palette";
 import { useApp, computePriority } from "../lib/store";
 import { StripePricingPage } from "../components/dashboard/stripe-pricing-page";
 import { parseVoiceInput, type ParsedEvent } from "../lib/parse-voice-input";
-import { useNotifications } from "../hooks/use-notifications";
+import { useEventNotifications } from "../hooks/use-event-notifications";
 import { exportEventsToPDF } from "../lib/export-pdf";
 import type { IQXOEvent } from "../lib/types";
 import { useVoiceInput } from "../hooks/use-voice-input";
@@ -38,7 +38,7 @@ export default function Page() {
   const { events, deleteEvent, t, signOut } = useApp();
 
   // Initialize browser notifications
-  useNotifications(events);
+  useEventNotifications(events);
 
   const [activeTab, setActiveTab] = useState<NavTab>("home");
   const [navigationTab, setNavigationTab] = useState<NavigationTab>("today");

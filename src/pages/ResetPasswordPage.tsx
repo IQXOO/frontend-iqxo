@@ -37,6 +37,25 @@ import { useToast } from "@/hooks/use-toast";
 
 type RecoveryState = "checking" | "ready" | "invalid";
 
+function getHashParams(): URLSearchParams {
+  return new URLSearchParams(window.location.hash.replace(/^#/, ""));
+}
+
+function getRecoveryLinkErrorMessage(errorCode: string | null, rawMessage: string | null): string {
+  const normalizedCode = (errorCode ?? "").toLowerCase();
+  const normalizedMessage = (rawMessage ?? "").toLowerCase();
+
+  if (normalizedCode.includes("otp_expired") || normalizedMessage.includes("expired")) {
+    return "Your reset link expired. Request a new one.";
+  }
+
+  if (normalizedCode.includes("access_denied") || normalizedMessage.includes("invalid")) {
+    return "Your reset link is invalid. Request a new one.";
+  }
+
+  return "This reset link is invalid or expired.";
+}
+
 function getPasswordStrength(password: string) {
   let score = 0;
 
@@ -77,7 +96,7 @@ export default function ResetPasswordPage() {
       readyTitle: "Recovery link ready",
       readySubtitle: "Create a new password to finish securing your account.",
       invalidTitle: "Reset link unavailable",
-      invalidSubtitle: "This link is invalid or expired. Request a new one from sign in.",
+      invalidSubtitle: "Your reset link expired. Request a new one from sign in.",
       newPassword: "New password",
       confirmPassword: "Confirm password",
       passwordHint: "Use at least 8 characters with uppercase, lowercase, and a number.",
@@ -98,7 +117,7 @@ export default function ResetPasswordPage() {
       readyTitle: "Lien de récupération prêt",
       readySubtitle: "Crée un nouveau mot de passe pour sécuriser ton compte.",
       invalidTitle: "Lien de réinitialisation indisponible",
-      invalidSubtitle: "Ce lien est invalide ou expiré. Demande-en un nouveau depuis la connexion.",
+      invalidSubtitle: "Le lien a expiré. Demande-en un nouveau depuis la connexion.",
       newPassword: "Nouveau mot de passe",
       confirmPassword: "Confirmer le mot de passe",
       passwordHint: "Au moins 8 caractères avec majuscules, minuscules et chiffre.",
@@ -119,7 +138,7 @@ export default function ResetPasswordPage() {
       readyTitle: "رابط الاستعادة جاهز",
       readySubtitle: "أنشئ كلمة مرور جديدة لإكمال تأمين حسابك.",
       invalidTitle: "رابط إعادة التعيين غير متاح",
-      invalidSubtitle: "هذا الرابط غير صالح أو منتهي. اطلب رابطًا جديدًا من شاشة تسجيل الدخول.",
+      invalidSubtitle: "انتهت صلاحية الرابط. اطلب رابطًا جديدًا من شاشة تسجيل الدخول.",
       newPassword: "كلمة المرور الجديدة",
       confirmPassword: "تأكيد كلمة المرور",
       passwordHint: "استخدم 8 أحرف على الأقل مع أحرف كبيرة وصغيرة ورقم.",
@@ -157,24 +176,60 @@ export default function ResetPasswordPage() {
 
       try {
         const url = new URL(window.location.href);
-        const urlError = url.searchParams.get("error") || url.searchParams.get("error_description");
+        const hashParams = getHashParams();
+        const urlError =
+          url.searchParams.get("error") ||
+          url.searchParams.get("error_description") ||
+          hashParams.get("error") ||
+          hashParams.get("error_description");
         if (urlError) {
-          throw new Error(urlError);
+          throw new Error(
+            getRecoveryLinkErrorMessage(
+              url.searchParams.get("error_code") || hashParams.get("error_code"),
+              urlError,
+            ),
+          );
         }
 
         const { data, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) throw sessionError;
 
         let currentSession = data.session;
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
         const code = url.searchParams.get("code");
+
+        if (!currentSession && accessToken && refreshToken) {
+          const { data: sessionData, error: setSessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (setSessionError) throw setSessionError;
+          currentSession = sessionData.session;
+
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.hash = "";
+          cleanUrl.searchParams.delete("code");
+          cleanUrl.searchParams.delete("type");
+          cleanUrl.searchParams.delete("error");
+          cleanUrl.searchParams.delete("error_code");
+          cleanUrl.searchParams.delete("error_description");
+          window.history.replaceState(window.history.state, "", cleanUrl.toString());
+        }
 
         if (!currentSession && code) {
           const { data: exchangedData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) throw exchangeError;
           currentSession = exchangedData.session;
-          url.searchParams.delete("code");
-          url.searchParams.delete("type");
-          window.history.replaceState(window.history.state, "", url.toString());
+
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.hash = "";
+          cleanUrl.searchParams.delete("code");
+          cleanUrl.searchParams.delete("type");
+          cleanUrl.searchParams.delete("error");
+          cleanUrl.searchParams.delete("error_code");
+          cleanUrl.searchParams.delete("error_description");
+          window.history.replaceState(window.history.state, "", cleanUrl.toString());
         }
 
         if (!active) return;
@@ -207,7 +262,7 @@ export default function ResetPasswordPage() {
     verifyRecoverySession();
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" && session) {
+      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) {
         setRecoveryState("ready");
         setSessionNote(session.user.email ?? null);
       }
@@ -274,6 +329,9 @@ export default function ResetPasswordPage() {
               message,
             );
             setError(friendlyMessage);
+            if (/session|expired|invalid/i.test(friendlyMessage)) {
+              setRecoveryState("invalid");
+            }
             toast({
               title: "Couldn't update password",
               description: friendlyMessage,
@@ -297,6 +355,14 @@ export default function ResetPasswordPage() {
       }, 1600);
     } catch (updateError) {
       devError("Auth", "Password update failed", updateError);
+      const friendlyMessage = getFriendlyErrorMessage(
+        updateError,
+        "This reset link is invalid or expired.",
+      );
+      setError(friendlyMessage);
+      if (/session|expired|invalid/i.test(friendlyMessage)) {
+        setRecoveryState("invalid");
+      }
     } finally {
       setLoading(false);
     }

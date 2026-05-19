@@ -4,6 +4,7 @@ import { Moon, Sun, Languages, Home, Settings } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { useApp } from "../../lib/store"
 import { motion } from "framer-motion"
+import { NotificationBell } from "./notification-bell"
 
 interface DashboardHeaderProps {
   onProfileClick?: () => void
@@ -75,6 +76,8 @@ export function DashboardHeader({
             <Moon className="h-5 w-5 text-muted-foreground" />
           )}
         </button>
+
+        <NotificationBell />
 
       
         {/* Profile Avatar - Clickable */}
