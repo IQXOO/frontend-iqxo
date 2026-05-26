@@ -4,6 +4,8 @@ import { motion } from "framer-motion"
 import { Sparkles, Clock, Archive, CalendarCheck, TrendingUp, Heart, Download, Shield, Zap } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useApp } from "@/lib/store"
+import { useToast } from "@/hooks/use-toast"
+import { supabase } from "@/lib/supabase"
 import { BentoChart } from "./bento-chart"
 import { SmartActionsCard } from "./smart-actions-card"
 import { exportEventsToPDF } from "@/lib/export-pdf"
@@ -16,6 +18,52 @@ export function ProfileIdentityHub() {
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] || 
     user?.email?.split("@")[0] || 
     "Friend"
+
+  // Profile editable fields
+  const { toast } = useToast()
+  const [profileFullName, setProfileFullName] = useState<string | null>(user?.user_metadata?.full_name ?? null)
+  const [profileEmail, setProfileEmail] = useState<string | null>(user?.email ?? null)
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  // Load profile row from `profiles` table if exists (full_name, email)
+  useEffect(() => {
+    let mounted = true
+    async function loadProfile() {
+      if (!user) return
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("full_name,email")
+          .eq("id", user.id)
+          .single()
+
+        if (error && error.code !== "PGRST116") {
+          // PGRST116 = no rows found (postgres) — ignore
+          throw error
+        }
+
+        if (!mounted) return
+        if (data) {
+          setProfileFullName(data.full_name ?? user.user_metadata?.full_name ?? null)
+          setProfileEmail(data.email ?? user.email ?? null)
+        } else {
+          // fallback to session
+          setProfileFullName(user.user_metadata?.full_name ?? null)
+          setProfileEmail(user.email ?? null)
+        }
+      } catch (err) {
+        console.error("Failed to load profile row", err)
+        setLoadError("Could not load profile")
+      }
+    }
+
+    loadProfile()
+    return () => {
+      mounted = false
+    }
+  }, [user])
 
   // Calculate life stats
   const totalEvents = events.length
@@ -119,7 +167,68 @@ export function ProfileIdentityHub() {
             </motion.div>
 
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-foreground tracking-tight">{firstName}</h2>
+              <div className="flex items-center gap-3">
+                {!editing ? (
+                  <h2 className="text-2xl font-bold text-foreground tracking-tight">{profileFullName ?? firstName}</h2>
+                ) : (
+                  <input
+                    value={profileFullName ?? ""}
+                    onChange={(e) => setProfileFullName(e.target.value)}
+                    className="w-full bg-secondary/30 border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                    aria-label="Full name"
+                    />
+                )}
+
+                <div className="ml-auto flex items-center gap-2">
+                  {!editing ? (
+                    <button
+                      onClick={() => setEditing(true)}
+                      className="text-sm text-primary px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20"
+                    >
+                      Edit
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={async () => {
+                          // Save to profiles table via upsert
+                          if (!user) return
+                          setSaving(true)
+                          try {
+                            const upsert = {
+                              id: user.id,
+                              full_name: profileFullName,
+                              email: profileEmail ?? user.email,
+                            }
+                            const { error } = await supabase.from("profiles").upsert(upsert)
+                            if (error) throw error
+                            toast({ title: "Profile updated", description: "Your name was saved.", variant: "default" })
+                            setEditing(false)
+                          } catch (err) {
+                            console.error("Failed to save profile", err)
+                            toast({ title: "Save failed", description: "Could not save your profile.", variant: "destructive" })
+                          } finally {
+                            setSaving(false)
+                          }
+                        }}
+                        disabled={saving}
+                        className="text-sm text-white bg-primary px-3 py-1 rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditing(false)
+                        }}
+                        className="text-sm text-muted-foreground px-2 py-1 rounded-lg hover:bg-secondary/50"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
               <div className="flex items-center gap-2 mt-1">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <p className="text-sm font-medium text-primary">{getTitle()}</p>
@@ -141,6 +250,15 @@ export function ProfileIdentityHub() {
               </p>
             </div>
           </motion.div>
+
+          {/* Contact row: email (non-editable) */}
+          <div className="relative z-10 mt-3">
+            <p className="text-xs text-muted-foreground">{language === "ar" ? "البريد الإلكتروني" : "Email"}</p>
+            <div className="mt-1 flex items-center justify-between">
+              <div className="text-sm text-foreground/90">{profileEmail ?? user?.email}</div>
+              <div className="text-[11px] text-muted-foreground">{user?.email ? "Verified" : "Unverified"}</div>
+            </div>
+          </div>
 
           {/* Progress Bar */}
           <div className="relative z-10 space-y-2">

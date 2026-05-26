@@ -4,22 +4,22 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Settings, LogOut, Loader2, X } from "lucide-react";
 import { useApp } from "../../lib/store";
-import { ProfileIdentityHub } from "./profile-identity-hub";
 import { SettingsBentoGrid } from "./settings-bento-grid";
-import { StripePricingPage } from "./stripe-pricing-page";
+import { shouldShowBillingPopup } from "@/lib/billing-utils";
+import { navigateToPath } from "@/lib/navigation";
 
-type SettingsTab = "profile" | "settings";
+type SettingsTab = "settings" | "profile";
 
 interface SettingsViewProps {
   onClose?: () => void;
 }
 
 export function SettingsView({ onClose }: SettingsViewProps) {
-  const { user, language, t, signOut } = useApp();
+  const { user, language, t, signOut, planStatus, planResolved } = useApp();
+  const [activeTab, setActiveTab] = useState<SettingsTab>("settings");
   const [isPending, setIsPending] = useState(false);
-  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
-  const [showBilling, setShowBilling] = useState(false);
   const isRTL = language === "ar";
+  const canShowBillingPopup = shouldShowBillingPopup(planResolved, planStatus);
 
   const handleLogout = async () => {
     setIsPending(true);
@@ -30,9 +30,13 @@ export function SettingsView({ onClose }: SettingsViewProps) {
     }
   };
 
+  const handleProfileClick = () => {
+    onClose?.();
+    navigateToPath("/profile");
+  };
   const tabs = [
-    { id: "profile" as const, label: t("profile"), icon: User },
     { id: "settings" as const, label: t("settingsTitle"), icon: Settings },
+    { id: "profile" as const, label: t("profile"), icon: User },
   ];
 
   return (
@@ -58,7 +62,13 @@ export function SettingsView({ onClose }: SettingsViewProps) {
           {tabs.map((tab) => (
             <motion.button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                if (tab.id === "profile") {
+                  handleProfileClick();
+                } else {
+                  setActiveTab(tab.id);
+                }
+              }}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? "bg-primary/20 text-primary"
@@ -82,9 +92,14 @@ export function SettingsView({ onClose }: SettingsViewProps) {
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
         >
-          {activeTab === "profile" && <ProfileIdentityHub />}
           {activeTab === "settings" && (
-            <SettingsBentoGrid onOpenBilling={() => setShowBilling(true)} />
+            <SettingsBentoGrid
+              onOpenBilling={() => {
+                if (canShowBillingPopup) {
+                  navigateToPath("/pricing");
+                }
+              }}
+            />
           )}
         </motion.div>
       </AnimatePresence>
@@ -112,11 +127,6 @@ export function SettingsView({ onClose }: SettingsViewProps) {
         </motion.button>
       </div>
 
-      {/* Stripe Billing Modal */}
-      <StripePricingPage
-        open={showBilling}
-        onClose={() => setShowBilling(false)}
-      />
     </div>
   );
 }

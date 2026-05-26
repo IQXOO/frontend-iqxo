@@ -27,12 +27,12 @@ import { ArchiveVault } from "../components/dashboard/archive-vault";
 import { WorkScheduleView } from "../components/dashboard/work-schedule-view";
 import { CommandPalette } from "../components/dashboard/command-palette";
 import { useApp, computePriority } from "../lib/store";
-import { StripePricingPage } from "../components/dashboard/stripe-pricing-page";
 import { parseVoiceInput, type ParsedEvent } from "../lib/parse-voice-input";
 import { useEventNotifications } from "../hooks/use-event-notifications";
 import { exportEventsToPDF } from "../lib/export-pdf";
 import type { IQXOEvent } from "../lib/types";
 import { useVoiceInput } from "../hooks/use-voice-input";
+import { navigateToPath } from "../lib/navigation";
 
 export default function Page() {
   const { events, deleteEvent, t, signOut } = useApp();
@@ -43,7 +43,6 @@ export default function Page() {
   const [activeTab, setActiveTab] = useState<NavTab>("home");
   const [navigationTab, setNavigationTab] = useState<NavigationTab>("today");
   const [showSettings, setShowSettings] = useState(false);
-  const [showPricing, setShowPricing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -197,7 +196,7 @@ export default function Page() {
         {activeTab === "home" && (
           <>
             <DashboardHeader
-              onProfileClick={() => setShowSettings(true)}
+              onProfileClick={() => navigateToPath("/profile")}
               onSettingsClick={() => setShowSettings(true)}
               onHomeClick={() => {
                 setActiveTab("home");
@@ -390,11 +389,6 @@ export default function Page() {
         event={selectedEvent}
         onEdit={handleEditFromDetail}
       />
-      {/* Stripe Pricing Modal */}
-      {/* <StripePricingPage
-        open={showPricing}
-        onClose={() => setShowPricing(false)}
-      /> */}
     </div>
   );
 }

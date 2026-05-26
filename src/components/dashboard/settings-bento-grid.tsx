@@ -1,26 +1,34 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { 
-  Palette, 
-  CreditCard, 
-  Moon, 
-  Sun, 
+import {
+  Palette,
+  CreditCard,
+  Moon,
+  Sun,
   ChevronRight,
   Globe,
-  Sparkles
+  Sparkles,
 } from "lucide-react"
 import { useApp } from "@/lib/store"
-import { useState } from "react"
+import { shouldShowBillingPopup } from "@/lib/billing-utils"
 
 interface SettingsBentoGridProps {
   onOpenBilling?: () => void
 }
 
 export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
-  const { theme, toggleTheme, language, toggleLanguage } = useApp()
+  const {
+    theme,
+    toggleTheme,
+    language,
+    toggleLanguage,
+    planStatus,
+    planResolved,
+  } = useApp()
   const isRTL = language === "ar"
-  // Toggle component with micro-animation
+  const canOpenBilling = shouldShowBillingPopup(planResolved, planStatus)
+
   const sections = [
     {
       id: "preferences",
@@ -34,9 +42,14 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
         {
           icon: theme === "dark" ? Moon : Sun,
           label: language === "ar" ? "المظهر" : "Appearance",
-          description: theme === "dark" 
-            ? (language === "ar" ? "الوضع الداكن" : "Dark mode") 
-            : (language === "ar" ? "الوضع الفاتح" : "Light mode"),
+          description:
+            theme === "dark"
+              ? language === "ar"
+                ? "الوضع الداكن"
+                : "Dark mode"
+              : language === "ar"
+                ? "الوضع الفاتح"
+                : "Light mode",
           action: (
             <motion.button
               onClick={toggleTheme}
@@ -55,7 +68,12 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
         {
           icon: Globe,
           label: language === "ar" ? "اللغة" : "Language",
-          description: language === "ar" ? "العربية" : language === "fr" ? "Francais" : "English",
+          description:
+            language === "ar"
+              ? "العربية"
+              : language === "fr"
+                ? "Francais"
+                : "English",
           action: (
             <motion.button
               onClick={toggleLanguage}
@@ -72,7 +90,8 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
     {
       id: "billing",
       title: language === "ar" ? "الفواتير" : "Billing",
-      subtitle: language === "ar" ? "استثمر في راحة بالك" : "Invest in your peace of mind",
+      subtitle:
+        language === "ar" ? "استثمر في راحة بالك" : "Invest in your peace of mind",
       icon: CreditCard,
       color: "from-emerald-500/15 to-emerald-500/5",
       iconBg: "bg-emerald-500/10",
@@ -80,16 +99,51 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
       items: [
         {
           icon: Sparkles,
-          label: language === "ar" ? "الخطة الحالية" : "Current Plan",
-          description: language === "ar" ? "مجاني - ميزات محدودة" : "Free - Limited features",
+          label:
+            !planResolved
+              ? language === "ar"
+                ? "جارٍ التحقق"
+                : "Checking plan"
+              : planStatus === "pro"
+                ? language === "ar"
+                  ? "الخطة الحالية"
+                  : "Current Plan"
+                : language === "ar"
+                  ? "الخطة الحالية"
+                  : "Current Plan",
+          description:
+            !planResolved
+              ? language === "ar"
+                ? "جارٍ التحقق من خطتك..."
+                : "Checking your plan..."
+              : planStatus === "pro"
+                ? language === "ar"
+                  ? "Pro - وصول كامل"
+                  : "Pro - Full access"
+                : language === "ar"
+                  ? "مجاني - ميزات محدودة"
+                  : "Free - Limited features",
           action: (
             <motion.button
-              onClick={onOpenBilling}
-              whileHover={{ scale: 1.02, x: 2 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-500/80 to-purple-500/80 hover:from-blue-500 hover:to-purple-500 transition-all text-xs font-semibold text-white"
+              onClick={() => {
+                if (canOpenBilling) onOpenBilling?.()
+              }}
+              whileHover={{ scale: canOpenBilling ? 1.02 : 1 }}
+              whileTap={{ scale: canOpenBilling ? 0.98 : 1 }}
+              disabled={!canOpenBilling}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                canOpenBilling
+                  ? "bg-gradient-to-r from-blue-500/80 to-purple-500/80 hover:from-blue-500 hover:to-purple-500 text-white"
+                  : "bg-secondary/50 text-muted-foreground cursor-not-allowed"
+              }`}
             >
-              {language === "ar" ? "ترقية" : "Upgrade"}
+              {planResolved && planStatus === "pro"
+                ? language === "ar"
+                  ? "نشطة"
+                  : "Active"
+                : language === "ar"
+                  ? "ترقية"
+                  : "Upgrade"}
               <ChevronRight className="w-3 h-3" strokeWidth={2} />
             </motion.button>
           ),
@@ -100,7 +154,6 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
 
   return (
     <div className={`px-5 py-6 space-y-5 ${isRTL ? "dir-rtl text-right" : ""}`}>
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground tracking-tight">
           {language === "ar" ? "الإعدادات" : "Settings"}
@@ -110,7 +163,6 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
         </p>
       </div>
 
-      {/* Bento Grid */}
       <div className="grid grid-cols-1 gap-4">
         {sections.map((section, sectionIdx) => (
           <motion.div
@@ -120,7 +172,6 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
             transition={{ delay: sectionIdx * 0.08, duration: 0.5 }}
             className={`glass rounded-2xl p-5 border border-border bg-gradient-to-br ${section.color}`}
           >
-            {/* Section Header */}
             <div className="flex items-start gap-3 mb-4">
               <div className={`p-2.5 rounded-xl ${section.iconBg}`}>
                 <section.icon className={`w-4 h-4 ${section.iconColor}`} strokeWidth={1.5} />
@@ -131,7 +182,6 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
               </div>
             </div>
 
-            {/* Items */}
             <div className="space-y-2">
               {section.items.map((item, itemIdx) => (
                 <motion.div
@@ -146,12 +196,7 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
                       <p className="text-[11px] text-muted-foreground">{item.description}</p>
                     </div>
                   </div>
-                  <div>
-                    {"action" in item && item.action}
-                    {"toggle" in item && item.onToggle && (
-                      <Toggle enabled={item.enabled || false} onToggle={item.onToggle} />
-                    )}
-                  </div>
+                  <div>{item.action}</div>
                 </motion.div>
               ))}
             </div>
@@ -159,13 +204,7 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
         ))}
       </div>
 
-      {/* Footer */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="pt-6 text-center"
-      >
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-6 text-center">
         <p className="text-[11px] text-muted-foreground/60">
           IQXO v1.0.0 • {language === "ar" ? "صنع بحب" : "Made with care"}
         </p>

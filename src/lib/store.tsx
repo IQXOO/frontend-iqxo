@@ -11,6 +11,7 @@ import { supabase } from "./supabase";
 import type { User, Session } from "@supabase/supabase-js";
 import { devError, devLog, devWarn, fetchWithDiagnostics, getFriendlyErrorMessage } from "./logger";
 import { toast } from "../hooks/use-toast";
+import { normalizeBillingPlanStatus } from "./billing-utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type Priority = "urgent" | "upcoming" | "later" | "past";
@@ -61,6 +62,7 @@ interface AppContextValue {
   // Subscription
   planStatus: PlanStatus;
   trialEndsAt: Date | null;
+  planResolved: boolean;
   setPlanStatus: (status: PlanStatus, trialEndsAt?: Date) => void;
 
   // Usage tracking (in USD spent)
@@ -82,7 +84,6 @@ interface AppContextValue {
   updateEvent: (id: string, data: Partial<IQXOEvent>) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
   getEventsByPriority: (priority: Priority) => IQXOEvent[];
-  refreshEvents: () => Promise<void>;
   addEventOptimistic: (event: IQXOEvent) => void;
   removeEventOptimistic: (id: string) => void;
 
@@ -586,6 +587,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Subscription state (stored in localStorage for simplicity; move to DB as needed)
   const [planStatus, setPlanStatusState] = useState<PlanStatus>("none");
   const [trialEndsAt, setTrialEndsAt] = useState<Date | null>(null);
+  const [planResolved, setPlanResolved] = useState<boolean>(false);
   const [totalUsage, setTotalUsage] = useState<number>(0);
   const [usageLoading, setUsageLoading] = useState<boolean>(false);
   const [onboardingDone, setOnboardingDoneState] = useState<boolean>(false);
@@ -689,14 +691,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (user) {
+      setPlanResolved(false);
       fetchEvents(user.id);
 
       // Load plan from server — wrap in async IIFE so we can use await
       const backendUrl =
         (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4000";
-      (async () => {
+
+      const fetchPlanStatus = async () => {
         try {
-          // Prefer Authorization header (backend should validate token)
           const headers: Record<string, string> = {}
           try {
             const { data } = await supabase.auth.getSession()
@@ -712,11 +715,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             { timeoutMs: 15000, context: { userId: user.id } },
           );
           if (r.ok) {
-            const { planStatus, trialEndsAt: trialEnd, totalUsage: usage } = await r.json();
-            setPlanStatusState((planStatus as PlanStatus) || "none");
+            const { planStatus: rawPlanStatus, trialEndsAt: trialEnd, totalUsage: usage } = await r.json();
+            const normalizedPlanStatus = normalizeBillingPlanStatus(rawPlanStatus);
+            setPlanStatusState(normalizedPlanStatus);
             if (trialEnd) setTrialEndsAt(new Date(trialEnd));
             if (usage !== undefined) setTotalUsage(typeof usage === 'number' ? usage : 0);
-            devLog('Billing', 'Plan status loaded', { planStatus: planStatus || 'none', hasTrialEnd: Boolean(trialEnd), usage })
+            setPlanResolved(true);
+            devLog('Billing', 'Plan status loaded', { planStatus: normalizedPlanStatus, hasTrialEnd: Boolean(trialEnd), usage })
+            return normalizedPlanStatus;
           } else {
             devWarn('Billing', 'Plan status request failed, falling back to none', { status: r.status })
             toast({
@@ -725,9 +731,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               variant: "destructive",
             });
             setPlanStatusState("none");
+            setPlanResolved(true);
+            return "none";
           }
         } catch {
-          // Server unreachable — fall back to localStorage
           devWarn('Billing', 'Plan status server unreachable, using local fallback')
           toast({
             title: "Couldn't reach billing service",
@@ -737,13 +744,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const savedPlan = localStorage.getItem(
             `iqxo_plan_${user.id}`,
           ) as PlanStatus | null;
-          setPlanStatusState(savedPlan || "none");
+          setPlanStatusState(normalizeBillingPlanStatus(savedPlan));
+          setPlanResolved(true);
+          return normalizeBillingPlanStatus(savedPlan);
+        }
+      };
+
+      let pollInterval: NodeJS.Timeout | null = null;
+
+      (async () => {
+        const planStatus = await fetchPlanStatus();
+
+        // Set up polling: only for non-PRO users, every 5 minutes
+        if (planStatus !== "pro") {
+          devLog('Billing', 'Plan-status polling enabled for non-PRO user', { interval: '5min' })
+          pollInterval = setInterval(() => {
+            fetchPlanStatus();
+          }, 300000);
+        } else {
+          devLog('Billing', 'Plan-status polling disabled for PRO user')
         }
       })();
+
+      return () => {
+        if (pollInterval) clearInterval(pollInterval);
+      };
     } else {
       setEvents([]);
       setPlanStatusState("none");
       setTrialEndsAt(null);
+      setPlanResolved(false);
       setTotalUsage(0);
     }
   }, [user, fetchEvents]);
@@ -815,7 +845,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
       devLog('Auth', 'Logout succeeded')
+      // Clear local app state immediately to avoid flashes of protected UI
       setEvents([]);
+      setUser(null);
+      setSession(null);
+      // Redirect to login and replace history so back won't return to protected pages
+      try {
+        // import navigateToPath lazily to avoid circular imports
+        const { navigateToPath } = await import("./navigation");
+        navigateToPath("/login", { replace: true });
+      } catch (e) {
+        // ignore navigation errors
+      }
     } catch (error) {
       devError('Auth', 'Logout threw unexpectedly', error);
       toast({
@@ -1006,10 +1047,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [events],
   );
 
-  const refreshEvents = useCallback(async () => {
-    if (user) await fetchEvents(user.id);
-  }, [user, fetchEvents]);
-
   const addEventOptimistic = useCallback((event: IQXOEvent) => {
     setEvents((prev) => [event, ...prev]);
   }, []);
@@ -1048,6 +1085,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         signOut,
         planStatus,
         trialEndsAt,
+        planResolved,
         setPlanStatus,
         totalUsage,
         usageLoading,
@@ -1059,7 +1097,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateEvent,
         deleteEvent,
         getEventsByPriority,
-        refreshEvents,
         addEventOptimistic,
         removeEventOptimistic,
         theme,
