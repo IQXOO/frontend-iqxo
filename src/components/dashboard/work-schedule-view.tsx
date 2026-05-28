@@ -22,7 +22,12 @@ import {
 } from "lucide-react";
 import { useApp } from "../../lib/store";
 import { supabase } from "../../lib/supabase";
-import { devError, devLog, getFriendlyErrorMessage, withAsyncDiagnostics } from "../../lib/logger";
+import {
+  devError,
+  devLog,
+  getFriendlyErrorMessage,
+  withAsyncDiagnostics,
+} from "../../lib/logger";
 import { useToast } from "../../hooks/use-toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -217,10 +222,14 @@ export function WorkScheduleView() {
       // filters (eq("user_id", ...)) are not a security boundary.
       const { data } = await supabase
         .from("work_schedules")
-        .select("id,user_id,day_of_week,start_time,end_time,is_active,location,schedule_label,updated_at")
+        .select(
+          "id,user_id,day_of_week,start_time,end_time,is_active,location,schedule_label,updated_at",
+        )
         .eq("user_id", user.id)
         .order("day_of_week");
-      devLog('WorkSchedule', 'Schedule load completed', { rowCount: data?.length ?? 0 })
+      devLog("WorkSchedule", "Schedule load completed", {
+        rowCount: data?.length ?? 0,
+      });
       if (data?.length) {
         const rows: WorkDay[] = data.map((r) => ({
           id: r.id,
@@ -243,13 +252,15 @@ export function WorkScheduleView() {
         if (first?.location) setGlobalLocation(first.location);
       }
     } catch (error) {
-      devError('WorkSchedule', 'Failed to load schedule', error, { userId: user.id })
+      devError("WorkSchedule", "Failed to load schedule", error, {
+        userId: user.id,
+      });
       toast({
         title: "Couldn't load work schedule",
         description: "Please refresh and try again.",
         variant: "destructive",
       });
-      setError('Could not load work schedule. Please try again.')
+      setError("Could not load work schedule. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -350,7 +361,10 @@ export function WorkScheduleView() {
       }, 1800);
       await loadSchedule();
     } catch (e) {
-      const message = getFriendlyErrorMessage(e, "Could not save work schedule. Please try again.");
+      const message = getFriendlyErrorMessage(
+        e,
+        "Could not save work schedule. Please try again.",
+      );
       setError(message);
       toast({
         title: "Couldn't save work schedule",
@@ -380,7 +394,10 @@ export function WorkScheduleView() {
       setActiveLabel(remainingLabels[0]);
       setShowEditor(false);
     } catch (e) {
-      const message = getFriendlyErrorMessage(e, "Could not delete this schedule. Please try again.");
+      const message = getFriendlyErrorMessage(
+        e,
+        "Could not delete this schedule. Please try again.",
+      );
       setError(message);
       toast({
         title: "Couldn't delete schedule",
@@ -406,7 +423,10 @@ export function WorkScheduleView() {
       setUploadState("idle");
       setAiResult(null);
     } catch (e) {
-      const message = getFriendlyErrorMessage(e, "Could not delete schedules. Please try again.");
+      const message = getFriendlyErrorMessage(
+        e,
+        "Could not delete schedules. Please try again.",
+      );
       setError(message);
       toast({
         title: "Couldn't delete schedules",
@@ -461,7 +481,10 @@ export function WorkScheduleView() {
       }
       setRenamingLabel(null);
     } catch (e) {
-      const message = getFriendlyErrorMessage(e, "Could not rename this schedule. Please try again.");
+      const message = getFriendlyErrorMessage(
+        e,
+        "Could not rename this schedule. Please try again.",
+      );
       toast({
         title: "Couldn't rename schedule",
         description: message,
@@ -489,7 +512,10 @@ export function WorkScheduleView() {
         is_done: false,
       });
     } catch (e) {
-      const message = getFriendlyErrorMessage(e, "Could not add this work day to your calendar.");
+      const message = getFriendlyErrorMessage(
+        e,
+        "Could not add this work day to your calendar.",
+      );
       toast({
         title: "Couldn't add event",
         description: message,
@@ -535,7 +561,10 @@ export function WorkScheduleView() {
         is_done: false,
       });
     } catch (e) {
-      const message = getFriendlyErrorMessage(e, "Could not add this work day to your calendar.");
+      const message = getFriendlyErrorMessage(
+        e,
+        "Could not add this work day to your calendar.",
+      );
       toast({
         title: "Couldn't add event",
         description: message,
@@ -603,16 +632,22 @@ export function WorkScheduleView() {
     setAiResult(null);
     try {
       await withAsyncDiagnostics(
-        'WorkSchedule',
-        'Analyze schedule image',
+        "WorkSchedule",
+        "Analyze schedule image",
         async () => {
           const backendUrl =
-            (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4000";
+            (import.meta as any).env?.VITE_BACKEND_API ||
+            "http://localhost:4040";
           const formData = new FormData();
           formData.append("image", file);
+          const headers: Record<string, string> = {};
+          const { data } = await supabase.auth.getSession();
+          const token = data?.session?.access_token;
+          if (token) headers["Authorization"] = `Bearer ${token}`;
           const r = await fetch(`${backendUrl}/analyze-schedule`, {
             method: "POST",
             headers: {
+              ...headers,
               "X-User-Name": searchName,
               "X-User-Email": user?.email || "",
               "x-user-id": user?.id || "",
@@ -635,11 +670,14 @@ export function WorkScheduleView() {
           throw new Error("Server error");
         },
         {
-          method: 'POST',
+          method: "POST",
           context: { searchName, userId: user?.id || "" },
           timeoutMs: 60000,
           onError: (message) => {
-            const friendly = getFriendlyErrorMessage(message, "Failed to analyze file");
+            const friendly = getFriendlyErrorMessage(
+              message,
+              "Failed to analyze file",
+            );
             setUploadError(friendly);
             toast({
               title: "Couldn't analyze schedule",
@@ -648,7 +686,7 @@ export function WorkScheduleView() {
             });
           },
         },
-      )
+      );
     } catch (e) {
       const message = getFriendlyErrorMessage(e, "Failed to analyze file");
       setUploadError(message);
