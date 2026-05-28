@@ -11,7 +11,12 @@ export function StatsCard() {
   const urgentCount = getEventsByPriority("urgent").length
   const upcomingCount = getEventsByPriority("upcoming").length
   const laterCount = getEventsByPriority("later").length
-  const smartGreeting = getSmartGreeting(user?.email, events)
+  const displayName =
+    (user?.user_metadata as { full_name?: string; name?: string } | undefined)?.full_name?.trim() ||
+    (user?.user_metadata as { full_name?: string; name?: string } | undefined)?.name?.trim() ||
+    user?.email?.split("@")[0] ||
+    (language === "ar" ? "صديقي" : "there")
+  const smartGreeting = getSmartGreeting(displayName, events)
 
   // Get top 3 critical items for highlighting
   const criticalItems = events
@@ -19,8 +24,6 @@ export function StatsCard() {
     .filter((e) => e.criticality >= 40)
     .sort((a, b) => b.criticality - a.criticality)
     .slice(0, 3)
-
-  const userName = user?.email?.split("@")?.[0] || (language === "ar" ? "صديقي" : "there")
 
   return (
     <section className="px-5 py-2 space-y-3">

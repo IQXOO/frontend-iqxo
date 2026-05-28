@@ -90,7 +90,7 @@ export function getSmartGreeting(userName: string | undefined, events: IQXOEvent
   }).length
 
   const flightCount = events.filter(e => e.title.toLowerCase().includes("flight")).length
-  const name = userName?.split("@")?.[0] || "there"
+  const name = userName?.trim() || "there"
 
   if (urgentCount === 0) {
     return `Hey ${name}, you're all set for today!`

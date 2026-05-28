@@ -192,22 +192,34 @@ export function ProfileIdentityHub() {
                     <>
                       <button
                         onClick={async () => {
-                          // Save to profiles table via upsert
                           if (!user) return
                           setSaving(true)
                           try {
+                            const nextFullName = (profileFullName ?? "").trim() || null
                             const upsert = {
                               id: user.id,
-                              full_name: profileFullName,
+                              full_name: nextFullName,
                               email: profileEmail ?? user.email,
                             }
-                            const { error } = await supabase.from("profiles").upsert(upsert)
-                            if (error) throw error
+                            const { error: authError } = await supabase.auth.updateUser({
+                              data: { full_name: nextFullName ?? "" },
+                            })
+                            if (authError) throw authError
+
+                            const { error: profileError } = await supabase.from("profiles").upsert(upsert)
+                            if (profileError) {
+                              console.warn("Profile row sync skipped", profileError)
+                            }
+
                             toast({ title: "Profile updated", description: "Your name was saved.", variant: "default" })
                             setEditing(false)
                           } catch (err) {
                             console.error("Failed to save profile", err)
-                            toast({ title: "Save failed", description: "Could not save your profile.", variant: "destructive" })
+                            toast({
+                              title: "Save failed",
+                              description: err instanceof Error ? err.message : "Could not save your profile.",
+                              variant: "destructive",
+                            })
                           } finally {
                             setSaving(false)
                           }

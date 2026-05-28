@@ -694,6 +694,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setPlanResolved(false);
       fetchEvents(user.id);
 
+      const fetchTotalUsage = async () => {
+        try {
+          const { data, error } = await supabase
+            .from("user_plans")
+            .select("total_usage")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          if (error) {
+            devWarn('Usage', 'Failed to load user_plans usage', { userId: user.id, error });
+            return null;
+          }
+
+          const usage = typeof data?.total_usage === "number"
+            ? data.total_usage
+            : typeof data?.total_usage === "string"
+              ? Number(data.total_usage)
+              : null;
+
+          return Number.isFinite(usage as number) ? (usage as number) : null;
+        } catch (error) {
+          devWarn('Usage', 'Failed to query user_plans usage', { userId: user.id, error });
+          return null;
+        }
+      };
+
       // Load plan from server — wrap in async IIFE so we can use await
       const backendUrl =
         (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4000";
@@ -719,9 +745,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             const normalizedPlanStatus = normalizeBillingPlanStatus(rawPlanStatus);
             setPlanStatusState(normalizedPlanStatus);
             if (trialEnd) setTrialEndsAt(new Date(trialEnd));
-            if (usage !== undefined) setTotalUsage(typeof usage === 'number' ? usage : 0);
+            const tableUsage = await fetchTotalUsage();
+            if (tableUsage !== null) {
+              setTotalUsage(tableUsage);
+            } else if (usage !== undefined) {
+              setTotalUsage(typeof usage === 'number' ? usage : 0);
+            }
             setPlanResolved(true);
-            devLog('Billing', 'Plan status loaded', { planStatus: normalizedPlanStatus, hasTrialEnd: Boolean(trialEnd), usage })
+            devLog('Billing', 'Plan status loaded', { planStatus: normalizedPlanStatus, hasTrialEnd: Boolean(trialEnd), usage: tableUsage ?? usage })
             return normalizedPlanStatus;
           } else {
             devWarn('Billing', 'Plan status request failed, falling back to none', { status: r.status })
@@ -755,15 +786,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       (async () => {
         const planStatus = await fetchPlanStatus();
 
-        // Set up polling: only for non-PRO users, every 5 minutes
-        if (planStatus !== "pro") {
-          devLog('Billing', 'Plan-status polling enabled for non-PRO user', { interval: '5min' })
-          pollInterval = setInterval(() => {
-            fetchPlanStatus();
-          }, 300000);
-        } else {
-          devLog('Billing', 'Plan-status polling disabled for PRO user')
-        }
+        // Set up polling: run every 5 minutes for all users to detect plan changes
+        devLog('Billing', 'Plan-status polling enabled', { interval: '5min' })
+        pollInterval = setInterval(() => {
+          fetchPlanStatus();
+        }, 300000);
       })();
 
       return () => {
