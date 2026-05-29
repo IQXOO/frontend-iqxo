@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect, useRef } from "react"
-import { Upload, X, FileText, Image, Loader2, AlertCircle, CheckCircle, Globe, ChevronDown, ImageIcon, Sparkles } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { X, FileText, Loader2, AlertCircle, ChevronDown, ImageIcon, Sparkles } from "lucide-react"
 import { VOICE_LANGUAGES, type VoiceLang } from "../../hooks/use-voice-input"
 import { useApp } from "../../lib/store"
 import type { ParsedEvent } from "../../lib/parse-voice-input"

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppProvider, useApp } from "./lib/store";
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/toaster";

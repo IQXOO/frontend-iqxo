@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Cloud, Sun, CloudRain, Wind, Eye } from "lucide-react"
+import { Cloud, Sun, CloudRain } from "lucide-react"
 
 interface WeatherHintProps {
   location?: string

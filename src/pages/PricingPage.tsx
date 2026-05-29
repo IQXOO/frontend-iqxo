@@ -1,14 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { motion } from "framer-motion";
 import {
-  Check,
-  ChevronRight,
-  Clock,
-  Crown,
-  Gift,
-  Shield,
   Mic,
   ImageIcon,
   Brain,
