@@ -91,13 +91,20 @@ const DAY_NAME_TO_DOW: Record<string, number> = {
   السبت: 6,
 };
 
+const generateId = () => Math.random().toString(36).substring(2, 9);
+
 function nextDatesForDow(dow: number, count = 3): string[] {
   const dates: string[] = [];
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   let checked = 0;
   while (dates.length < count && checked < 28) {
-    if (d.getDay() === dow) dates.push(d.toISOString().split("T")[0]);
+    if (d.getDay() === dow) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      dates.push(`${year}-${month}-${day}`);
+    }
     d.setDate(d.getDate() + 1);
     checked++;
   }
@@ -208,7 +215,7 @@ export function WorkScheduleView() {
   // ── Derived: rows for the active label only ────────────────────────────────
   const schedule = allRows.filter((r) => r.schedule_label === activeLabel);
   const activeDays = schedule.filter((d) => d.is_active);
-  const todaySchedule = schedule.find(
+  const todayShifts = schedule.filter(
     (d) => d.day_of_week === today && d.is_active,
   );
 
@@ -232,7 +239,7 @@ export function WorkScheduleView() {
       });
       if (data?.length) {
         const rows: WorkDay[] = data.map((r) => ({
-          id: r.id,
+          id: r.id || generateId(),
           day_of_week: r.day_of_week,
           start_time: r.start_time,
           end_time: r.end_time,
@@ -273,42 +280,54 @@ export function WorkScheduleView() {
   // ── Day editor helpers (scoped to activeLabel) ─────────────────────────────
   const toggleDay = (dow: number) => {
     setAllRows((prev) => {
-      const exists = prev.find(
+      const dayShifts = prev.filter(
         (d) => d.day_of_week === dow && d.schedule_label === activeLabel,
       );
-      if (exists)
-        return prev.map((d) =>
-          d.day_of_week === dow && d.schedule_label === activeLabel
-            ? { ...d, is_active: !d.is_active }
-            : d,
+      if (dayShifts.length > 0) {
+        // Toggle off: remove all shifts for this day
+        return prev.filter(
+          (d) => !(d.day_of_week === dow && d.schedule_label === activeLabel),
         );
-      return [
+      } else {
+        // Toggle on: add one default shift
+        return [
+          ...prev,
+          {
+            id: generateId(),
+            day_of_week: dow,
+            ...DEFAULT_WORK_DAY,
+            location: globalLocation,
+            schedule_label: activeLabel,
+          },
+        ].sort((a, b) => a.day_of_week - b.day_of_week);
+      }
+    });
+  };
+
+  const addShift = (dow: number) => {
+    setAllRows((prev) =>
+      [
         ...prev,
         {
+          id: generateId(),
           day_of_week: dow,
           ...DEFAULT_WORK_DAY,
           location: globalLocation,
           schedule_label: activeLabel,
         },
-      ].sort((a, b) => a.day_of_week - b.day_of_week);
-    });
+      ].sort((a, b) => a.day_of_week - b.day_of_week),
+    );
   };
 
-  const updateDay = (dow: number, field: keyof WorkDay, val: string) =>
+  const updateShift = (id: string, field: keyof WorkDay, val: string) => {
     setAllRows((prev) =>
-      prev.map((d) =>
-        d.day_of_week === dow && d.schedule_label === activeLabel
-          ? { ...d, [field]: val }
-          : d,
-      ),
+      prev.map((d) => (d.id === id ? { ...d, [field]: val } : d)),
     );
+  };
 
-  const removeDay = (dow: number) =>
-    setAllRows((prev) =>
-      prev.filter(
-        (d) => !(d.day_of_week === dow && d.schedule_label === activeLabel),
-      ),
-    );
+  const removeShift = (id: string) => {
+    setAllRows((prev) => prev.filter((d) => d.id !== id));
+  };
 
   const applyGlobalLocation = () =>
     setAllRows((prev) =>
@@ -326,19 +345,34 @@ export function WorkScheduleView() {
     setError(null);
     try {
       const active = schedule.filter((d) => d.is_active);
-      const inactiveDows = [0, 1, 2, 3, 4, 5, 6].filter(
-        (dow) => !active.find((d) => d.day_of_week === dow),
-      );
-      if (inactiveDows.length)
-        await supabase
+
+      // Get all existing DB rows for this label
+      const { data: existingDb } = await supabase
+        .from("work_schedules")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("schedule_label", activeLabel);
+
+      // Identify rows to delete (those that are in DB but no longer in active UI state)
+      const isDbId = (id?: string) => !!(id && id.includes("-"));
+      const activeDbIds = active.map((d) => d.id).filter(isDbId);
+      const idsToDelete = (existingDb || [])
+        .map((r) => r.id)
+        .filter((id) => !activeDbIds.includes(id));
+
+      if (idsToDelete.length) {
+        const { error: delError } = await supabase
           .from("work_schedules")
           .delete()
-          .eq("user_id", user.id)
-          .eq("schedule_label", activeLabel)
-          .in("day_of_week", inactiveDows);
+          .in("id", idsToDelete);
+        if (delError) throw delError;
+      }
+
       if (active.length) {
+        console.log("message");
         const { error: e } = await supabase.from("work_schedules").upsert(
           active.map((d) => ({
+            ...(isDbId(d.id) ? { id: d.id } : {}),
             user_id: user.id,
             day_of_week: d.day_of_week,
             start_time: d.start_time,
@@ -348,7 +382,7 @@ export function WorkScheduleView() {
             schedule_label: activeLabel,
             updated_at: new Date().toISOString(),
           })),
-          { onConflict: "user_id,day_of_week,schedule_label" },
+          { onConflict: "user_id,day_of_week,start_time,end_time" },
         );
         if (e) throw e;
       }
@@ -495,22 +529,30 @@ export function WorkScheduleView() {
 
   // ── Calendar event helpers ─────────────────────────────────────────────────
   const addTodayAsEvent = async () => {
-    if (!todaySchedule) return;
+    if (todayShifts.length === 0) return;
     try {
-      await addEvent({
-        title:
-          language === "ar"
-            ? "يوم عمل"
-            : language === "fr"
-              ? "Journée de travail"
-              : "Work Day",
-        date: new Date().toISOString().split("T")[0],
-        time: todaySchedule.start_time,
-        location: todaySchedule.location || globalLocation || undefined,
-        notes: `${todaySchedule.start_time} – ${todaySchedule.end_time}`,
-        source: "work_schedule",
-        is_done: false,
-      });
+      const todayDate = new Date();
+      const year = todayDate.getFullYear();
+      const month = String(todayDate.getMonth() + 1).padStart(2, "0");
+      const day = String(todayDate.getDate()).padStart(2, "0");
+      const dateStr = `${year}-${month}-${day}`;
+
+      for (const shift of todayShifts) {
+        await addEvent({
+          title:
+            language === "ar"
+              ? "يوم عمل"
+              : language === "fr"
+                ? "Journée de travail"
+                : "Work Day",
+          date: dateStr,
+          time: shift.start_time,
+          location: shift.location || globalLocation || undefined,
+          notes: `${shift.start_time} – ${shift.end_time}`,
+          source: "work_schedule",
+          is_done: false,
+        });
+      }
     } catch (e) {
       const message = getFriendlyErrorMessage(
         e,
@@ -579,39 +621,32 @@ export function WorkScheduleView() {
     if (loc) setGlobalLocation(loc);
     const shifts = result.shifts || [];
     if (shifts.length > 0) {
-      const byDow: Record<
-        number,
-        { starts: string[]; ends: string[]; location: string }
-      > = {};
-      for (const s of shifts) {
-        try {
-          const dow = new Date(s.date + "T12:00:00").getDay();
-          if (!byDow[dow]) byDow[dow] = { starts: [], ends: [], location: loc };
-          if (s.start) byDow[dow].starts.push(s.start);
-          if (s.end) byDow[dow].ends.push(s.end);
-        } catch {
-          /**/
-        }
-      }
-      const mode = (arr: string[]) => {
-        const freq: Record<string, number> = {};
-        arr.forEach((v) => {
-          freq[v] = (freq[v] || 0) + 1;
-        });
-        return (
-          Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0] || arr[0]
-        );
-      };
-      const newRows: WorkDay[] = Object.entries(byDow)
-        .map(([dow, v]) => ({
-          day_of_week: Number(dow),
-          start_time: v.starts.length ? mode(v.starts) : "",
-          end_time: v.ends.length ? mode(v.ends) : "",
-          is_active: true,
-          location: loc || globalLocation,
-          schedule_label: activeLabel,
-        }))
+      const newRows: WorkDay[] = shifts
+        .map((s) => {
+          let dow = -1;
+          if (s.day_name) {
+            const mapped = DAY_NAME_TO_DOW[s.day_name.toLowerCase()];
+            if (mapped !== undefined) dow = mapped;
+          }
+          if (dow === -1) {
+            try {
+              dow = new Date(s.date + "T12:00:00").getDay();
+            } catch {
+              dow = 0;
+            }
+          }
+          return {
+            id: generateId(),
+            day_of_week: dow,
+            start_time: s.start || "",
+            end_time: s.end || "",
+            is_active: true,
+            location: s.location || loc || globalLocation,
+            schedule_label: activeLabel,
+          };
+        })
         .sort((a, b) => a.day_of_week - b.day_of_week);
+
       // Replace rows for this label
       setAllRows((prev) => [
         ...prev.filter((r) => r.schedule_label !== activeLabel),
@@ -656,6 +691,7 @@ export function WorkScheduleView() {
           });
           if (r.ok) {
             const result: AIScheduleResult = await r.json();
+            console.log("message", result);
             setAiResult(result);
             applyAIResult(result);
             setUploadState("review");
@@ -920,7 +956,7 @@ export function WorkScheduleView() {
                   )}
                 </p>
                 <p className="text-sm font-semibold text-foreground">
-                  {todaySchedule
+                  {todayShifts.length > 0
                     ? language === "ar"
                       ? "ساعات العمل اليوم"
                       : language === "fr"
@@ -933,7 +969,7 @@ export function WorkScheduleView() {
                         : "No work today"}
                 </p>
               </div>
-              {todaySchedule && (
+              {todayShifts.length > 0 && (
                 <button
                   onClick={addTodayAsEvent}
                   className="shrink-0 px-3 py-1.5 rounded-xl bg-blue-500/10 text-blue-400 text-xs font-semibold hover:bg-blue-500/20 transition-colors"
@@ -959,29 +995,33 @@ export function WorkScheduleView() {
                       : "Loading..."}
                 </span>
               </div>
-            ) : todaySchedule ? (
-              <div className="space-y-2">
-                <div
-                  className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}
-                >
-                  <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="text-xl font-bold text-foreground tracking-tight">
-                    {todaySchedule.start_time} – {todaySchedule.end_time}
-                  </span>
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    {todaySchedule.schedule_label}
-                  </span>
-                </div>
-                {(todaySchedule.location || globalLocation) && (
-                  <div
-                    className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}
-                  >
-                    <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-muted-foreground">
-                      {todaySchedule.location || globalLocation}
-                    </span>
+            ) : todayShifts.length > 0 ? (
+              <div className="space-y-3">
+                {todayShifts.map((shift, index) => (
+                  <div key={shift.id || index} className="space-y-1">
+                    <div
+                      className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}
+                    >
+                      <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="text-xl font-bold text-foreground tracking-tight">
+                        {shift.start_time} – {shift.end_time}
+                      </span>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {shift.schedule_label}
+                      </span>
+                    </div>
+                    {(shift.location || globalLocation) && (
+                      <div
+                        className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}
+                      >
+                        <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm text-muted-foreground">
+                          {shift.location || globalLocation}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -999,14 +1039,16 @@ export function WorkScheduleView() {
             <div className="px-4 pb-4">
               <div className="flex gap-1.5">
                 {[0, 1, 2, 3, 4, 5, 6].map((dow) => {
-                  const d = allRows.find(
+                  const dayShifts = allRows.filter(
                     (s) => s.day_of_week === dow && s.is_active,
                   );
+                  const firstShift = dayShifts[0];
+                  const hasMore = dayShifts.length > 1;
                   return (
                     <div
                       key={dow}
                       className={`flex-1 rounded-xl py-2 flex flex-col items-center gap-0.5 transition-all ${
-                        d
+                        firstShift
                           ? dow === today
                             ? "bg-blue-500 text-white"
                             : "bg-blue-500/15 text-blue-400"
@@ -1016,9 +1058,10 @@ export function WorkScheduleView() {
                       <span className="text-[10px] font-bold">
                         {DAY_SHORT[dow]}
                       </span>
-                      {d && (
+                      {firstShift && (
                         <span className="text-[9px] opacity-80">
-                          {d.start_time.slice(0, 5)}
+                          {firstShift.start_time.slice(0, 5)}
+                          {hasMore ? "+" : ""}
                         </span>
                       )}
                     </div>
@@ -1253,17 +1296,19 @@ export function WorkScheduleView() {
                   {activeDays.length > 0 && (
                     <div className="flex gap-1.5">
                       {[0, 1, 2, 3, 4, 5, 6].map((dow) => {
-                        const d = allRows.find(
+                        const dayShifts = allRows.filter(
                           (s) =>
                             s.day_of_week === dow &&
                             s.is_active &&
                             s.schedule_label === activeLabel,
                         );
+                        const firstShift = dayShifts[0];
+                        const hasMore = dayShifts.length > 1;
                         return (
                           <div
                             key={dow}
                             className={`flex-1 rounded-xl py-2 flex flex-col items-center gap-0.5 transition-all ${
-                              d
+                              firstShift
                                 ? dow === today
                                   ? "bg-blue-500 text-white"
                                   : "bg-blue-500/15 text-blue-400"
@@ -1273,9 +1318,10 @@ export function WorkScheduleView() {
                             <span className="text-[10px] font-bold">
                               {DAY_SHORT[dow]}
                             </span>
-                            {d && (
+                            {firstShift && (
                               <span className="text-[9px] opacity-80">
-                                {d.start_time.slice(0, 5)}
+                                {firstShift.start_time.slice(0, 5)}
+                                {hasMore ? "+" : ""}
                               </span>
                             )}
                           </div>
@@ -1293,98 +1339,131 @@ export function WorkScheduleView() {
                           : "No days — tap a day above"}
                       </p>
                     ) : (
-                      <div className="space-y-2">
-                        {activeDays.map((day) => (
-                          <motion.div
-                            key={day.day_of_week}
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="space-y-1.5"
-                          >
-                            <div
-                              className={`flex items-center gap-2 p-2.5 rounded-xl border ${!day.start_time ? "bg-amber-500/8 border-amber-500/30" : "bg-secondary/30 border-border"} ${isRTL ? "flex-row-reverse" : ""}`}
-                            >
-                              <span className="text-xs font-bold text-foreground w-8 shrink-0">
-                                {DAY_SHORT[day.day_of_week]}
-                              </span>
-                              <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                              <input
-                                type="time"
-                                value={day.start_time}
-                                onChange={(e) =>
-                                  updateDay(
-                                    day.day_of_week,
-                                    "start_time",
-                                    e.target.value,
-                                  )
-                                }
-                                className="flex-1 bg-transparent text-sm text-foreground outline-none [color-scheme:dark]"
-                              />
-                              <span className="text-muted-foreground text-xs">
-                                →
-                              </span>
-                              <input
-                                type="time"
-                                value={day.end_time}
-                                onChange={(e) =>
-                                  updateDay(
-                                    day.day_of_week,
-                                    "end_time",
-                                    e.target.value,
-                                  )
-                                }
-                                className="flex-1 bg-transparent text-sm text-foreground outline-none [color-scheme:dark]"
-                              />
-                              <button
-                                onClick={() => removeDay(day.day_of_week)}
-                                className="p-1 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+                      <div className="space-y-4">
+                        {Array.from(
+                          new Set(activeDays.map((d) => d.day_of_week)),
+                        )
+                          .sort((a, b) => a - b)
+                          .map((dow) => {
+                            const shiftsForDay = activeDays.filter(
+                              (d) => d.day_of_week === dow,
+                            );
+                            return (
+                              <motion.div
+                                key={dow}
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="space-y-2.5 p-3 rounded-2xl border border-border/80 bg-secondary/10"
                               >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
-                            {/* Upcoming dates */}
-                            <div
-                              className={`flex items-center gap-2 pl-10 flex-wrap ${isRTL ? "pr-10 pl-0 flex-row-reverse" : ""}`}
-                            >
-                              {nextDatesForDow(day.day_of_week, 3).map(
-                                (dateStr) => (
+                                <div
+                                  className={`flex items-center justify-between border-b border-border/40 pb-2 ${isRTL ? "flex-row-reverse" : ""}`}
+                                >
+                                  <span className="text-xs font-bold text-foreground">
+                                    {DAY_NAMES[dow]}
+                                  </span>
                                   <button
-                                    key={dateStr}
-                                    onClick={() => addDateAsEvent(dateStr, day)}
-                                    className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-medium hover:bg-blue-500/20 transition-colors"
+                                    onClick={() => addShift(dow)}
+                                    className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors"
                                   >
-                                    <CalendarPlus className="w-2.5 h-2.5" />
-                                    {fmtDate(dateStr, language)}
+                                    <Plus className="w-3.5 h-3.5" />
+                                    {language === "ar"
+                                      ? "إضافة فترة"
+                                      : language === "fr"
+                                        ? "Ajouter shift"
+                                        : "Add shift"}
                                   </button>
-                                ),
-                              )}
-                            </div>
-                            <div
-                              className={`flex items-center gap-2 pl-10 ${isRTL ? "pr-10 pl-0 flex-row-reverse" : ""}`}
-                            >
-                              <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
-                              <input
-                                type="text"
-                                value={day.location ?? ""}
-                                onChange={(e) =>
-                                  updateDay(
-                                    day.day_of_week,
-                                    "location",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder={
-                                  globalLocation ||
-                                  (language === "ar"
-                                    ? "الموقع..."
-                                    : "Location...")
-                                }
-                                className="flex-1 bg-transparent text-xs text-muted-foreground placeholder:text-muted-foreground/30 outline-none border-b border-border/50 pb-1 focus:border-primary/50 transition-colors"
-                              />
-                            </div>
-                          </motion.div>
-                        ))}
+                                </div>
+
+                                <div className="space-y-3 pt-1">
+                                  {shiftsForDay.map((day, shiftIndex) => (
+                                    <div key={day.id} className="space-y-1.5">
+                                      <div
+                                        className={`flex items-center gap-2 p-2 rounded-xl bg-background border border-border/70 ${isRTL ? "flex-row-reverse" : ""}`}
+                                      >
+                                        <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                        <input
+                                          type="time"
+                                          value={day.start_time}
+                                          onChange={(e) =>
+                                            updateShift(
+                                              day.id!,
+                                              "start_time",
+                                              e.target.value,
+                                            )
+                                          }
+                                          className="flex-1 bg-transparent text-sm text-foreground outline-none [color-scheme:dark]"
+                                        />
+                                        <span className="text-muted-foreground text-xs">
+                                          →
+                                        </span>
+                                        <input
+                                          type="time"
+                                          value={day.end_time}
+                                          onChange={(e) =>
+                                            updateShift(
+                                              day.id!,
+                                              "end_time",
+                                              e.target.value,
+                                            )
+                                          }
+                                          className="flex-1 bg-transparent text-sm text-foreground outline-none [color-scheme:dark]"
+                                        />
+                                        <button
+                                          onClick={() => removeShift(day.id!)}
+                                          className="p-1 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </button>
+                                      </div>
+
+                                      <div
+                                        className={`flex items-center gap-2 px-2 ${isRTL ? "flex-row-reverse" : ""}`}
+                                      >
+                                        <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
+                                        <input
+                                          type="text"
+                                          value={day.location ?? ""}
+                                          onChange={(e) =>
+                                            updateShift(
+                                              day.id!,
+                                              "location",
+                                              e.target.value,
+                                            )
+                                          }
+                                          placeholder={
+                                            globalLocation ||
+                                            (language === "ar"
+                                              ? "الموقع..."
+                                              : "Location...")
+                                          }
+                                          className="flex-1 bg-transparent text-xs text-muted-foreground placeholder:text-muted-foreground/30 outline-none border-b border-border/50 pb-1 focus:border-primary/50 transition-colors"
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <div
+                                  className={`flex items-center gap-1.5 pt-1.5 flex-wrap ${isRTL ? "flex-row-reverse" : ""}`}
+                                >
+                                  {nextDatesForDow(dow, 3).map((dateStr) => (
+                                    <button
+                                      key={dateStr}
+                                      onClick={async () => {
+                                        for (const shift of shiftsForDay) {
+                                          await addDateAsEvent(dateStr, shift);
+                                        }
+                                      }}
+                                      className="flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-medium hover:bg-blue-500/20 transition-colors"
+                                    >
+                                      <CalendarPlus className="w-2.5 h-2.5" />
+                                      {fmtDate(dateStr, language)}
+                                    </button>
+                                  ))}
+                                </div>
+                              </motion.div>
+                            );
+                          })}
                       </div>
                     )}
                   </AnimatePresence>
