@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { useApp } from "@/lib/store"
 import { shouldShowBillingPopup } from "@/lib/billing-utils"
+import { BrandLogo } from "../brand-logo"
 
 interface SettingsBentoGridProps {
   onOpenBilling?: () => void
@@ -159,7 +160,15 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
           {language === "ar" ? "الإعدادات" : "Settings"}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {language === "ar" ? "اجعل IQXO ملكك" : "Make IQXO truly yours"}
+          {language === "ar" ? (
+            <>
+              اجعل <BrandLogo as="span" className="text-sm font-medium align-baseline" /> ملكك
+            </>
+          ) : (
+            <>
+              Make <BrandLogo as="span" className="text-sm font-medium align-baseline" /> truly yours
+            </>
+          )}
         </p>
       </div>
 
@@ -206,7 +215,7 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-6 text-center">
         <p className="text-[11px] text-muted-foreground/60">
-          IQXO v1.0.0 • {language === "ar" ? "صنع بحب" : "Made with care"}
+          <BrandLogo as="span" className="text-[11px] font-medium tracking-[-0.01em] opacity-60" /> v1.0.0 • {language === "ar" ? "صنع بحب" : "Made with care"}
         </p>
       </motion.div>
     </div>

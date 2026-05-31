@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, User, Eye, EyeOff, Sparkles, AlertCircle, X, Send, CheckCircle2 } from "lucide-react";
 import { useApp } from "../lib/store";
+import { BrandLogo } from "../components/brand-logo";
 import { supabase } from "../lib/supabase";
 import { buildAppUrl } from "../lib/auth-urls";
 import { devError, devLog, getFriendlyErrorMessage, withAsyncDiagnostics } from "../lib/logger";
@@ -304,7 +305,7 @@ export default function LoginPage() {
           >
             <Sparkles className="w-7 h-7 text-primary" strokeWidth={1.5} />
           </motion.div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">IQXO</h1>
+          <BrandLogo className="text-3xl font-bold mb-2" />
           <p className="text-sm text-muted-foreground">{L.tagline}</p>
         </div>
 

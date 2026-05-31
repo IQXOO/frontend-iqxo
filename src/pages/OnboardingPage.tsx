@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "../lib/store";
+import { BrandLogo } from "../components/brand-logo";
 
 interface OnboardingPageProps {
   onDone: () => void;
@@ -69,9 +70,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
             transition={{ delay: 0.1 }}
             className="mb-10 text-center"
           >
-            <h1 className="text-5xl font-bold text-foreground tracking-tight font-geometric">
-              IQXO
-            </h1>
+            <BrandLogo className="text-5xl font-bold tracking-tight font-geometric" />
             <p className="text-muted-foreground text-sm mt-2">
               Choose your language · Choisissez votre langue ·
             </p>
