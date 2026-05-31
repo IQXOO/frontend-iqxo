@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useApp } from "@/lib/store";
+import { BrandLogo } from "@/components/brand-logo";
 import {
   devError,
   devLog,
@@ -92,7 +93,7 @@ export default function ResetPasswordPage() {
   const copy = {
     en: {
       title: "Set a new password",
-      subtitle: "Choose a strong password for your IQXO account.",
+      subtitle: <>Choose a strong password for your <BrandLogo as="span" className="text-[1em] font-medium tracking-[-0.01em]" /> account.</>,
       readyTitle: "Recovery link ready",
       readySubtitle: "Create a new password to finish securing your account.",
       invalidTitle: "Reset link unavailable",
@@ -104,7 +105,7 @@ export default function ResetPasswordPage() {
       updating: "Updating...",
       successTitle: "Password updated",
       successBody: "Your password was updated successfully. Redirecting to the app...",
-      successButton: "Continue to IQXO",
+      successButton: <>Continue to <BrandLogo as="span" className="text-[1em] font-medium tracking-[-0.01em]" /></>,
       backToSignIn: "Back to sign in",
       requestNewLink: "Request a new reset email",
       validating: "Checking your secure link...",
@@ -113,7 +114,7 @@ export default function ResetPasswordPage() {
     },
     fr: {
       title: "Définir un nouveau mot de passe",
-      subtitle: "Choisis un mot de passe solide pour ton compte IQXO.",
+      subtitle: <>Choisis un mot de passe solide pour ton compte <BrandLogo as="span" className="text-[1em] font-medium tracking-[-0.01em]" />.</>,
       readyTitle: "Lien de récupération prêt",
       readySubtitle: "Crée un nouveau mot de passe pour sécuriser ton compte.",
       invalidTitle: "Lien de réinitialisation indisponible",
@@ -125,7 +126,7 @@ export default function ResetPasswordPage() {
       updating: "Mise à jour...",
       successTitle: "Mot de passe mis à jour",
       successBody: "Ton mot de passe a été mis à jour. Redirection en cours...",
-      successButton: "Continuer vers IQXO",
+      successButton: <>Continuer vers <BrandLogo as="span" className="text-[1em] font-medium tracking-[-0.01em]" /></>,
       backToSignIn: "Retour à la connexion",
       requestNewLink: "Demander un nouvel e-mail",
       validating: "Vérification du lien sécurisé...",
@@ -134,7 +135,7 @@ export default function ResetPasswordPage() {
     },
     ar: {
       title: "تعيين كلمة مرور جديدة",
-      subtitle: "اختر كلمة مرور قوية لحساب IQXO الخاص بك.",
+      subtitle: <>اختر كلمة مرور قوية لحساب <BrandLogo as="span" className="text-[1em] font-medium tracking-[-0.01em]" /> الخاص بك.</>,
       readyTitle: "رابط الاستعادة جاهز",
       readySubtitle: "أنشئ كلمة مرور جديدة لإكمال تأمين حسابك.",
       invalidTitle: "رابط إعادة التعيين غير متاح",
@@ -146,7 +147,7 @@ export default function ResetPasswordPage() {
       updating: "جارٍ التحديث...",
       successTitle: "تم تحديث كلمة المرور",
       successBody: "تم تحديث كلمة المرور بنجاح. جارٍ التحويل إلى التطبيق...",
-      successButton: "متابعة إلى IQXO",
+      successButton: <>متابعة إلى <BrandLogo as="span" className="text-[1em] font-medium tracking-[-0.01em]" /></>,
       backToSignIn: "العودة لتسجيل الدخول",
       requestNewLink: "طلب بريد إعادة تعيين جديد",
       validating: "جارٍ التحقق من الرابط الآمن...",
@@ -543,7 +544,7 @@ export default function ResetPasswordPage() {
           >
             <Sparkles className="w-8 h-8 text-primary" />
           </motion.div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">IQXO</h1>
+          <BrandLogo className="text-3xl font-bold tracking-tight" />
           <p className="text-muted-foreground text-sm mt-1">{copy.subtitle}</p>
         </div>
 

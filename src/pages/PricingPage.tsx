@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useApp } from "../lib/store";
+import { BrandLogo } from "../components/brand-logo";
 import {
   devError,
   devLog,
@@ -96,7 +97,7 @@ const trialStats = [
   ["0", "Card needed"],
 ];
 
-function translate(language: string, en: string, fr: string, ar: string) {
+function translate<T>(language: string, en: T, fr: T, ar: T) {
   return language === "ar" ? ar : language === "fr" ? fr : en;
 }
 
@@ -108,9 +109,9 @@ function PageSection({
   accent = "cyan",
   id,
 }: {
-  whisper: string;
-  title: string;
-  subtitle?: string;
+  whisper: ReactNode;
+  title: ReactNode;
+  subtitle?: ReactNode;
   children: ReactNode;
   accent?: "cyan" | "amber" | "muted";
   id?: string;
@@ -138,7 +139,7 @@ function PageSection({
   );
 }
 
-function Connector({ text }: { text: string }) {
+function Connector({ text }: { text: ReactNode }) {
   return (
     <div className="relative z-10 py-10 text-center sm:py-12">
       <div className="mx-auto mb-5 h-12 w-px bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.08),transparent)]" />
@@ -344,9 +345,7 @@ export default function PricingPage() {
       <nav
         className={`fixed inset-x-0 top-0 z-50 flex items-center justify-between px-5 py-4 transition-all duration-700 sm:px-8 ${scrolled ? "border-b border-white/[0.04] bg-[rgba(12,12,14,0.6)] backdrop-blur-[40px]" : ""}`}
       >
-        <div className="text-[1.05rem] font-medium tracking-[-0.01em] text-[#E8E8E8]">
-          IQ<span className="text-[#5BC0DE]">X</span>O
-        </div>
+        <BrandLogo className="text-[1.05rem] font-medium tracking-[-0.01em] text-[#E8E8E8]" />
         <div className="hidden items-center gap-8 sm:flex">
           <a href="#experience" className="text-[0.8rem] text-[#6E6E78] transition-colors hover:text-[#A0A0A8]">Experience</a>
           <a href="#pricing" className="text-[0.8rem] text-[#6E6E78] transition-colors hover:text-[#A0A0A8]">Pricing</a>
@@ -356,9 +355,7 @@ export default function PricingPage() {
       <main className="relative z-10">
         <section className="min-h-screen px-5 pb-20 pt-32 text-center sm:px-8 sm:pb-20 sm:pt-36">
           <div className="mx-auto max-w-[540px]">
-            <div className="mb-12 text-[0.7rem] uppercase tracking-[0.25em] text-[#6E6E78] opacity-60">
-              IQXO
-            </div>
+            <BrandLogo as="span" className="mb-12 text-[0.7rem] uppercase tracking-[0.25em] text-[#6E6E78] opacity-60" />
 
             <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[rgba(91,192,222,0.12)] bg-[rgba(91,192,222,0.08)] px-5 py-2 text-[0.8rem] text-[#5BC0DE]">
               <span className="h-1.5 w-1.5 rounded-full bg-[#5BC0DE] animate-pulse" />
@@ -430,11 +427,35 @@ export default function PricingPage() {
           </div>
         </section>
 
-        <Connector text={translate(language, "This is where IQXO lives…", "C'est là qu'IQXO vit…", "هنا يعيش IQXO…")} />
+        <Connector
+          text={translate(
+            language,
+            <>
+              This is where <BrandLogo as="span" className="text-[0.8rem] font-medium tracking-[-0.01em] text-[#6E6E78]" /> lives…
+            </>,
+            <>
+              C'est là qu'<BrandLogo as="span" className="text-[0.8rem] font-medium tracking-[-0.01em] text-[#6E6E78]" /> vit…
+            </>,
+            <>
+              هنا يعيش <BrandLogo as="span" className="text-[0.8rem] font-medium tracking-[-0.01em] text-[#6E6E78]" />…
+            </>,
+          )}
+        />
 
         <PageSection
           whisper={translate(language, "The Relief", "Le soulagement", "الراحة")}
-          title={translate(language, <>IQXO carries it<br />so you don't have to.</> as any, <>IQXO le porte<br />pour que vous n'ayez pas à le faire.</> as any, <>IQXO يحملها<br />حتى لا تضطر إلى ذلك.</> as any)}
+          title={translate(
+            language,
+            <>
+              IQXO carries it<br />so you don't have to.
+            </>,
+            <>
+              IQXO le porte<br />pour que vous n'ayez pas à le faire.
+            </>,
+            <>
+              IQXO يحملها<br />حتى لا تضطر إلى ذلك.
+            </>,
+          )}
           subtitle={translate(language, "Everything you capture finds its place. Your mind stays free for what matters.", "Tout ce que vous capturez trouve sa place. Votre esprit reste libre pour l'essentiel.", "كل ما تلتقطه يجد مكانه. ويبقى عقلك حرًا لما يهم.")}
           accent="cyan"
         >
@@ -448,7 +469,20 @@ export default function PricingPage() {
           </div>
         </PageSection>
 
-        <Connector text={translate(language, "A day with IQXO feels like this…", "Une journée avec IQXO ressemble à ceci…", "يبدو يومك مع IQXO هكذا…")} />
+        <Connector
+          text={translate(
+            language,
+            <>
+              A day with <BrandLogo as="span" className="text-[0.8rem] font-medium tracking-[-0.01em] text-[#6E6E78]" /> feels like this…
+            </>,
+            <>
+              Une journée avec <BrandLogo as="span" className="text-[0.8rem] font-medium tracking-[-0.01em] text-[#6E6E78]" /> ressemble à ceci…
+            </>,
+            <>
+              يبدو يومك مع <BrandLogo as="span" className="text-[0.8rem] font-medium tracking-[-0.01em] text-[#6E6E78]" /> هكذا…
+            </>,
+          )}
+        />
 
         <PageSection
           whisper={translate(language, "The Flow", "Le flux", "التدفق")}
@@ -631,7 +665,7 @@ export default function PricingPage() {
 
         <footer className="border-t border-[rgba(255,255,255,0.04)] py-12 text-center">
           <div className="mx-auto max-w-[640px] px-5 sm:px-8">
-            <div className="mb-3 text-[1rem] font-medium text-[#E8E8E8] opacity-25">IQXO</div>
+            <BrandLogo as="span" className="mb-3 text-[1rem] font-medium tracking-[-0.01em] text-[#E8E8E8] opacity-25" />
             <p className="text-[0.75rem] text-[#6E6E78]">Let your day take care of itself.</p>
           </div>
         </footer>

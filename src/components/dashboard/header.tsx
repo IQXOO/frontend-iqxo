@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { useApp } from "../../lib/store"
 import { motion } from "framer-motion"
 import { NotificationBell } from "./notification-bell"
+import { BrandLogo } from "../brand-logo"
 
 interface DashboardHeaderProps {
   onProfileClick?: () => void
@@ -21,9 +22,6 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   const { theme, toggleTheme, language, toggleLanguage, t } = useApp()
 
-  // Build welcome message
-  const welcomeMessage = t("IQXO")
-
   return (
     <header className="flex items-center justify-between px-5 pt-4 pb-2">
       <div className="flex flex-col">
@@ -33,8 +31,8 @@ export function DashboardHeader({
             {t("live")}
           </span>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2 font-geometric">
-          {welcomeMessage}
+        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground font-geometric">
+          <BrandLogo className="text-2xl font-bold tracking-tight font-geometric" />
         </h1>
       </div>
       

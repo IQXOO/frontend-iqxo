@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import { BellRing, Sparkles } from "lucide-react"
+import { BrandLogo } from "../brand-logo"
 
 interface NotificationEmptyStateProps {
   title: string
@@ -23,7 +24,7 @@ export function NotificationEmptyState({ title, description }: NotificationEmpty
 
       <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
         <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-        <span>IQXO keeps watch so you can stay focused.</span>
+        <span><BrandLogo as="span" className="text-[11px] font-medium tracking-[-0.01em]" /> keeps watch so you can stay focused.</span>
       </div>
     </motion.div>
   )

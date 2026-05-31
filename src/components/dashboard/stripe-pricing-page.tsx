@@ -27,6 +27,7 @@ import {
   readResponseText,
 } from "../../lib/logger";
 import { useToast } from "../../hooks/use-toast";
+import { BrandLogo } from "../brand-logo"
 
 type BillingCycle = "monthly" | "yearly";
 
@@ -227,9 +228,7 @@ export function StripePricingPage({
                   <Crown className="h-5 w-5 text-[var(--amber)]" strokeWidth={1.6} />
                 </div>
                 <div>
-                  <div className="text-[0.65rem] uppercase tracking-[0.3em] text-[#6E6E78]">
-                    IQXO
-                  </div>
+                  <BrandLogo as="span" className="text-[0.65rem] uppercase tracking-[0.3em] text-[#6E6E78]" />
                   <div className="mt-1 text-[0.9rem] text-[#A0A0A8]">
                     {t("Choose your plan", "Choisissez votre plan", "اختر خطتك")}
                   </div>
@@ -249,9 +248,7 @@ export function StripePricingPage({
 
             <div className="px-0 py-10 sm:px-1 sm:py-12">
               <div className="mx-auto max-w-[640px] text-center">
-                <div className="text-[0.7rem] uppercase tracking-[0.25em] text-[#6E6E78] opacity-60">
-                  {t("IQXO", "IQXO", "IQXO")}
-                </div>
+                <BrandLogo as="span" className="text-[0.7rem] uppercase tracking-[0.25em] text-[#6E6E78] opacity-60" />
 
                 <div className="mt-10 inline-flex items-center gap-2 rounded-full border border-[rgba(91,192,222,0.12)] bg-[rgba(91,192,222,0.08)] px-5 py-2 text-[0.8rem] font-normal text-[var(--cyan)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[var(--cyan)]" />
