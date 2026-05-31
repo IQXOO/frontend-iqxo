@@ -4,13 +4,8 @@ import { useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Crown,
-  Check,
   X,
-  Gift,
-  Clock,
-  ChevronRight,
   Shield,
-  AlertCircle,
   Mic,
   ImageIcon,
   Brain,

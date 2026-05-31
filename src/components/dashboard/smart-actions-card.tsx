@@ -7,7 +7,6 @@ import { getActionsRemaining, getUsagePercentage, isLimitExceeded, isNearLimit }
 
 export function SmartActionsCard() {
   const { totalUsage, language } = useApp()
-  const isRTL = language === "ar"
 
   const remaining = getActionsRemaining(totalUsage)
   const percentage = getUsagePercentage(totalUsage)

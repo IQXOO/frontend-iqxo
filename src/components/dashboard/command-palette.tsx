@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Search, Command, Lightbulb, Plus, Palette, Download, LogOut } from "lucide-react"
+import { Search, Lightbulb, Plus, Palette, Download, LogOut } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useApp } from "@/lib/store"
 import type { IQXOEvent } from "@/lib/types"
