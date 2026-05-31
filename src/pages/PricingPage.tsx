@@ -27,7 +27,7 @@ const PRICING = {
   savingsPct: Math.round(100 - (79 / (9.99 * 12)) * 100),
 };
 
-const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4000";
+const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4040";
 const PAYMENT_LINKS = {
   monthly: (import.meta as any).env?.VITE_STRIPE_MONTHLY_LINK,
   yearly: (import.meta as any).env?.VITE_STRIPE_YEARLY_LINK || "",

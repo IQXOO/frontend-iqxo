@@ -9,7 +9,13 @@ import React, {
 } from "react";
 import { supabase } from "./supabase";
 import type { User, Session } from "@supabase/supabase-js";
-import { devError, devLog, devWarn, fetchWithDiagnostics, getFriendlyErrorMessage } from "./logger";
+import {
+  devError,
+  devLog,
+  devWarn,
+  fetchWithDiagnostics,
+  getFriendlyErrorMessage,
+} from "./logger";
 import { toast } from "../hooks/use-toast";
 import { normalizeBillingPlanStatus } from "./billing-utils";
 
@@ -577,6 +583,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // ── sessionRef: always holds the latest session token synchronously.
+  // Used inside async callbacks (like fetchPlanStatus) to avoid calling
+  // supabase.auth.getSession() which can throw or trigger token-refresh
+  // side-effects that land in the catch block and break plan resolution.
+  const sessionRef = React.useRef<Session | null>(null);
+
   const [events, setEvents] = useState<IQXOEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -597,6 +609,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     supabase.auth
       .getSession()
       .then(({ data }) => {
+        sessionRef.current = data.session; // seed the ref before any effect runs
         setSession(data.session);
         setUser(data.session?.user ?? null);
         // bootstrap onboarding flag from session user metadata
@@ -607,8 +620,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         devError("Auth", "Failed to restore session", error);
         toast({
           title: "Session issue",
-          description:
-            "We couldn't restore your session. Please log in again.",
+          description: "We couldn't restore your session. Please log in again.",
           variant: "destructive",
         });
       })
@@ -618,6 +630,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, sess) => {
+        sessionRef.current = sess; // keep ref in sync immediately
         setSession(sess);
         setUser(sess?.user ?? null);
       },
@@ -653,35 +666,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const fetchEvents = useCallback(async (uid: string) => {
     setLoading(true);
     try {
-        // SECURITY: rely on Supabase Row Level Security (RLS) to enforce
-        // per-user access. Client-side filtering (eq("user_id", uid)) is
-        // NOT a security boundary. Ensure RLS policies exist in the DB.
+      // SECURITY: rely on Supabase Row Level Security (RLS) to enforce
+      // per-user access. Client-side filtering (eq("user_id", uid)) is
+      // NOT a security boundary. Ensure RLS policies exist in the DB.
 
-        if (!uid) {
-          devWarn('Events', 'fetchEvents called without uid — aborting')
-          setEvents([])
-          return
-        }
+      if (!uid) {
+        devWarn("Events", "fetchEvents called without uid — aborting");
+        setEvents([]);
+        return;
+      }
 
-        // Explicit column projection to avoid overfetching sensitive fields
-        const { data, error } = await supabase
-          .from("events")
-          .select("id,user_id,title,notes,date,time,phone,location,source,image_url,pdf_url,is_done,created_at,updated_at")
-          .eq("user_id", uid)
-          .order("date", { ascending: true });
+      // Explicit column projection to avoid overfetching sensitive fields
+      const { data, error } = await supabase
+        .from("events")
+        .select(
+          "id,user_id,title,notes,date,time,phone,location,source,image_url,pdf_url,is_done,created_at,updated_at",
+        )
+        .eq("user_id", uid)
+        .order("date", { ascending: true });
 
       if (error) throw error;
-      devLog('Events', 'Events loaded', { count: (data ?? []).length })
+      devLog("Events", "Events loaded", { count: (data ?? []).length });
       setEvents((data ?? []).map(rowToEvent));
     } catch (err) {
-      devError('Events', 'Failed to load events', err, { userId: uid });
+      devError("Events", "Failed to load events", err, { userId: uid });
       toast({
         title: "Couldn't load your events",
-        description:
-          getFriendlyErrorMessage(
-            err,
-            "Please refresh the page and try again.",
-          ),
+        description: getFriendlyErrorMessage(
+          err,
+          "Please refresh the page and try again.",
+        ),
         variant: "destructive",
       });
     } finally {
@@ -689,95 +703,164 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const userId = user?.id;
+
   useEffect(() => {
-    if (user) {
+    if (userId) {
       setPlanResolved(false);
-      fetchEvents(user.id);
+      fetchEvents(userId);
 
       const fetchTotalUsage = async () => {
         try {
           const { data, error } = await supabase
             .from("user_plans")
             .select("total_usage")
-            .eq("user_id", user.id)
+            .eq("user_id", userId)
             .maybeSingle();
 
           if (error) {
-            devWarn('Usage', 'Failed to load user_plans usage', { userId: user.id, error });
+            devWarn("Usage", "Failed to load user_plans usage", {
+              userId,
+              error,
+            });
             return null;
           }
 
-          const usage = typeof data?.total_usage === "number"
-            ? data.total_usage
-            : typeof data?.total_usage === "string"
-              ? Number(data.total_usage)
-              : null;
+          const usage =
+            typeof data?.total_usage === "number"
+              ? data.total_usage
+              : typeof data?.total_usage === "string"
+                ? Number(data.total_usage)
+                : null;
 
           return Number.isFinite(usage as number) ? (usage as number) : null;
         } catch (error) {
-          devWarn('Usage', 'Failed to query user_plans usage', { userId: user.id, error });
+          devWarn("Usage", "Failed to query user_plans usage", {
+            userId,
+            error,
+          });
           return null;
         }
       };
 
       // Load plan from server — wrap in async IIFE so we can use await
       const backendUrl =
-        (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4000";
+        (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4040";
 
       const fetchPlanStatus = async () => {
         try {
-          const headers: Record<string, string> = {}
-          try {
-            const { data } = await supabase.auth.getSession()
-            const token = data?.session?.access_token
-            if (token) headers['Authorization'] = `Bearer ${token}`
-          } catch (_) {}
+          const headers: Record<string, string> = {};
+          // Use sessionRef.current instead of calling supabase.auth.getSession().
+
+          const token = sessionRef.current?.access_token;
+          if (token) headers["Authorization"] = `Bearer ${token}`;
 
           const r = await fetchWithDiagnostics(
-            'Billing',
-            'GET /plan-status',
-            `${backendUrl}/plan-status?userId=${user.id}`,
+            "Billing",
+            "GET /plan-status",
+            `${backendUrl}/plan-status?userId=${userId}`,
             { headers },
-            { timeoutMs: 15000, context: { userId: user.id } },
+            { timeoutMs: 15000, context: { userId } },
           );
           if (r.ok) {
-            const { planStatus: rawPlanStatus, trialEndsAt: trialEnd, totalUsage: usage } = await r.json();
-            const normalizedPlanStatus = normalizeBillingPlanStatus(rawPlanStatus);
+            const {
+              planStatus: rawPlanStatus,
+              trialEndsAt: trialEnd,
+              totalUsage: usage,
+            } = await r.json();
+            const normalizedPlanStatus =
+              normalizeBillingPlanStatus(rawPlanStatus);
             setPlanStatusState(normalizedPlanStatus);
-            if (trialEnd) setTrialEndsAt(new Date(trialEnd));
+
+            // Cache in localStorage so offline/error fallbacks work correctly
+            localStorage.setItem(`iqxo_plan_${userId}`, normalizedPlanStatus);
+            if (trialEnd) {
+              setTrialEndsAt(new Date(trialEnd));
+              localStorage.setItem(`iqxo_trial_end_${userId}`, trialEnd);
+            } else {
+              setTrialEndsAt(null);
+              localStorage.removeItem(`iqxo_trial_end_${userId}`);
+            }
+
             const tableUsage = await fetchTotalUsage();
             if (tableUsage !== null) {
               setTotalUsage(tableUsage);
             } else if (usage !== undefined) {
-              setTotalUsage(typeof usage === 'number' ? usage : 0);
+              setTotalUsage(typeof usage === "number" ? usage : 0);
             }
             setPlanResolved(true);
-            devLog('Billing', 'Plan status loaded', { planStatus: normalizedPlanStatus, hasTrialEnd: Boolean(trialEnd), usage: tableUsage ?? usage })
+            devLog("Billing", "Plan status loaded", {
+              planStatus: normalizedPlanStatus,
+              hasTrialEnd: Boolean(trialEnd),
+              usage: tableUsage ?? usage,
+            });
             return normalizedPlanStatus;
           } else {
-            devWarn('Billing', 'Plan status request failed, falling back to none', { status: r.status })
-            toast({
-              title: "Couldn't load billing status",
-              description: "We'll keep the app usable, but billing details may be stale. Please try again later.",
-              variant: "destructive",
-            });
-            setPlanStatusState("none");
+            devWarn(
+              "Billing",
+              "Plan status request failed, falling back to local cache",
+              { status: r.status },
+            );
+
+            // ⚠️ IMPORTANT: Do NOT assume "none" on server errors (e.g. 401, 500).
+            // A 401 can happen if the session token expired mid-request.
+            // Falling back to "none" would force a PRO user to /pricing, crashing the app.
+            const savedPlan = localStorage.getItem(
+              `iqxo_plan_${userId}`,
+            ) as PlanStatus | null;
+            const normalizedSavedPlan = normalizeBillingPlanStatus(savedPlan);
+
+            // Only show an error toast if there's no local fallback (truly unknown state)
+            if (normalizedSavedPlan === "none") {
+              toast({
+                title: "Couldn't load billing status",
+                description:
+                  "We'll keep the app usable, but billing details may be stale. Please try again later.",
+                variant: "destructive",
+              });
+            }
+
+            const savedTrialEnd = localStorage.getItem(
+              `iqxo_trial_end_${userId}`,
+            );
+            if (savedTrialEnd) {
+              setTrialEndsAt(new Date(savedTrialEnd));
+            } else {
+              setTrialEndsAt(null);
+            }
+
+            setPlanStatusState(normalizedSavedPlan);
             setPlanResolved(true);
-            return "none";
+            return normalizedSavedPlan;
           }
-        } catch {
-          devWarn('Billing', 'Plan status server unreachable, using local fallback')
+        } catch (e) {
+          devWarn(
+            "Billing",
+            "Plan status server unreachable, using local fallback",
+          );
+          console.log(e instanceof Error ? e.message : e);
           toast({
             title: "Couldn't reach billing service",
             description: "We'll use the cached plan status for now.",
             variant: "destructive",
           });
           const savedPlan = localStorage.getItem(
-            `iqxo_plan_${user.id}`,
+            `iqxo_plan_${userId}`,
           ) as PlanStatus | null;
-          setPlanStatusState(normalizeBillingPlanStatus(savedPlan));
+          const normalizedSavedPlan = normalizeBillingPlanStatus(savedPlan);
+          setPlanStatusState(normalizedSavedPlan);
+
+          const savedTrialEnd = localStorage.getItem(
+            `iqxo_trial_end_${userId}`,
+          );
+          if (savedTrialEnd) {
+            setTrialEndsAt(new Date(savedTrialEnd));
+          } else {
+            setTrialEndsAt(null);
+          }
+
           setPlanResolved(true);
-          return normalizeBillingPlanStatus(savedPlan);
+          return normalizedSavedPlan;
         }
       };
 
@@ -787,7 +870,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const planStatus = await fetchPlanStatus();
 
         // Set up polling: run every 5 minutes for all users to detect plan changes
-        devLog('Billing', 'Plan-status polling enabled', { interval: '5min' })
+        devLog("Billing", "Plan-status polling enabled", { interval: "5min" });
         pollInterval = setInterval(() => {
           fetchPlanStatus();
         }, 300000);
@@ -803,7 +886,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setPlanResolved(false);
       setTotalUsage(0);
     }
-  }, [user, fetchEvents]);
+  }, [userId, fetchEvents]);
 
   // keep onboarding flag in sync with current user metadata
   useEffect(() => {
@@ -812,27 +895,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ── Auth actions ──────────────────────────────────────────────────────────────
   const signIn = useCallback(async (email: string, password: string) => {
-    devLog('Auth', 'Login started', { emailDomain: email.split('@')[1] || '' })
+    devLog("Auth", "Login started", { emailDomain: email.split("@")[1] || "" });
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) {
-        devError('Auth', 'Login failed', error, { emailDomain: email.split('@')[1] || '' })
+        devError("Auth", "Login failed", error, {
+          emailDomain: email.split("@")[1] || "",
+        });
       } else {
-        devLog('Auth', 'Login succeeded', { emailDomain: email.split('@')[1] || '' })
+        devLog("Auth", "Login succeeded", {
+          emailDomain: email.split("@")[1] || "",
+        });
       }
       return { error: error?.message ?? null };
     } catch (error) {
-      devError('Auth', 'Login threw unexpectedly', error, { emailDomain: email.split('@')[1] || '' })
-      return { error: error instanceof Error ? error.message : 'Login failed' };
+      devError("Auth", "Login threw unexpectedly", error, {
+        emailDomain: email.split("@")[1] || "",
+      });
+      return { error: error instanceof Error ? error.message : "Login failed" };
     }
   }, []);
 
   const signUp = useCallback(
     async (email: string, password: string, fullName?: string) => {
-      devLog('Auth', 'Signup started', { emailDomain: email.split('@')[1] || '' })
+      devLog("Auth", "Signup started", {
+        emailDomain: email.split("@")[1] || "",
+      });
       try {
         const { error } = await supabase.auth.signUp({
           email,
@@ -844,26 +935,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (error) {
-          devError('Auth', 'Signup failed', error, { emailDomain: email.split('@')[1] || '' })
+          devError("Auth", "Signup failed", error, {
+            emailDomain: email.split("@")[1] || "",
+          });
           return { error: error.message };
         }
 
-        devLog('Auth', 'Signup succeeded', { emailDomain: email.split('@')[1] || '' })
+        devLog("Auth", "Signup succeeded", {
+          emailDomain: email.split("@")[1] || "",
+        });
         return { error: null };
       } catch (error) {
-        devError('Auth', 'Signup threw unexpectedly', error, { emailDomain: email.split('@')[1] || '' })
-        return { error: error instanceof Error ? error.message : 'Signup failed' };
+        devError("Auth", "Signup threw unexpectedly", error, {
+          emailDomain: email.split("@")[1] || "",
+        });
+        return {
+          error: error instanceof Error ? error.message : "Signup failed",
+        };
       }
     },
     [],
   );
 
   const signOut = useCallback(async () => {
-    devLog('Auth', 'Logout started')
+    devLog("Auth", "Logout started");
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        devError('Auth', 'Logout failed', error);
+        devError("Auth", "Logout failed", error);
         toast({
           title: "Couldn't sign out",
           description: getFriendlyErrorMessage(error, "Please try again."),
@@ -871,7 +970,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
         throw error;
       }
-      devLog('Auth', 'Logout succeeded')
+      devLog("Auth", "Logout succeeded");
       // Clear local app state immediately to avoid flashes of protected UI
       setEvents([]);
       setUser(null);
@@ -885,13 +984,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // ignore navigation errors
       }
     } catch (error) {
-      devError('Auth', 'Logout threw unexpectedly', error);
+      devError("Auth", "Logout threw unexpectedly", error);
       toast({
         title: "Couldn't sign out",
-        description: getFriendlyErrorMessage(
-          error,
-          "Please try again.",
-        ),
+        description: getFriendlyErrorMessage(error, "Please try again."),
         variant: "destructive",
       });
       throw error;
@@ -919,20 +1015,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Refresh usage from server
   const refreshUsage = useCallback(async () => {
     if (!user) return;
-    
+
     setUsageLoading(true);
     try {
-      const backendUrl = (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4000";
+      const backendUrl =
+        (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4040";
       const headers: Record<string, string> = {};
       try {
         const { data } = await supabase.auth.getSession();
         const token = data?.session?.access_token;
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+        if (token) headers["Authorization"] = `Bearer ${token}`;
       } catch (_) {}
 
       const r = await fetchWithDiagnostics(
-        'Usage',
-        'GET /usage',
+        "Usage",
+        "GET /usage",
         `${backendUrl}/usage?userId=${user.id}`,
         { headers },
         { timeoutMs: 10000, context: { userId: user.id } },
@@ -940,42 +1037,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (r.ok) {
         const data = await r.json();
-        const usage = typeof data?.totalUsage === 'number' ? data.totalUsage : 0;
+        const usage =
+          typeof data?.totalUsage === "number" ? data.totalUsage : 0;
         setTotalUsage(usage);
-        devLog('Usage', 'Usage data refreshed', { totalUsage: usage });
+        devLog("Usage", "Usage data refreshed", { totalUsage: usage });
       } else {
-        devWarn('Usage', 'Failed to refresh usage', { status: r.status });
+        devWarn("Usage", "Failed to refresh usage", { status: r.status });
       }
     } catch (error) {
-      devError('Usage', 'Failed to refresh usage', error);
+      devError("Usage", "Failed to refresh usage", error);
     } finally {
       setUsageLoading(false);
     }
   }, [user]);
 
-  const setOnboardingDone = useCallback(async (done: boolean) => {
-    if (!user) return;
+  const setOnboardingDone = useCallback(
+    async (done: boolean) => {
+      if (!user) return;
 
-    const previous = !!user.user_metadata?.onboarding_done;
-    setOnboardingDoneState(done);
+      const previous = !!user.user_metadata?.onboarding_done;
+      setOnboardingDoneState(done);
 
-    try {
-      const { error } = await supabase.auth.updateUser({
-        data: { onboarding_done: done ? true : null },
-      });
-      if (error) {
-        throw error;
+      try {
+        const { error } = await supabase.auth.updateUser({
+          data: { onboarding_done: done ? true : null },
+        });
+        if (error) {
+          throw error;
+        }
+      } catch (err) {
+        setOnboardingDoneState(previous);
+        devError("Onboarding", "Error updating onboarding flag", err);
+        toast({
+          title: "Could not save onboarding state",
+          description: "Please try again.",
+          variant: "destructive",
+        });
       }
-    } catch (err) {
-      setOnboardingDoneState(previous);
-      devError("Onboarding", "Error updating onboarding flag", err);
-      toast({
-        title: "Could not save onboarding state",
-        description: "Please try again.",
-        variant: "destructive",
-      });
-    }
-  }, [user]);
+    },
+    [user],
+  );
 
   // ── Event CRUD ────────────────────────────────────────────────────────────────
   const addEvent = useCallback(
@@ -983,8 +1084,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       data: Omit<IQXOEvent, "id" | "user_id" | "createdAt" | "updatedAt">,
     ) => {
       if (!user) {
-        console.warn('addEvent prevented: no authenticated user')
-        throw new Error('No authenticated user')
+        console.warn("addEvent prevented: no authenticated user");
+        throw new Error("No authenticated user");
       }
       const { data: row, error } = await supabase
         .from("events")
@@ -1016,8 +1117,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateEvent = useCallback(
     async (id: string, data: Partial<IQXOEvent>) => {
       if (!user) {
-        console.warn('updateEvent prevented: no authenticated user')
-        throw new Error('No authenticated user')
+        console.warn("updateEvent prevented: no authenticated user");
+        throw new Error("No authenticated user");
       }
       const { data: row, error } = await supabase
         .from("events")
@@ -1050,8 +1151,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteEvent = useCallback(
     async (id: string) => {
       if (!user) {
-        console.warn('deleteEvent prevented: no authenticated user')
-        throw new Error('No authenticated user')
+        console.warn("deleteEvent prevented: no authenticated user");
+        throw new Error("No authenticated user");
       }
       const { error } = await supabase
         .from("events")

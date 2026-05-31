@@ -41,7 +41,7 @@ const PRICING = {
 };
 
 const BACKEND_URL =
-  (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4000";
+  (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4040";
 
 const PAYMENT_LINKS: Record<BillingCycle, string> = {
   monthly: (import.meta as any).env?.VITE_STRIPE_MONTHLY_LINK,
