@@ -8,12 +8,23 @@ import ProfilePage from "./pages/ProfilePage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import PricingPage from "./pages/PricingPage";
-import { shouldAutoOpenBillingRoute, shouldShowBillingPopup } from "./lib/billing-utils";
+import {
+  shouldAutoOpenBillingRoute,
+  shouldShowBillingPopup,
+} from "./lib/billing-utils";
 import { navigateToPath } from "./lib/navigation";
 import "./styles/globals.css";
 
 function AppShell() {
-  const { user, authLoading, planStatus, planResolved, trialEndsAt, onboardingDone, setOnboardingDone } = useApp();
+  const {
+    user,
+    authLoading,
+    planStatus,
+    planResolved,
+    trialEndsAt,
+    onboardingDone,
+    setOnboardingDone,
+  } = useApp();
   const [introDismissed, setIntroDismissed] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("iqxo_intro_dismissed") === "1";
@@ -21,10 +32,16 @@ function AppShell() {
 
   // Track the previous user id so we only trigger on actual login/signup transitions
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
-  const [pathname, setPathname] = useState(() => (typeof window !== "undefined" ? window.location.pathname : "/"));
+  const [pathname, setPathname] = useState(() =>
+    typeof window !== "undefined" ? window.location.pathname : "/",
+  );
 
   const canShowBillingPopup = shouldShowBillingPopup(planResolved, planStatus);
-  const shouldAutoOpenPricing = shouldAutoOpenBillingRoute(planResolved, planStatus, trialEndsAt);
+  const shouldAutoOpenPricing = shouldAutoOpenBillingRoute(
+    planResolved,
+    planStatus,
+    trialEndsAt,
+  );
 
   useEffect(() => {
     const handlePathChange = () => {
@@ -41,7 +58,12 @@ function AppShell() {
 
     // undefined = first render (app just loaded with an existing session) — don't show
     // null → string = user just logged in / signed up — DO show
-    if (prevUserId === null && user && shouldAutoOpenPricing && pathname !== "/pricing") {
+    if (
+      prevUserId === null &&
+      user &&
+      shouldAutoOpenPricing &&
+      pathname !== "/pricing"
+    ) {
       // Small delay so the app fully loads first
       const t = setTimeout(() => navigateToPath("/pricing"), 400);
       return () => clearTimeout(t);
@@ -54,15 +76,23 @@ function AppShell() {
   // This handles: brand-new user whose plan wasn't set yet, and trial that just expired
   useEffect(() => {
     if (!user) return;
+    if (!planResolved) return;
     if (!shouldAutoOpenPricing) return;
     if (pathname === "/pricing") return;
     const t = setTimeout(() => navigateToPath("/pricing"), 400);
     return () => clearTimeout(t);
-  }, [user, shouldAutoOpenPricing, pathname]);
+  }, [user, planResolved, shouldAutoOpenPricing, pathname]);
 
   // ── Trigger 3: Poll every 60s to detect trial expiry while app is open ────────
   useEffect(() => {
-    if (!user || !shouldAutoOpenPricing || planStatus !== "free_trial" || !trialEndsAt || pathname === "/pricing") return;
+    if (
+      !user ||
+      !shouldAutoOpenPricing ||
+      planStatus !== "free_trial" ||
+      !trialEndsAt ||
+      pathname === "/pricing"
+    )
+      return;
 
     const check = () => {
       if (trialEndsAt < new Date()) {
@@ -109,7 +139,11 @@ function AppShell() {
   // ── Auth routing ──────────────────────────────────────────────────────────────
   // ── Auth routing (central guard) ──────────────────────────────────────────────
   // Public routes that do not require authentication
-  const publicPaths = new Set<string>(["/pricing", "/reset-password", "/index.html"]);
+  const publicPaths = new Set<string>([
+    "/pricing",
+    "/reset-password",
+    "/index.html",
+  ]);
 
   // If user is authenticated, prevent showing the login page
   if (user && pathname === "/login") {

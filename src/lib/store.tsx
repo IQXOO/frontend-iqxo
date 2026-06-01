@@ -782,17 +782,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               localStorage.removeItem(`iqxo_trial_end_${userId}`);
             }
 
-            const tableUsage = await fetchTotalUsage();
-            if (tableUsage !== null) {
-              setTotalUsage(tableUsage);
-            } else if (usage !== undefined) {
+            if (usage !== undefined) {
               setTotalUsage(typeof usage === "number" ? usage : 0);
+            } else {
+              const tableUsage = await fetchTotalUsage();
+              if (tableUsage !== null) {
+                setTotalUsage(tableUsage);
+              }
             }
             setPlanResolved(true);
             devLog("Billing", "Plan status loaded", {
               planStatus: normalizedPlanStatus,
               hasTrialEnd: Boolean(trialEnd),
-              usage: tableUsage ?? usage,
+              usage: usage ?? totalUsage,
             });
             return normalizedPlanStatus;
           } else {
@@ -866,15 +868,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       let pollInterval: NodeJS.Timeout | null = null;
 
-      (async () => {
-        const planStatus = await fetchPlanStatus();
+      // If the user was previously confirmed as PRO (cached in localStorage),
+      // there is no need to hit /plan-status on every load.
+      const cachedPlan = localStorage.getItem(
+        `iqxo_plan_${userId}`,
+      ) as PlanStatus | null;
+      const cachedNormalized = normalizeBillingPlanStatus(cachedPlan);
 
-        // Set up polling: run every 5 minutes for all users to detect plan changes
-        devLog("Billing", "Plan-status polling enabled", { interval: "5min" });
-        pollInterval = setInterval(() => {
-          fetchPlanStatus();
-        }, 300000);
-      })();
+      if (cachedNormalized === "pro") {
+        devLog("Billing", "PRO plan found in cache — skipping API call", {
+          userId,
+        });
+        setPlanStatusState("pro");
+        setTrialEndsAt(null);
+        setPlanResolved(true);
+        // No polling needed for PRO users
+      } else {
+        (async () => {
+          await fetchPlanStatus();
+
+          // Poll every 5 minutes for non-PRO users to detect plan changes
+          devLog("Billing", "Plan-status polling enabled", {
+            interval: "5min",
+          });
+          pollInterval = setInterval(() => {
+            fetchPlanStatus();
+          }, 300000);
+        })();
+      }
 
       return () => {
         if (pollInterval) clearInterval(pollInterval);
@@ -971,10 +992,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
       devLog("Auth", "Logout succeeded");
-      // Clear local app state immediately to avoid flashes of protected UI
+      // ── Clear all local state immediately ─────────────────────────────────
+      sessionRef.current = null;
       setEvents([]);
       setUser(null);
       setSession(null);
+      setPlanStatusState("none");
+      setTrialEndsAt(null);
+      setPlanResolved(false);
+      setTotalUsage(0);
       // Redirect to login and replace history so back won't return to protected pages
       try {
         // import navigateToPath lazily to avoid circular imports
@@ -1000,14 +1026,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!user) return;
       // Update local state immediately for instant UI response
       setPlanStatusState(status);
-      if (trialEnd) setTrialEndsAt(trialEnd);
-      // Also cache in localStorage as offline fallback
+
+      if (status === "free_trial") {
+        if (trialEnd) {
+          setTrialEndsAt(trialEnd);
+          localStorage.setItem(
+            `iqxo_trial_end_${user.id}`,
+            trialEnd.toISOString(),
+          );
+        }
+      } else {
+        // Clear trial data for non-trial plans
+        setTrialEndsAt(null);
+        localStorage.removeItem(`iqxo_trial_end_${user.id}`);
+      }
+
+      // Cache plan status in localStorage as offline fallback
       localStorage.setItem(`iqxo_plan_${user.id}`, status);
-      if (trialEnd)
-        localStorage.setItem(
-          `iqxo_trial_end_${user.id}`,
-          trialEnd.toISOString(),
-        );
     },
     [user],
   );
@@ -1021,11 +1056,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const backendUrl =
         (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4040";
       const headers: Record<string, string> = {};
-      try {
-        const { data } = await supabase.auth.getSession();
-        const token = data?.session?.access_token;
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-      } catch (_) {}
+      const token = sessionRef.current?.access_token;
+      if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const r = await fetchWithDiagnostics(
         "Usage",
