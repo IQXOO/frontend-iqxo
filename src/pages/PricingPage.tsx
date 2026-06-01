@@ -355,7 +355,9 @@ export default function PricingPage() {
       <main className="relative z-10">
         <section className="min-h-screen px-5 pb-20 pt-32 text-center sm:px-8 sm:pb-20 sm:pt-36">
           <div className="mx-auto max-w-[540px]">
-            <BrandLogo as="span" className="mb-12 text-[0.7rem] uppercase tracking-[0.25em] text-[#6E6E78] opacity-60" />
+            <div className="mb-12 flex justify-center">
+              <BrandLogo as="div" className="block text-[0.7rem] uppercase tracking-[0.25em] text-[#6E6E78] opacity-60" />
+            </div>
 
             <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[rgba(91,192,222,0.12)] bg-[rgba(91,192,222,0.08)] px-5 py-2 text-[0.8rem] text-[#5BC0DE]">
               <span className="h-1.5 w-1.5 rounded-full bg-[#5BC0DE] animate-pulse" />
@@ -672,12 +674,20 @@ export default function PricingPage() {
       </main>
 
       <div className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] lg:hidden">
-        <button
-          onClick={handleTrial}
-          className="mx-auto block w-full max-w-[420px] rounded-full border border-[rgba(91,192,222,0.15)] bg-[rgba(12,12,14,0.92)] px-6 py-4 text-[0.9rem] font-medium text-[#5BC0DE] shadow-[0_-8px_32px_rgba(0,0,0,0.28)] backdrop-blur-xl"
-        >
-              {translate(language, "Start 7 Days Free", "Commencer 7 jours gratuits", "ابدأ 7 أيام مجانًا")}
-        </button>
+        <div className="mx-auto flex w-full max-w-[420px] gap-3">
+          <button
+            onClick={() => navigateToPath("/login")}
+            className="flex-1 rounded-full border border-[rgba(255,255,255,0.06)] bg-[rgba(22,22,24,0.92)] px-5 py-4 text-[0.9rem] font-medium text-[#A0A0A8] shadow-[0_-8px_32px_rgba(0,0,0,0.22)] backdrop-blur-xl transition-all hover:border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.03)] hover:text-[#E8E8E8]"
+          >
+            Skip
+          </button>
+          <button
+            onClick={handleTrial}
+            className="flex-[1.3] rounded-full border border-[rgba(91,192,222,0.15)] bg-[rgba(12,12,14,0.92)] px-5 py-4 text-[0.9rem] font-medium text-[#5BC0DE] shadow-[0_-8px_32px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-all hover:border-[rgba(91,192,222,0.3)] hover:bg-[rgba(91,192,222,0.1)] hover:text-[#7DD3F0]"
+          >
+            {translate(language, "Start 7 Days Free", "Commencer 7 jours gratuits", "ابدأ 7 أيام مجانًا")}
+          </button>
+        </div>
       </div>
     </div>
   );
