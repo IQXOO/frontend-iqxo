@@ -138,7 +138,7 @@ function fmtDate(iso: string, language: string): string {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function WorkScheduleView() {
-  const { user, language, addEvent, events } = useApp();
+  const { user, language, addEvent, events, setTotalUsage } = useApp();
   const { toast } = useToast();
   const isRTL = language === "ar";
 
@@ -692,6 +692,10 @@ export function WorkScheduleView() {
           if (r.ok) {
             const result: AIScheduleResult = await r.json();
             console.log("message", result);
+            // Update totalUsage directly from the API response
+            if (typeof result.total_usage === "number") {
+              setTotalUsage(result.total_usage);
+            }
             setAiResult(result);
             applyAIResult(result);
             setUploadState("review");

@@ -102,7 +102,7 @@ interface UseVoiceInputReturn {
 }
 
 export function useVoiceInput(): UseVoiceInputReturn {
-  const { user, session, refreshUsage } = useApp();
+  const { user, session, setTotalUsage } = useApp();
   const { toast } = useToast();
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -341,11 +341,10 @@ export function useVoiceInput(): UseVoiceInputReturn {
             const transcription = result.transcript || result.text || "";
             setTranscript(transcription);
 
-            // Optional metadata: log total_usage if present (non-breaking)
-            if (result.total_usage !== undefined) {
+            // Update totalUsage directly from the API response
+            if (typeof result.total_usage === "number") {
               devLog('Voice', 'analyze-voice total_usage received', { total_usage: result.total_usage });
-              // Refresh usage in context to update UI
-              await refreshUsage();
+              setTotalUsage(result.total_usage);
             }
           } catch (transcriptionError) {
             devError('Voice', 'Transcription failed', transcriptionError);

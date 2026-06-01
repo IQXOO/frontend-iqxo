@@ -73,6 +73,7 @@ interface AppContextValue {
 
   // Usage tracking (in USD spent)
   totalUsage: number;
+  setTotalUsage: (usage: number) => void;
   usageLoading: boolean;
   refreshUsage: () => Promise<void>;
 
@@ -876,13 +877,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const cachedNormalized = normalizeBillingPlanStatus(cachedPlan);
 
       if (cachedNormalized === "pro") {
-        devLog("Billing", "PRO plan found in cache — skipping API call", {
+        devLog("Billing", "PRO plan found in cache — skipping plan API call", {
           userId,
         });
         setPlanStatusState("pro");
         setTrialEndsAt(null);
         setPlanResolved(true);
-        // No polling needed for PRO users
+        // Fetch usage directly from user_plans table so SmartActionsCard shows correct numbers
+        (async () => {
+          const tableUsage = await fetchTotalUsage();
+          if (tableUsage !== null) {
+            setTotalUsage(tableUsage);
+            devLog("Usage", "PRO usage loaded from user_plans", { tableUsage });
+          }
+        })();
       } else {
         (async () => {
           await fetchPlanStatus();
@@ -1248,6 +1256,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         planResolved,
         setPlanStatus,
         totalUsage,
+        setTotalUsage,
         usageLoading,
         refreshUsage,
         events,

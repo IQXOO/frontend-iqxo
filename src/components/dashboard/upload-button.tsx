@@ -45,7 +45,7 @@ export function UploadButton({
   autoOpenPicker = true,
   incomingFile = null,
 }: UploadButtonProps) {
-  const { t, language, user, session, refreshUsage } = useApp()
+  const { t, language, user, session, setTotalUsage } = useApp()
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [state, setState] = useState<UploadState>("picking")
@@ -265,10 +265,9 @@ export function UploadButton({
             throw new Error("Invalid response from server")
           }
 
-          if (raw.actualCost) {
-            devLog('Upload', 'analyze-image actualCost received', { actualCost: raw.actualCost })
-            // Refresh usage in context to update UI
-            await refreshUsage()
+          if (typeof raw.total_usage === "number") {
+            devLog('Upload', 'analyze-image total_usage received', { total_usage: raw.total_usage })
+            setTotalUsage(raw.total_usage)
           }
 
           onExtractedData?.(extractedEvent, preview?.dataUrl ?? undefined)
