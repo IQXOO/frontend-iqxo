@@ -38,7 +38,7 @@ export function ProfileIdentityHub() {
           .from("profiles")
           .select("full_name,email")
           .eq("id", user.id)
-          .single()
+          .maybeSingle();
 
         if (error && error.code !== "PGRST116") {
           // PGRST116 = no rows found (postgres) — ignore
