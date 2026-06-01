@@ -1,16 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { Suspense, useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Sparkles, Clock, Archive, CalendarCheck, TrendingUp, Heart, Download, Shield, Zap } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useApp } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
-import { BentoChart } from "./bento-chart"
 import { SmartActionsCard } from "./smart-actions-card"
 import { exportEventsToPDF } from "@/lib/export-pdf"
 import { formatUsageDisplay, getUsagePercentage, isLimitExceeded, isNearLimit } from "@/lib/usage-utils"
+import { lazyNamed } from "@/lib/lazy"
+
+const BentoChart = lazyNamed(() => import("./bento-chart"), "BentoChart")
 
 export function ProfileIdentityHub() {
   const { user, events, language, planStatus, trialEndsAt, totalUsage } = useApp()
@@ -334,7 +336,9 @@ export function ProfileIdentityHub() {
             </p>
           </div>
         </div>
-        <BentoChart />
+        <Suspense fallback={<div className="h-48 rounded-2xl border border-border bg-secondary/20 animate-pulse" />}>
+          <BentoChart />
+        </Suspense>
       </motion.div>
 
       {/* Plan Status Card */}

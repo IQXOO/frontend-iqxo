@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { Suspense, useState, useCallback, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CalendarPlus } from "lucide-react";
 import { DashboardHeader } from "../components/dashboard/header";
@@ -8,24 +8,11 @@ import { SearchBar } from "../components/dashboard/search-bar";
 import { StatsCard } from "../components/dashboard/stats-card";
 import { UrgentCards } from "../components/dashboard/attention-cards";
 import { EventList } from "../components/dashboard/event-list";
-import { EventFormModal } from "../components/dashboard/event-form-modal";
-import { EventDetailModal } from "../components/dashboard/event-detail-modal";
-import { UploadButton } from "../components/dashboard/upload-button";
-import { VoiceButton } from "../components/dashboard/voice-button";
-import { EventConfirmationModal } from "../components/dashboard/event-confirmation-modal";
 import { BottomNav, type NavTab } from "../components/dashboard/bottom-nav";
-import { SettingsView } from "../components/dashboard/settings-view";
-import { HistoryView } from "../components/dashboard/history-view";
-import { TomorrowChainModal } from "../components/dashboard/tomorrow-chain-modal";
 import {
   NavigationTabs,
   type NavigationTab,
 } from "../components/dashboard/navigation-tabs";
-import { TomorrowView } from "../components/dashboard/tomorrow-view";
-import { FutureExplorerView } from "../components/dashboard/future-explorer-view";
-import { ArchiveVault } from "../components/dashboard/archive-vault";
-import { WorkScheduleView } from "../components/dashboard/work-schedule-view";
-import { CommandPalette } from "../components/dashboard/command-palette";
 import { useApp, computePriority } from "../lib/store";
 import { parseVoiceInput, type ParsedEvent } from "../lib/parse-voice-input";
 import { useEventNotifications } from "../hooks/use-event-notifications";
@@ -33,6 +20,29 @@ import { exportEventsToPDF } from "../lib/export-pdf";
 import type { IQXOEvent } from "../lib/types";
 import { useVoiceInput } from "../hooks/use-voice-input";
 import { navigateToPath } from "../lib/navigation";
+import { lazyNamed } from "../lib/lazy";
+
+const EventFormModal = lazyNamed(() => import("../components/dashboard/event-form-modal"), "EventFormModal");
+const EventDetailModal = lazyNamed(() => import("../components/dashboard/event-detail-modal"), "EventDetailModal");
+const UploadButton = lazyNamed(() => import("../components/dashboard/upload-button"), "UploadButton");
+const VoiceButton = lazyNamed(() => import("../components/dashboard/voice-button"), "VoiceButton");
+const EventConfirmationModal = lazyNamed(() => import("../components/dashboard/event-confirmation-modal"), "EventConfirmationModal");
+const SettingsView = lazyNamed(() => import("../components/dashboard/settings-view"), "SettingsView");
+const HistoryView = lazyNamed(() => import("../components/dashboard/history-view"), "HistoryView");
+const TomorrowChainModal = lazyNamed(() => import("../components/dashboard/tomorrow-chain-modal"), "TomorrowChainModal");
+const TomorrowView = lazyNamed(() => import("../components/dashboard/tomorrow-view"), "TomorrowView");
+const FutureExplorerView = lazyNamed(() => import("../components/dashboard/future-explorer-view"), "FutureExplorerView");
+const ArchiveVault = lazyNamed(() => import("../components/dashboard/archive-vault"), "ArchiveVault");
+const WorkScheduleView = lazyNamed(() => import("../components/dashboard/work-schedule-view"), "WorkScheduleView");
+const CommandPalette = lazyNamed(() => import("../components/dashboard/command-palette"), "CommandPalette");
+
+function LazySectionFallback() {
+  return <div className="h-40 rounded-[24px] border border-white/5 bg-white/5 animate-pulse" />;
+}
+
+function LazyModalFallback() {
+  return <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" />;
+}
 
 export default function Page() {
   const { events, deleteEvent, t, signOut } = useApp();
@@ -263,80 +273,104 @@ export default function Page() {
 
             {/* Tomorrow View */}
             {navigationTab === "tomorrow" && (
-              <TomorrowView onEventClick={handleEventClick} />
+              <Suspense fallback={<LazySectionFallback />}>
+                <TomorrowView onEventClick={handleEventClick} />
+              </Suspense>
             )}
 
             {/* Future Explorer View */}
             {navigationTab === "future" && (
-              <FutureExplorerView onEventClick={handleEventClick} />
+              <Suspense fallback={<LazySectionFallback />}>
+                <FutureExplorerView onEventClick={handleEventClick} />
+              </Suspense>
             )}
 
             {/* Archive Vault View */}
             {navigationTab === "archive" && (
-              <ArchiveVault onEventClick={handleEventClick} />
+              <Suspense fallback={<LazySectionFallback />}>
+                <ArchiveVault onEventClick={handleEventClick} />
+              </Suspense>
             )}
 
             {/* Work Schedule — inside nav tabs */}
-            {navigationTab === "schedule" && <WorkScheduleView />}
+            {navigationTab === "schedule" && (
+              <Suspense fallback={<LazySectionFallback />}>
+                <WorkScheduleView />
+              </Suspense>
+            )}
           </>
         )}
 
         {activeTab === "history" && (
-          <HistoryView onEventClick={handleEventClick} />
+          <Suspense fallback={<LazySectionFallback />}>
+            <HistoryView onEventClick={handleEventClick} />
+          </Suspense>
         )}
 
-        {activeTab === "settings" && <SettingsView />}
+        {activeTab === "settings" && (
+          <Suspense fallback={<LazySectionFallback />}>
+            <SettingsView />
+          </Suspense>
+        )}
       </main>
 
       {/* Settings modal overlay */}
       <AnimatePresence>
         {showSettings && (
-          <motion.div
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowSettings(false)}
-          >
+          <Suspense fallback={<LazyModalFallback />}>
             <motion.div
-              className="w-full max-w-lg mx-auto bg-background rounded-t-3xl border border-white/10 max-h-[80vh] overflow-y-auto"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              onClick={(e) => e.stopPropagation()}
+              className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSettings(false)}
             >
-              <SettingsView onClose={() => setShowSettings(false)} />
+              <motion.div
+                className="w-full max-w-lg mx-auto bg-background rounded-t-3xl border border-white/10 max-h-[80vh] overflow-y-auto"
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <SettingsView onClose={() => setShowSettings(false)} />
+              </motion.div>
             </motion.div>
-          </motion.div>
+          </Suspense>
         )}
       </AnimatePresence>
 
       {/* Voice modal (triggered by action hub mic button) */}
-      <VoiceButton
-        externalOpen={voiceModalOpen}
-        onClose={() => setVoiceModalOpen(false)}
-        onTranscript={handleVoiceResult}
-      />
+      <Suspense fallback={null}>
+        <VoiceButton
+          externalOpen={voiceModalOpen}
+          onClose={() => setVoiceModalOpen(false)}
+          onTranscript={handleVoiceResult}
+        />
+      </Suspense>
 
       {/* Upload modal (triggered by FabHub) */}
 
-      <UploadButton
-        externalOpen={uploadOpen}
-        onExternalOpenChange={setUploadOpen}
-        autoOpenPicker={uploadAutoOpenPicker}
-        incomingFile={pendingUploadFile}
-        onExtractedData={handlePhotoExtracted}
-      />
+      <Suspense fallback={null}>
+        <UploadButton
+          externalOpen={uploadOpen}
+          onExternalOpenChange={setUploadOpen}
+          autoOpenPicker={uploadAutoOpenPicker}
+          incomingFile={pendingUploadFile}
+          onExtractedData={handlePhotoExtracted}
+        />
+      </Suspense>
 
       {/* Confirmation modal for voice and photo extracted events */}
-      <EventConfirmationModal
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        extractedData={confirmData}
-        source={confirmSource}
-        imageUrl={confirmImageUrl}
-      />
+      <Suspense fallback={null}>
+        <EventConfirmationModal
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          extractedData={confirmData}
+          source={confirmSource}
+          imageUrl={confirmImageUrl}
+        />
+      </Suspense>
 
       {/* Minimalist Action Hub - The Power Trio — only visible on home */}
       <BottomNav
@@ -353,42 +387,50 @@ export default function Page() {
       />
 
       {/* Tomorrow's Chain Modal */}
-      <TomorrowChainModal
-        open={tomorrowModalOpen}
-        onClose={() => setTomorrowModalOpen(false)}
-      />
+      <Suspense fallback={null}>
+        <TomorrowChainModal
+          open={tomorrowModalOpen}
+          onClose={() => setTomorrowModalOpen(false)}
+        />
+      </Suspense>
 
       {/* Command Palette - Cmd+K */}
-      <CommandPalette
-        onAddEvent={handleManualAdd}
-        onToggleDarkMode={() => {
-          // Toggle dark mode via store or theme provider
-          document.documentElement.classList.toggle("dark");
-        }}
-        onExportPDF={() => exportEventsToPDF(events, "user@example.com")}
-        onLogout={async () => {
-          await signOut();
-        }}
-        onEventSelect={(event) => {
-          setSelectedEvent(event);
-          setDetailOpen(true);
-        }}
-      />
+      <Suspense fallback={null}>
+        <CommandPalette
+          onAddEvent={handleManualAdd}
+          onToggleDarkMode={() => {
+            // Toggle dark mode via store or theme provider
+            document.documentElement.classList.toggle("dark");
+          }}
+          onExportPDF={() => exportEventsToPDF(events, "user@example.com")}
+          onLogout={async () => {
+            await signOut();
+          }}
+          onEventSelect={(event) => {
+            setSelectedEvent(event);
+            setDetailOpen(true);
+          }}
+        />
+      </Suspense>
 
       {/* Modals */}
-      <EventFormModal
-        open={formOpen}
-        onOpenChange={handleFormClose}
-        editEvent={editEvent}
-        prefillData={voicePrefill}
-        prefillImageUrl={prefillImageUrl}
-      />
-      <EventDetailModal
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        event={selectedEvent}
-        onEdit={handleEditFromDetail}
-      />
+      <Suspense fallback={null}>
+        <EventFormModal
+          open={formOpen}
+          onOpenChange={handleFormClose}
+          editEvent={editEvent}
+          prefillData={voicePrefill}
+          prefillImageUrl={prefillImageUrl}
+        />
+      </Suspense>
+      <Suspense fallback={null}>
+        <EventDetailModal
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          event={selectedEvent}
+          onEdit={handleEditFromDetail}
+        />
+      </Suspense>
     </div>
   );
 }

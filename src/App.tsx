@@ -1,19 +1,28 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { AppProvider, useApp } from "./lib/store";
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/toaster";
-import HomePage from "./pages/HomePage";
-import LoginPage from "./pages/LoginPage";
-import ProfilePage from "./pages/ProfilePage";
-import OnboardingPage from "./pages/OnboardingPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import PricingPage from "./pages/PricingPage";
 import {
   shouldAutoOpenBillingRoute,
   shouldShowBillingPopup,
 } from "./lib/billing-utils";
 import { navigateToPath } from "./lib/navigation";
 import "./styles/globals.css";
+
+const HomePage = lazy(() => import("./pages/HomePage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const PricingPage = lazy(() => import("./pages/PricingPage"));
+
+function RouteFallback() {
+  return (
+    <div className="min-h-screen bg-[#0C0C0E] text-[#E8E8E8] flex items-center justify-center">
+      <div className="h-8 w-8 rounded-full border-2 border-white/10 border-t-[#5BC0DE] animate-spin" />
+    </div>
+  );
+}
 
 function AppShell() {
   const {
@@ -106,11 +115,19 @@ function AppShell() {
   }, [user, planStatus, trialEndsAt, shouldAutoOpenPricing, pathname]);
 
   if (pathname === "/reset-password") {
-    return <ResetPasswordPage />;
+    return (
+      <Suspense fallback={<RouteFallback />}>
+        <ResetPasswordPage />
+      </Suspense>
+    );
   }
 
   if (pathname === "/pricing") {
-    return <PricingPage />;
+    return (
+      <Suspense fallback={<RouteFallback />}>
+        <PricingPage />
+      </Suspense>
+    );
   }
 
   if (authLoading) {
@@ -124,15 +141,17 @@ function AppShell() {
   // Show onboarding (language picker) once before the auth form
   if (!onboardingDone && !introDismissed) {
     return (
-      <OnboardingPage
-        onDone={async () => {
-          setIntroDismissed(true);
-          if (typeof window !== "undefined") {
-            localStorage.setItem("iqxo_intro_dismissed", "1");
-          }
-          await setOnboardingDone(true);
-        }}
-      />
+      <Suspense fallback={<RouteFallback />}>
+        <OnboardingPage
+          onDone={async () => {
+            setIntroDismissed(true);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("iqxo_intro_dismissed", "1");
+            }
+            await setOnboardingDone(true);
+          }}
+        />
+      </Suspense>
     );
   }
 
@@ -157,13 +176,29 @@ function AppShell() {
   // - otherwise redirect to /login (replace history to prevent back navigation)
   if (!user) {
     if (pathname === "/login") {
-      return <LoginPage />;
+      return (
+        <Suspense fallback={<RouteFallback />}>
+          <LoginPage />
+        </Suspense>
+      );
     }
 
     if (publicPaths.has(pathname)) {
       // allow rendering of public pages without auth
-      if (pathname === "/pricing") return <PricingPage />;
-      if (pathname === "/reset-password") return <ResetPasswordPage />;
+      if (pathname === "/pricing") {
+        return (
+          <Suspense fallback={<RouteFallback />}>
+            <PricingPage />
+          </Suspense>
+        );
+      }
+      if (pathname === "/reset-password") {
+        return (
+          <Suspense fallback={<RouteFallback />}>
+            <ResetPasswordPage />
+          </Suspense>
+        );
+      }
       // fall through for other public pages if added in future
     }
 
@@ -174,14 +209,20 @@ function AppShell() {
 
   // Authenticated user: handle protected routes
   if (user) {
-    if (pathname === "/profile") return <ProfilePage />;
+    if (pathname === "/profile") {
+      return (
+        <Suspense fallback={<RouteFallback />}>
+          <ProfilePage />
+        </Suspense>
+      );
+    }
   }
 
   // ── Default: authenticated user on home route ──────────────────────────────────
   return (
-    <>
+    <Suspense fallback={<RouteFallback />}>
       <HomePage />
-    </>
+    </Suspense>
   );
 }
 

@@ -1,11 +1,14 @@
 "use client"
 
+import { Suspense } from "react"
 import { motion } from "framer-motion"
 import { Bell } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useApp } from "@/lib/store"
 import { useNotifications } from "@/hooks/use-notifications"
-import { NotificationPanel } from "./notification-panel"
+import { lazyNamed } from "@/lib/lazy"
+
+const NotificationPanel = lazyNamed(() => import("./notification-panel"), "NotificationPanel")
 
 export function NotificationBell() {
   const { language } = useApp()
@@ -65,19 +68,21 @@ export function NotificationBell() {
         )}
       </motion.button>
 
-      <NotificationPanel
-        open={open}
-        onOpenChange={setOpen}
-        notifications={notifications}
-        unreadCount={unreadCount}
-        loading={loading}
-        error={error}
-        recentNotificationId={recentNotificationId}
-        onMarkAsRead={markAsRead}
-        onMarkAllAsRead={markAllAsRead}
-        onRetry={retry}
-        language={language}
-      />
+      <Suspense fallback={null}>
+        <NotificationPanel
+          open={open}
+          onOpenChange={setOpen}
+          notifications={notifications}
+          unreadCount={unreadCount}
+          loading={loading}
+          error={error}
+          recentNotificationId={recentNotificationId}
+          onMarkAsRead={markAsRead}
+          onMarkAllAsRead={markAllAsRead}
+          onRetry={retry}
+          language={language}
+        />
+      </Suspense>
     </>
   )
 }
