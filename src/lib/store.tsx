@@ -279,7 +279,7 @@ const translations: Record<Language, Record<string, string>> = {
     expirationDate: "Expires",
     orderRefillNow: "Order Refill Now",
     refillSubtext: "We can pre-fill your request at nearest pharmacy",
-    remindInTwoDays: "Remind me in 2 days",
+    remindInTwoDays: "Remind me in 7 days",
     addToCalendar: "Add to Calendar",
     viewRelatedNotes: "View Related Notes",
     pharmacyNote: "Bring old bottle to pharmacist for exact match",
@@ -485,7 +485,7 @@ const translations: Record<Language, Record<string, string>> = {
     orderRefillNow: "Commander un renouvellement",
     refillSubtext:
       "On peut pré-remplir ta demande à la pharmacie la plus proche",
-    remindInTwoDays: "Me rappeler dans 2 jours",
+    remindInTwoDays: "Me rappeler dans 7 jours",
     addToCalendar: "Ajouter au calendrier",
     viewRelatedNotes: "Voir les notes liées",
     pharmacyNote: "Apporte l'ancienne boîte pour correspondance exacte",

@@ -1,145 +1,210 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../lib/store";
-import { BrandLogo } from "../components/brand-logo";
+import { navigateToPath } from "../lib/navigation";
 
 interface OnboardingPageProps {
   onDone: () => void;
 }
 
+const ease = "cubic-bezier(0.22, 1, 0.36, 1)";
+
 export default function OnboardingPage({ onDone }: OnboardingPageProps) {
   const { setLanguage } = useApp();
-  const [selected, setSelected] = useState<"en" | "fr" | null>(null);
-  const [leaving, setLeaving] = useState(false);
+  const [selectedLang, setSelectedLang] = useState<"fr" | "en">("fr");
+  const [splashOneGone, setSplashOneGone] = useState(false);
+  const [selectedCard, setSelectedCard] = useState<"fr" | "en">("fr");
+  const [isContinuing, setIsContinuing] = useState(false);
 
-  const handleSelect = (lang: "en" | "fr") => {
-    setSelected(lang);
+  const langs = useMemo(
+    () => [
+      {
+        code: "fr" as const,
+        flag: "🇫🇷",
+        name: "Français",
+        subtitle: "Continuer en français",
+      },
+      {
+        code: "en" as const,
+        flag: "🇬🇧",
+        name: "English",
+        subtitle: "Continue in English",
+      },
+    ],
+    [],
+  );
+
+  useEffect(() => {
+    const t1 = window.setTimeout(() => setSplashOneGone(true), 2500);
+    return () => window.clearTimeout(t1);
+  }, []);
+
+  useEffect(() => {
+    const browserLang = navigator.language || navigator.userLanguage || "";
+    if (browserLang.toLowerCase().startsWith("en")) {
+      setSelectedLang("en");
+      setSelectedCard("en");
+    }
+  }, []);
+
+  useEffect(() => {
+    const t2 = window.setTimeout(() => setSelectedCard(selectedLang), 0);
+    return () => window.clearTimeout(t2);
+  }, [selectedLang]);
+
+  const selectLang = (lang: "fr" | "en") => {
+    setSelectedLang(lang);
+    setSelectedCard(lang);
   };
 
-  const handleContinue = () => {
-    if (!selected) return;
-    setLanguage(selected);
-    setLeaving(true);
-    void onDone();
+  const continueToApp = () => {
+    if (isContinuing) return;
+    setIsContinuing(true);
+    setLanguage(selectedLang);
+    localStorage.setItem("iqxo-lang", selectedLang);
+    onDone();
+    navigateToPath("/pricing", { replace: true });
   };
-
-  const langs = [
-    {
-      code: "en" as const,
-      flag: "🇬🇧",
-      name: "English",
-      subtitle: "Continue in English",
-      dir: "ltr",
-    },
-    {
-      code: "fr" as const,
-      flag: "🇫🇷",
-      name: "Français",
-      subtitle: "Continuer en français",
-      dir: "ltr",
-    },
-    // {
-    //   code: "ar" as const,
-    //   flag: "🇦🇪",
-    //   name: "العربية",
-    //   subtitle: "المتابعة بالعربية",
-    //   dir: "rtl",
-    // },
-  ];
 
   return (
-    <AnimatePresence>
-      <motion.div
-        className={`fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background px-6 transition-opacity duration-300 ${leaving ? "pointer-events-none" : ""}`}
-        initial={{ opacity: 1 }}
-        animate={{ opacity: leaving ? 0 : 1, scale: leaving ? 0.98 : 1 }}
-        transition={{ duration: 0.3 }}
+    <div className="fixed inset-0 z-[200] overflow-hidden bg-[#0C0C0E] text-[#E8E8E8] [font-family:-apple-system,BlinkMacSystemFont,'SF_Pro_Display','Segoe_UI',Roboto,sans-serif]">
+      <style>{`
+        @keyframes splash1In {
+          from { opacity: 0; transform: scale(0.8); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes splash1Out {
+          from { opacity: 1; transform: scale(1); }
+          to { opacity: 0; transform: scale(1.1); pointer-events: none; }
+        }
+        @keyframes splash2In {
+          from { opacity: 0; }
+          to { opacity: 1; pointer-events: auto; }
+        }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes loaderFill {
+          from { transform: translateX(-100%); }
+          to { transform: translateX(0); }
+        }
+        @keyframes loaderFade {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .onboarding-ambient {
+          position: fixed;
+          pointer-events: none;
+          filter: blur(100px);
+          opacity: 0.15;
+        }
+        .onboarding-ambient-1 {
+          width: 400px;
+          height: 400px;
+          background: rgba(91, 192, 222, 0.08);
+          border-radius: 9999px;
+          top: -10%;
+          left: -20%;
+        }
+        .onboarding-ambient-2 {
+          width: 300px;
+          height: 300px;
+          background: rgba(212, 168, 83, 0.08);
+          border-radius: 9999px;
+          bottom: -5%;
+          right: -20%;
+        }
+      `}</style>
+
+      <div className="onboarding-ambient onboarding-ambient-1" />
+      <div className="onboarding-ambient onboarding-ambient-2" />
+
+      <div
+        className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#0C0C0E] ${splashOneGone ? "pointer-events-none" : ""}`}
+        style={{
+          animation: splashOneGone ? `splash1Out 0.8s ${ease} forwards` : undefined,
+        }}
       >
-          {/* Ambient glow */}
+        <div
+          className="text-[3.5rem] font-semibold tracking-[-0.02em] opacity-0"
+          style={{ animation: `splash1In 0.8s ${ease} 0.3s forwards` }}
+        >
+          IQ<span className="text-[#5BC0DE]">X</span>O
+        </div>
+        <p
+          className="mt-4 text-[0.9rem] font-light text-[#6E6E78] opacity-0"
+          style={{ animation: `splash1In 0.8s ${ease} 0.6s forwards` }}
+        >
+          Votre esprit n'a pas besoin de tout retenir.
+        </p>
+        <div
+          className="mt-8 h-[2px] w-10 overflow-hidden rounded-full bg-[rgba(255,255,255,0.04)] opacity-0"
+          style={{ animation: `loaderFade 0.5s ${ease} 1s forwards` }}
+        >
           <div
-            className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 h-[300px] w-[300px] rounded-full opacity-20 blur-[100px]"
-            style={{ background: "var(--primary)" }}
+            className="h-full w-full bg-[#5BC0DE]"
+            style={{ animation: `loaderFill 1.5s ${ease} 1s forwards` }}
           />
+        </div>
+      </div>
 
-          {/* Logo */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mb-10 text-center"
-          >
-            <BrandLogo className="text-5xl font-bold tracking-tight font-geometric" />
-            <p className="text-muted-foreground text-sm mt-2">
-              Choose your language · Choisissez votre langue ·
-            </p>
-          </motion.div>
+      <div
+        className="fixed inset-0 z-[50] flex flex-col items-center justify-center bg-[#0C0C0E] px-6 opacity-0"
+        style={{
+          animation: `splash2In 0.8s ${ease} 2.8s forwards`,
+        }}
+      >
+        <div className="mb-3 text-[2.5rem] font-semibold tracking-[-0.02em] opacity-80">
+          IQ<span className="text-[#5BC0DE]">X</span>O
+        </div>
+        <p className="mb-12 text-center text-[0.85rem] font-light text-[#6E6E78]">
+          Votre esprit n'a pas besoin de tout retenir.
+        </p>
 
-          {/* Language cards */}
-          <div className="w-full max-w-sm space-y-3">
-            {langs.map((lang, i) => (
-              <motion.button
+        <div className="mb-8 flex w-full max-w-[340px] flex-col gap-3 opacity-0" style={{ animation: `fadeUp 0.6s ${ease} 3.2s forwards` }}>
+          {langs.map((lang) => {
+            const active = selectedCard === lang.code;
+            return (
+              <button
                 key={lang.code}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 + i * 0.08 }}
-                onClick={() => handleSelect(lang.code)}
-                dir={lang.dir}
-                className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 transition-all active:scale-[0.98] ${
-                  selected === lang.code
-                    ? "border-primary bg-primary/10 shadow-lg shadow-primary/20"
-                    : "border-border bg-secondary/30 hover:border-primary/40 hover:bg-secondary/50"
+                type="button"
+                onClick={() => selectLang(lang.code)}
+                className={`relative flex items-center gap-4 rounded-[24px] border-2 px-6 py-5 text-left transition-all duration-300 ${
+                  active
+                    ? "border-[rgba(91,192,222,0.3)] bg-[rgba(91,192,222,0.08)]"
+                    : "border-[rgba(255,255,255,0.04)] bg-[#161618] hover:border-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.02)]"
                 }`}
               >
-                <span className="text-3xl">{lang.flag}</span>
-                <div className="flex-1 text-left" dir="ltr">
-                  <p
-                    className={`text-base font-semibold ${selected === lang.code ? "text-primary" : "text-foreground"}`}
-                  >
-                    {lang.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {lang.subtitle}
-                  </p>
-                </div>
-                {selected === lang.code && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="h-5 w-5 rounded-full bg-primary flex items-center justify-center shrink-0"
-                  >
-                    <svg
-                      className="h-3 w-3 text-primary-foreground"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={3}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  </motion.div>
-                )}
-              </motion.button>
-            ))}
-          </div>
+                <span className="text-[2rem]">{lang.flag}</span>
+                <span className="flex-1">
+                  <span className="block text-[1.1rem] font-medium text-[#E8E8E8]">{lang.name}</span>
+                  <span className="block text-[0.85rem] font-light text-[#6E6E78]">{lang.subtitle}</span>
+                </span>
+                {active ? <span className="text-[1.2rem] text-[#5BC0DE]">✓</span> : null}
+              </button>
+            );
+          })}
+        </div>
 
-          {/* Continue button */}
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: selected ? 1 : 0.4, y: 0 }}
-            transition={{ delay: 0.45 }}
-            onClick={handleContinue}
-            disabled={!selected}
-            className="mt-8 w-full max-w-sm py-4 rounded-2xl bg-primary text-primary-foreground text-base font-semibold transition-all hover:bg-primary/90 active:scale-[0.98] disabled:cursor-not-allowed shadow-lg shadow-primary/30"
+        <div className="mb-8 flex w-full max-w-[340px] gap-3 opacity-0" style={{ animation: `fadeUp 0.6s ${ease} 3.4s forwards` }}>
+          <button
+            type="button"
+            onClick={continueToApp}
+            disabled={isContinuing}
+            className="flex-1 rounded-full border border-[rgba(91,192,222,0.15)] bg-[rgba(91,192,222,0.08)] px-5 py-4 text-[1rem] font-medium tracking-[0.02em] text-[#5BC0DE] transition-all duration-300 hover:border-[rgba(91,192,222,0.3)] hover:bg-[rgba(91,192,222,0.1)] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {selected === "fr" ? "Continuer" : "Continue"}
-          </motion.button>
-      </motion.div>
-    </AnimatePresence>
+            {selectedLang === "fr" ? "Continuer" : "Continue"}
+          </button>
+        </div>
+
+        <div className="fixed bottom-6 text-center opacity-0" style={{ animation: `fadeUp 0.6s ${ease} 3.6s forwards` }}>
+          <div className="text-[0.9rem] font-medium text-[#E8E8E8] opacity-15">
+            IQ<span className="text-[#5BC0DE]">X</span>O
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

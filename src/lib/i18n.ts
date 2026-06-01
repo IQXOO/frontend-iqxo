@@ -135,7 +135,7 @@ const translations = {
     expirationDate: "Expires",
     orderRefillNow: "Order Refill Now",
     refillSubtext: "We can pre-fill your request at nearest pharmacy",
-    remindInTwoDays: "Remind me in 2 days",
+    remindInTwoDays: "Remind me in 7 days",
     addToCalendar: "Add to Calendar",
     viewRelatedNotes: "View Related Notes",
     pharmacyNote: "Bring old bottle to pharmacist for exact match",
@@ -300,7 +300,7 @@ const translations = {
     orderRefillNow: "Commander un renouvellement",
     refillSubtext:
       "On peut pré-remplir ta demande à la pharmacie la plus proche",
-    remindInTwoDays: "Me rappeler dans 2 jours",
+    remindInTwoDays: "Me rappeler dans 7 jours",
     addToCalendar: "Ajouter au calendrier",
     viewRelatedNotes: "Voir les notes liées",
     pharmacyNote:
@@ -465,7 +465,7 @@ const translations = {
   //   expirationDate: "ينتهي",
   //   orderRefillNow: "اطلب التجديد الآن",
   //   refillSubtext: "يمكننا ملء طلبك مسبقاً في أقرب صيدلية",
-  //   remindInTwoDays: "ذكرني خلال يومين",
+  //   remindInTwoDays: "ذكرني خلال 7 أيام",
   //   addToCalendar: "أضف إلى التقويم",
   //   viewRelatedNotes: "عرض الملاحظات ذات الصلة",
   //   pharmacyNote: "احضر العلبة القديمة للصيدلي للحصول على مطابقة دقيقة",

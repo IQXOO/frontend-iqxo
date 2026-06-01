@@ -148,9 +148,9 @@ export function StripePricingPage({
       );
 
       const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
+        if (!contentType.includes("application/json")) {
         devWarn("Billing", "Trial endpoint returned non-JSON response; using local fallback");
-        const trialEnd = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+        const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
         setPlanStatus("free_trial", trialEnd);
         onClose?.();
         return;
@@ -247,7 +247,7 @@ export function StripePricingPage({
 
                 <div className="mt-10 inline-flex items-center gap-2 rounded-full border border-[rgba(91,192,222,0.12)] bg-[rgba(91,192,222,0.08)] px-5 py-2 text-[0.8rem] font-normal text-[var(--cyan)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[var(--cyan)]" />
-                  {t("2 Days of Calm — Free", "2 jours de calme — Gratuit", "يومان من الهدوء — مجاناً")}
+                  {t("7 Days of Calm — Free", "7 jours de calme — Gratuit", "7 أيام من الهدوء — مجاناً")}
                 </div>
 
                 <h2 className="mt-8 text-[clamp(1.5rem,4vw,2.15rem)] font-normal leading-[1.25] tracking-[-0.03em] text-[#E8E8E8]">
@@ -276,7 +276,7 @@ export function StripePricingPage({
                 >
                   <div className="absolute inset-x-0 top-0 h-[2px] bg-[linear-gradient(90deg,transparent,var(--cyan),transparent)] opacity-30" />
                   <div className="text-[0.65rem] uppercase tracking-[0.3em] text-[var(--cyan)] opacity-80">
-                    {t("2 Days of Calm", "2 jours de calme", "يومان من الهدوء")}
+                    {t("7 Days of Calm", "7 jours de calme", "7 أيام من الهدوء")}
                   </div>
                   <h3 className="mt-5 text-[1.5rem] font-normal tracking-[-0.02em] text-[#E8E8E8]">
                     {t("Free Trial", "Essai gratuit", "تجربة مجانية")}
@@ -453,7 +453,7 @@ export function StripePricingPage({
                 <div className="md:col-span-3 mx-auto mt-6 max-w-[600px] rounded-[16px] border border-[var(--border)] bg-[var(--bg-card)] px-5 py-5 text-center">
                   <p className="text-[0.85rem] leading-6 text-[#A0A0A8]">
                     {t(
-                      "After your 2-day trial, continue Free with 10 captures/month.",
+                      "After your 7-day trial, continue Free with 10 captures/month.",
                       "Après votre essai de 7 jours, continuez gratuitement avec 10 captures/mois.",
                       "بعد تجربتك لمدة 7 أيام، يمكنك المتابعة مجانًا مع 10 عمليات التقاط شهريًا.",
                     )}{" "}

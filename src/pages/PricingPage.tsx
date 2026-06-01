@@ -28,7 +28,7 @@ const PRICING = {
   savingsPct: Math.round(100 - (79 / (9.99 * 12)) * 100),
 };
 
-const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4040";
+const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4000";
 const PAYMENT_LINKS = {
   monthly: (import.meta as any).env?.VITE_STRIPE_MONTHLY_LINK,
   yearly: (import.meta as any).env?.VITE_STRIPE_YEARLY_LINK || "",
@@ -85,7 +85,7 @@ const yearlyFeatures = [
 
 const trialStats = [
   ["30", "Total captures"],
-  ["2", "Days"],
+  ["7", "Days"],
   ["All", "Features"],
   ["0", "Card needed"],
 ];
@@ -283,7 +283,7 @@ export default function PricingPage() {
       const contentType = res.headers.get("content-type") || "";
       if (!contentType.includes("application/json")) {
         devWarn("Billing", "Trial endpoint returned non-JSON response; using local fallback");
-        const trialEnd = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+        const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
         setPlanStatus("free_trial", trialEnd);
         navigateToPath("/");
         return;
@@ -339,9 +339,16 @@ export default function PricingPage() {
         className={`fixed inset-x-0 top-0 z-50 flex items-center justify-between px-5 py-4 transition-all duration-700 sm:px-8 ${scrolled ? "border-b border-white/[0.04] bg-[rgba(12,12,14,0.6)] backdrop-blur-[40px]" : ""}`}
       >
         <BrandLogo className="text-[1.05rem] font-medium tracking-[-0.01em] text-[#E8E8E8]" />
-        <div className="hidden items-center gap-8 sm:flex">
+        <div className="hidden items-center gap-4 sm:flex">
           <a href="#experience" className="text-[0.8rem] text-[#6E6E78] transition-colors hover:text-[#A0A0A8]">Experience</a>
           <a href="#pricing" className="text-[0.8rem] text-[#6E6E78] transition-colors hover:text-[#A0A0A8]">Pricing</a>
+          <button
+            type="button"
+            onClick={() => navigateToPath("/login")}
+            className="rounded-full border border-[rgba(255,255,255,0.06)] bg-[#161618] px-4 py-2 text-[0.75rem] font-medium text-[#A0A0A8] transition-all hover:border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.03)] hover:text-[#E8E8E8]"
+          >
+            Skip
+          </button>
         </div>
       </nav>
 
@@ -352,7 +359,7 @@ export default function PricingPage() {
 
             <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[rgba(91,192,222,0.12)] bg-[rgba(91,192,222,0.08)] px-5 py-2 text-[0.8rem] text-[#5BC0DE]">
               <span className="h-1.5 w-1.5 rounded-full bg-[#5BC0DE] animate-pulse" />
-              {translate(language, "2 Days of Calm — Free", "2 jours de calme — Gratuit", "يومان من الهدوء — مجاناً")}
+              {translate(language, "7 Days of Calm — Free", "7 jours de calme — Gratuit", "7 أيام من الهدوء — مجاناً")}
             </div>
 
             <h1 className="text-[clamp(1.7rem,5vw,2.6rem)] font-normal leading-[1.2] tracking-[-0.03em] text-[#E8E8E8]">
@@ -382,7 +389,7 @@ export default function PricingPage() {
               onClick={handleTrial}
               className="mb-4 inline-flex items-center gap-2 rounded-full border border-[rgba(91,192,222,0.15)] bg-[rgba(91,192,222,0.08)] px-8 py-4 text-[0.9rem] font-medium text-[#5BC0DE] transition-all hover:border-[rgba(91,192,222,0.3)] hover:bg-[rgba(91,192,222,0.1)] hover:text-[#7DD3F0]"
             >
-              {translate(language, "Start 2 Days Free", "Commencer 2 jours gratuits", "ابدأ يومين مجانًا")}
+              {translate(language, "Start 7 Days Free", "Commencer 7 jours gratuits", "ابدأ 7 أيام مجانًا")}
               <span>→</span>
             </button>
             <p className="text-[0.75rem] text-[#6E6E78]">30 captures. No card required. Cancel anytime.</p>
@@ -538,7 +545,7 @@ export default function PricingPage() {
             <div className="mt-12 grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
               <PricingCard
                 title={translate(language, "Free Trial", "Essai gratuit", "تجربة مجانية")}
-                label={translate(language, "2 Days of Calm", "2 jours de calme", "يومان من الهدوء")}
+                label={translate(language, "7 Days of Calm", "7 jours de calme", "7 أيام من الهدوء")}
                 subtitle={translate(language, "Feel the difference. No commitment.", "Ressentez la différence. Sans engagement.", "اشعر بالفرق. بدون التزام.")}
                 footer={translate(language, "Voice, photos, notes, documents — try everything.", "Voix, photos, notes, documents — essayez tout.", "الصوت والصور والملاحظات والمستندات — جرّب كل شيء.")}
                 accent="cyan"
@@ -630,7 +637,7 @@ export default function PricingPage() {
 
               <div className="md:col-span-3 mx-auto mt-6 max-w-[600px] rounded-[16px] border border-[rgba(255,255,255,0.04)] bg-[#161618] px-5 py-5 text-center">
                 <p className="mb-2 text-[0.85rem] leading-6 text-[#A0A0A8]">
-                  {translate(language, "After your 2-day trial, continue Free with 10 captures/month.", "Après votre essai de 2 jours, continuez gratuitement avec 10 captures/mois.", "بعد تجربتك لمدة يومين، يمكنك المتابعة مجانًا مع 10 عمليات التقاط شهريًا.")} <strong className="font-medium text-[#E8E8E8]">{translate(language, "No credit card required.", "Aucune carte requise.", "لا حاجة لبطاقة ائتمان.")}</strong> {translate(language, "Upgrade anytime.", "Mettez à niveau à tout moment.", "يمكنك الترقية في أي وقت.")}
+                  {translate(language, "After your 7-day trial, continue Free with 10 captures/month.", "Après votre essai de 7 jours, continuez gratuitement avec 10 captures/mois.", "بعد تجربتك لمدة 7 أيام، يمكنك المتابعة مجانًا مع 10 عمليات التقاط شهريًا.")} <strong className="font-medium text-[#E8E8E8]">{translate(language, "No credit card required.", "Aucune carte requise.", "لا حاجة لبطاقة ائتمان.")}</strong> {translate(language, "Upgrade anytime.", "Mettez à niveau à tout moment.", "يمكنك الترقية في أي وقت.")}
                 </p>
                 <p className="text-[0.75rem] text-[#6E6E78]">
                   {translate(language, "Billing is handled securely through Stripe.", "La facturation est gérée en toute sécurité par Stripe.", "تتم إدارة الفوترة بأمان عبر Stripe.")}
@@ -649,7 +656,7 @@ export default function PricingPage() {
               onClick={handleTrial}
               className="mt-9 inline-flex items-center gap-2 rounded-full border border-[rgba(91,192,222,0.15)] bg-[rgba(91,192,222,0.08)] px-10 py-4 text-[1rem] font-medium text-[#5BC0DE] transition-all hover:border-[rgba(91,192,222,0.3)] hover:bg-[rgba(91,192,222,0.1)] hover:text-[#7DD3F0]"
             >
-              {translate(language, "Start 2 Days Free", "Commencer 2 jours gratuits", "ابدأ يومين مجانًا")}
+              {translate(language, "Start 7 Days Free", "Commencer 7 jours gratuits", "ابدأ 7 أيام مجانًا")}
               <span>→</span>
             </button>
             <p className="mt-4 text-[0.8rem] text-[#6E6E78]">30 captures. No card. No strings.</p>
@@ -669,7 +676,7 @@ export default function PricingPage() {
           onClick={handleTrial}
           className="mx-auto block w-full max-w-[420px] rounded-full border border-[rgba(91,192,222,0.15)] bg-[rgba(12,12,14,0.92)] px-6 py-4 text-[0.9rem] font-medium text-[#5BC0DE] shadow-[0_-8px_32px_rgba(0,0,0,0.28)] backdrop-blur-xl"
         >
-          {translate(language, "Start 2 Days Free", "Commencer 2 jours gratuits", "ابدأ يومين مجانًا")}
+              {translate(language, "Start 7 Days Free", "Commencer 7 jours gratuits", "ابدأ 7 أيام مجانًا")}
         </button>
       </div>
     </div>

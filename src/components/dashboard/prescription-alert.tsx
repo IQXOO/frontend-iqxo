@@ -38,7 +38,7 @@ export function PrescriptionAlert({
   const handleRemindLater = () => {
     toast({
       title: "Reminder Set",
-      description: "We'll remind you in 2 days.",
+      description: "We'll remind you in 7 days.",
     })
     onOpenChange(false)
   }
