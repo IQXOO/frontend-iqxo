@@ -124,7 +124,9 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
       <div
         className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#0C0C0E] ${splashOneGone ? "pointer-events-none" : ""}`}
         style={{
-          animation: splashOneGone ? `splash1Out 0.8s ${ease} forwards` : undefined,
+          animation: splashOneGone
+            ? `splash1Out 0.8s ${ease} forwards`
+            : undefined,
         }}
       >
         <div
@@ -163,7 +165,10 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
           Votre esprit n'a pas besoin de tout retenir.
         </p>
 
-        <div className="mb-8 flex w-full max-w-[340px] flex-col gap-3 opacity-0" style={{ animation: `fadeUp 0.6s ${ease} 3.2s forwards` }}>
+        <div
+          className="mb-8 flex w-full max-w-[340px] flex-col gap-3 opacity-0"
+          style={{ animation: `fadeUp 0.6s ${ease} 3.2s forwards` }}
+        >
           {langs.map((lang) => {
             const active = selectedCard === lang.code;
             return (
@@ -179,16 +184,25 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
               >
                 <span className="text-[2rem]">{lang.flag}</span>
                 <span className="flex-1">
-                  <span className="block text-[1.1rem] font-medium text-[#E8E8E8]">{lang.name}</span>
-                  <span className="block text-[0.85rem] font-light text-[#6E6E78]">{lang.subtitle}</span>
+                  <span className="block text-[1.1rem] font-medium text-[#E8E8E8]">
+                    {lang.name}
+                  </span>
+                  <span className="block text-[0.85rem] font-light text-[#6E6E78]">
+                    {lang.subtitle}
+                  </span>
                 </span>
-                {active ? <span className="text-[1.2rem] text-[#5BC0DE]">✓</span> : null}
+                {active ? (
+                  <span className="text-[1.2rem] text-[#5BC0DE]">✓</span>
+                ) : null}
               </button>
             );
           })}
         </div>
 
-        <div className="mb-8 flex w-full max-w-[340px] gap-3 opacity-0" style={{ animation: `fadeUp 0.6s ${ease} 3.4s forwards` }}>
+        <div
+          className="mb-8 flex w-full max-w-[340px] gap-3 opacity-0"
+          style={{ animation: `fadeUp 0.6s ${ease} 3.4s forwards` }}
+        >
           <button
             type="button"
             onClick={continueToApp}
@@ -199,7 +213,10 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
           </button>
         </div>
 
-        <div className="fixed bottom-6 text-center opacity-0" style={{ animation: `fadeUp 0.6s ${ease} 3.6s forwards` }}>
+        <div
+          className="fixed bottom-6 text-center opacity-0"
+          style={{ animation: `fadeUp 0.6s ${ease} 3.6s forwards` }}
+        >
           <div className="text-[0.9rem] font-medium text-[#E8E8E8] opacity-15">
             IQ<span className="text-[#5BC0DE]">X</span>O
           </div>
