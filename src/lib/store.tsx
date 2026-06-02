@@ -220,7 +220,7 @@ const translations: Record<Language, Record<string, string>> = {
     navHome: "Home",
     navHistory: "History",
     navSettings: "Settings",
-    navToday: "Today",
+    navToday: "Home",
     navTomorrow: "Tomorrow",
     navFuture: "Future",
     navArchive: "Archive",

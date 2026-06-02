@@ -352,7 +352,9 @@ export default function ResetPasswordPage() {
       });
 
       window.setTimeout(() => {
-        window.location.replace("/");
+        // Use navigateToPath so routing is consistent with React Router
+        const { navigateToPath } = require("../lib/navigation");
+        navigateToPath("/", { replace: true });
       }, 1600);
     } catch (updateError) {
       devError("Auth", "Password update failed", updateError);
@@ -399,8 +401,14 @@ export default function ResetPasswordPage() {
             <p className="mt-2 text-sm text-muted-foreground">{copy.resendHint}</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button className="flex-1" onClick={() => window.location.assign("/?forgot=1")}>{copy.requestNewLink}</Button>
-            <Button variant="outline" className="flex-1" onClick={() => window.location.assign("/")}>{copy.backToSignIn}</Button>
+            <Button className="flex-1" onClick={() => {
+              const { navigateToPath } = require("../lib/navigation");
+              navigateToPath("/?forgot=1");
+            }}>{copy.requestNewLink}</Button>
+            <Button variant="outline" className="flex-1" onClick={() => {
+              const { navigateToPath } = require("../lib/navigation");
+              navigateToPath("/");
+            }}>{copy.backToSignIn}</Button>
           </div>
         </div>
       );
@@ -416,7 +424,10 @@ export default function ResetPasswordPage() {
             <h2 className="text-2xl font-semibold tracking-tight text-foreground">{copy.successTitle}</h2>
             <p className="text-sm text-muted-foreground">{copy.successBody}</p>
           </div>
-          <Button className="w-full" onClick={() => window.location.replace("/")}>{copy.successButton}</Button>
+          <Button className="w-full" onClick={() => {
+            const { navigateToPath } = require("../lib/navigation");
+            navigateToPath("/", { replace: true });
+          }}>{copy.successButton}</Button>
         </div>
       );
     }
@@ -504,11 +515,14 @@ export default function ResetPasswordPage() {
         )}
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <Button
+            <Button
             type="button"
             variant="outline"
             className="h-12 rounded-xl"
-            onClick={() => window.location.assign("/")}
+            onClick={() => {
+              const { navigateToPath } = require("../lib/navigation");
+              navigateToPath("/");
+            }}
             disabled={loading}
           >
             <ArrowLeft className="h-4 w-4" />

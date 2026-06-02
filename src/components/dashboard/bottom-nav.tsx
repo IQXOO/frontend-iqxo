@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
-  Plus,
   Camera,
   CalendarPlus,
   X,
-  Mic,
   Calendar,
   ImageIcon,
   FolderOpen,
@@ -15,7 +13,9 @@ import {
   AlertCircle,
   ChevronRight,
   Check,
+  Home,
 } from "lucide-react";
+import { NavLink } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "../../lib/store";
 
@@ -552,7 +552,6 @@ interface BottomNavProps {
   onTabChange: (tab: NavTab) => void;
   onUploadClick: (options?: { autoOpenPicker?: boolean; file?: File | null }) => void;
   onManualAdd: () => void;
-  onMicClick?: () => void;
   onImportEvents?: (
     events: {
       title: string;
@@ -562,7 +561,6 @@ interface BottomNavProps {
       notes: string;
     }[],
   ) => void;
-  showFab?: boolean;
 }
 
 export function BottomNav({
@@ -570,17 +568,13 @@ export function BottomNav({
   onTabChange,
   onUploadClick,
   onManualAdd,
-  onMicClick,
   onImportEvents,
-  showFab = true,
 }: BottomNavProps) {
   const { language, addEvent, user } = useApp();
   const isRTL = language === "ar";
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
   const [showCalendarImport, setShowCalendarImport] = useState(false);
-
-  const handleMainFabClick = () => setMenuOpen(true);
 
   const handleTakePhotoOption = (capture?: string) => {
     setMenuOpen(false);
@@ -643,6 +637,26 @@ export function BottomNav({
       }
     }
   };
+
+  // Hide on scroll behaviour
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    let lastY = 0;
+    if (typeof window !== "undefined") lastY = window.scrollY;
+
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y > lastY + 8) {
+        setVisible(false);
+      } else if (y < lastY - 8) {
+        setVisible(true);
+      }
+      lastY = y;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <>
@@ -920,42 +934,44 @@ export function BottomNav({
         )}
       </AnimatePresence>
 
-      {/* FAB */}
-      {showFab && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-30">
-          <motion.div
-            className="flex items-center justify-center gap-4 px-6 py-4"
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          >
-            <motion.button
-              onClick={handleMainFabClick}
-              className="relative w-14 h-14 rounded-full bg-blue-500/90 border-2 border-blue-400/10 flex items-center justify-center text-black-600 dark:text-white-600 shadow-lg shadow-blue-400/20 hover:bg-blue-500/25 hover:border-blue-400/70 hover:shadow-blue-400/40 transition-all duration-200"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 1.2 }}
-              transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            >
-              <Plus className="w-8 h-8" strokeWidth={3} />
-            </motion.button>
-
-            <motion.button
-              onClick={onMicClick}
-              className="w-17 h-17 rounded-full bg-blue-500/90 border-2 border-blue-400/10 flex items-center justify-center text-black-600 dark:text-white-600 shadow-md shadow-blue-400/20 hover:bg-blue-500/25 hover:border-blue-400/70 hover:shadow-blue-400/40 transition-all duration-200"
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 1.15, rotate: -5 }}
-              transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            >
-              <Mic className="w-6 h-6" />
-            </motion.button>
-          </motion.div>
-        </div>
-      )}
-
       {/* Bottom Nav bar */}
-      <div className="fixed bottom-0 left-0 right-0 h-20 pointer-events-none">
-        <div className="absolute inset-0 bg-background/60 backdrop-blur-md border-t border-border/30" />
-      </div>
+      <motion.div
+        className="fixed bottom-0 left-0 right-0 z-50 flex items-end justify-center"
+        animate={visible ? { translateY: 0, opacity: 1 } : { translateY: "100%", opacity: 0 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <div className="w-full max-w-md px-4">
+          <nav
+            className="h-20 flex items-center justify-between bg-background/80 backdrop-blur-md border-t border-border/30 rounded-t-xl px-6"
+            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          >
+            <NavLink to="/home" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-xs ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+              <Home className="w-5 h-5" />
+              <span>Home</span>
+            </NavLink>
+
+            <NavLink to="/tomorrow" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-xs ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+              <Calendar className="w-5 h-5" />
+              <span>Tomorrow</span>
+            </NavLink>
+
+            <NavLink to="/future" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-xs ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+              <CheckCircle2 className="w-5 h-5" />
+              <span>Future</span>
+            </NavLink>
+
+            <NavLink to="/schedule" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-xs ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+              <CalendarPlus className="w-5 h-5" />
+              <span>Schedule</span>
+            </NavLink>
+
+            <NavLink to="/archive" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-xs ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+              <FolderOpen className="w-5 h-5" />
+              <span>Archive</span>
+            </NavLink>
+          </nav>
+        </div>
+      </motion.div>
     </>
   );
 }

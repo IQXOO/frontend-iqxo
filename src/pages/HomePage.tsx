@@ -2,17 +2,11 @@
 
 import { Suspense, useState, useCallback, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CalendarPlus } from "lucide-react";
-import { DashboardHeader } from "../components/dashboard/header";
-import { SearchBar } from "../components/dashboard/search-bar";
+import { CalendarPlus, Mic, Plus } from "lucide-react";
 import { StatsCard } from "../components/dashboard/stats-card";
 import { UrgentCards } from "../components/dashboard/attention-cards";
 import { EventList } from "../components/dashboard/event-list";
 import { BottomNav, type NavTab } from "../components/dashboard/bottom-nav";
-import {
-  NavigationTabs,
-  type NavigationTab,
-} from "../components/dashboard/navigation-tabs";
 import { useApp, computePriority } from "../lib/store";
 import { parseVoiceInput, type ParsedEvent } from "../lib/parse-voice-input";
 import { useEventNotifications } from "../hooks/use-event-notifications";
@@ -45,13 +39,13 @@ function LazyModalFallback() {
 }
 
 export default function Page() {
-  const { events, deleteEvent, t, signOut } = useApp();
+  const { events, deleteEvent, t, signOut, theme } = useApp();
 
   // Initialize browser notifications
   useEventNotifications(events);
 
   const [activeTab, setActiveTab] = useState<NavTab>("home");
-  const [navigationTab, setNavigationTab] = useState<NavigationTab>("today");
+  // legacy in-page navigation removed; Home shows today's dashboard content
   const [showSettings, setShowSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -74,8 +68,14 @@ export default function Page() {
     undefined,
   );
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
   const [tomorrowModalOpen, setTomorrowModalOpen] = useState(false);
   const isOnHome = activeTab === "home";
+  const isDarkTheme =
+    theme === "dark" ||
+    (theme === "system" &&
+      typeof document !== "undefined" &&
+      document.documentElement.classList.contains("dark"));
   const { isListening } = useVoiceInput();
   // Filter events by search
   const filteredEvents = useMemo(() => {
@@ -205,98 +205,49 @@ export default function Page() {
       <main className="relative z-10 overflow-y-auto pb-36">
         {activeTab === "home" && (
           <>
-            <DashboardHeader
-              onProfileClick={() => navigateToPath("/profile")}
-              onSettingsClick={() => setShowSettings(true)}
-              onHomeClick={() => {
-                setActiveTab("home");
-                setNavigationTab("today");
-              }}
-              activeTab={activeTab}
-            />
-            <SearchBar value={searchQuery} onChange={setSearchQuery} />
             <StatsCard />
 
-            {/* Navigation Tabs Hub - Today/Tomorrow/Future/Archive */}
-            <NavigationTabs
-              active={navigationTab}
-              onTabChange={setNavigationTab}
-            />
-
-            {/* Today View */}
-            {navigationTab === "today" &&
-              (!hasAnyActiveEvents ? (
-                /* Empty state */
-                <div className="px-5 py-12 flex flex-col items-center gap-4">
-                  <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center">
-                    <CalendarPlus className="h-10 w-10 text-primary/50" />
-                  </div>
-                  <div className="text-center">
-                    <h3 className="text-base font-semibold text-foreground">
-                      {t("noEvents")}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {t("noEventsDesc")}
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleManualAdd}
-                    className="mt-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
-                  >
-                    {t("addEvent")}
-                  </button>
+            {/* Today View (always shown on Home). Legacy in-page tabs removed. */}
+            {!hasAnyActiveEvents ? (
+              <div className="px-5 py-12 flex flex-col items-center gap-4">
+                <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center">
+                  <CalendarPlus className="h-10 w-10 text-primary/50" />
                 </div>
-              ) : searchQuery && !hasSearchResults ? (
-                /* No search results */
-                <div className="px-5 py-12 flex flex-col items-center gap-3">
-                  <p className="text-sm text-muted-foreground">
-                    {t("noResults")}
+                <div className="text-center">
+                  <h3 className="text-base font-semibold text-foreground">
+                    {t("noEvents")}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {t("noEventsDesc")}
                   </p>
                 </div>
-              ) : (
-                <>
-                  {urgentEvents.length > 0 && (
-                    <UrgentCards onEventClick={handleEventClick} />
-                  )}
-                  <EventList
-                    priority="upcoming"
-                    events={upcomingEvents}
-                    onEventClick={handleEventClick}
-                  />
-                  <EventList
-                    priority="later"
-                    events={laterEvents}
-                    onEventClick={handleEventClick}
-                  />
-                </>
-              ))}
-
-            {/* Tomorrow View */}
-            {navigationTab === "tomorrow" && (
-              <Suspense fallback={<LazySectionFallback />}>
-                <TomorrowView onEventClick={handleEventClick} />
-              </Suspense>
-            )}
-
-            {/* Future Explorer View */}
-            {navigationTab === "future" && (
-              <Suspense fallback={<LazySectionFallback />}>
-                <FutureExplorerView onEventClick={handleEventClick} />
-              </Suspense>
-            )}
-
-            {/* Archive Vault View */}
-            {navigationTab === "archive" && (
-              <Suspense fallback={<LazySectionFallback />}>
-                <ArchiveVault onEventClick={handleEventClick} />
-              </Suspense>
-            )}
-
-            {/* Work Schedule — inside nav tabs */}
-            {navigationTab === "schedule" && (
-              <Suspense fallback={<LazySectionFallback />}>
-                <WorkScheduleView />
-              </Suspense>
+                <button
+                  onClick={handleManualAdd}
+                  className="mt-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
+                >
+                  {t("addEvent")}
+                </button>
+              </div>
+            ) : searchQuery && !hasSearchResults ? (
+              <div className="px-5 py-12 flex flex-col items-center gap-3">
+                <p className="text-sm text-muted-foreground">{t("noResults")}</p>
+              </div>
+            ) : (
+              <>
+                {urgentEvents.length > 0 && (
+                  <UrgentCards onEventClick={handleEventClick} />
+                )}
+                <EventList
+                  priority="upcoming"
+                  events={upcomingEvents}
+                  onEventClick={handleEventClick}
+                />
+                <EventList
+                  priority="later"
+                  events={laterEvents}
+                  onEventClick={handleEventClick}
+                />
+              </>
             )}
           </>
         )}
@@ -372,6 +323,47 @@ export default function Page() {
         />
       </Suspense>
 
+      {isOnHome && (
+        <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+120px)] md:bottom-[96px] z-40 pointer-events-none">
+          <div className="mx-auto flex w-full max-w-md justify-end overflow-visible px-1 md:px-2">
+            <motion.div
+              className="pointer-events-auto flex flex-col items-end gap-[12px] translate-x-[40px] md:translate-x-[48px]"
+              initial={{ y: 16, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 280, damping: 26 }}
+            >
+              <motion.button
+                onClick={handleManualAdd}
+                aria-label="Add item"
+                className={`flex h-[52px] w-[52px] items-center justify-center rounded-[20px] transition-[transform,box-shadow,background-color,border-color] duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-primary/40 ${
+                  isDarkTheme
+                    ? "bg-[#D4A853] text-[#0C0C0E] shadow-[0_12px_32px_rgba(212,168,83,0.22)]"
+                    : "border border-transparent bg-gradient-to-br from-[#2563eb] to-[#3b82f6] text-white shadow-[0_12px_30px_rgba(37,99,235,0.18),0_4px_12px_rgba(0,0,0,0.08)] hover:scale-[1.03] hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(37,99,235,0.22),0_8px_16px_rgba(0,0,0,0.10)] active:scale-[0.96]"
+                }`}
+                whileHover={{ y: -2, scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
+              >
+                <Plus className="h-6 w-6" strokeWidth={2.8} />
+              </motion.button>
+
+              <motion.button
+                onClick={() => setVoiceModalOpen(true)}
+                aria-label="Start voice input"
+                className={`flex h-[60px] w-[60px] items-center justify-center rounded-[20px] transition-[transform,box-shadow,background-color,border-color] duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-primary/40 ${
+                  isDarkTheme
+                    ? "bg-[#5BC0DE] text-[#0C0C0E] shadow-[0_12px_32px_rgba(91,192,222,0.28)]"
+                    : "border border-[rgba(37,99,235,0.12)] bg-white text-[#2563eb] shadow-[0_8px_24px_rgba(0,0,0,0.10)] hover:scale-[1.03] hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(37,99,235,0.14),0_8px_24px_rgba(0,0,0,0.10)] active:scale-[0.96]"
+                }`}
+                whileHover={{ y: -2, scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
+              >
+                <Mic className="h-6 w-6" />
+              </motion.button>
+            </motion.div>
+          </div>
+        </div>
+      )}
+
       {/* Minimalist Action Hub - The Power Trio — only visible on home */}
       <BottomNav
         active={activeTab}
@@ -382,8 +374,6 @@ export default function Page() {
           setUploadOpen(true);
         }}
         onManualAdd={handleManualAdd}
-        onMicClick={() => setVoiceModalOpen(true)}
-        showFab={isOnHome && navigationTab === "today"}
       />
 
       {/* Tomorrow's Chain Modal */}
@@ -397,6 +387,8 @@ export default function Page() {
       {/* Command Palette - Cmd+K */}
       <Suspense fallback={null}>
         <CommandPalette
+          isOpen={commandOpen}
+          onOpenChange={setCommandOpen}
           onAddEvent={handleManualAdd}
           onToggleDarkMode={() => {
             // Toggle dark mode via store or theme provider

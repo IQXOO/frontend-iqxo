@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense } from "react"
-import { Moon, Sun, Languages, Home, Settings } from "lucide-react"
+import { Moon, Sun, Languages, Settings } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { useApp } from "../../lib/store"
 import { motion } from "framer-motion"
@@ -41,7 +41,7 @@ export function DashboardHeader({
       
       {/* Header Controls */}
       <div className="flex items-center gap-2">
-        {/* Home Button */}
+        {/* Search Button (behaves like Home but shows provided SVG) */}
         <motion.button
           onClick={onHomeClick}
           className={`glass rounded-xl p-2.5 transition-all duration-200 ${
@@ -50,7 +50,10 @@ export function DashboardHeader({
           aria-label="Home"
           whileTap={{ scale: 0.95 }}
         >
-          <Home className={`h-5 w-5 ${activeTab === "home" ? "text-primary" : "text-muted-foreground"}`} />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={`h-5 w-5 ${activeTab === "home" ? "text-primary" : "text-muted-foreground"}`} aria-hidden="true">
+            <path d="m21 21-4.34-4.34"></path>
+            <circle cx="11" cy="11" r="8"></circle>
+          </svg>
         </motion.button>
 
         {/* Language Toggle */}

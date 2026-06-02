@@ -75,7 +75,7 @@ const translations = {
     navHome: "Home",
     navHistory: "History",
     navSettings: "Settings",
-    navToday: "Today",
+    navToday: "Home",
     navTomorrow: "Tomorrow",
     navFuture: "Future Explorer",
     navArchive: "Archive",

@@ -12,6 +12,8 @@ interface CommandPaletteProps {
   onExportPDF: () => void
   onLogout: () => void
   onEventSelect: (event: IQXOEvent) => void
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export function CommandPalette({
@@ -20,9 +22,20 @@ export function CommandPalette({
   onExportPDF,
   onLogout,
   onEventSelect,
+  isOpen: isOpenProp,
+  onOpenChange,
 }: CommandPaletteProps) {
   const { events, t } = useApp()
-  const [open, setOpen] = useState(false)
+  const [openLocal, setOpenLocal] = useState(false)
+  const isControlled = typeof isOpenProp === "boolean"
+  const open = isControlled ? isOpenProp! : openLocal
+  const setOpen = (v: boolean) => {
+    if (isControlled) {
+      onOpenChange?.(v)
+    } else {
+      setOpenLocal(v)
+    }
+  }
   const [search, setSearch] = useState("")
   const [selectedIndex, setSelectedIndex] = useState(0)
 
@@ -139,14 +152,6 @@ export function CommandPalette({
 
   return (
     <>
-      {/* Trigger Button */}
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-5 z-40 w-12 h-12 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/30 backdrop-blur-xl flex items-center justify-center hover:scale-110 transition-transform"
-      >
-        <Search className="w-5 h-5 text-primary" />
-      </button>
-
       {/* Command Palette Overlay */}
       <AnimatePresence>
         {open && (
