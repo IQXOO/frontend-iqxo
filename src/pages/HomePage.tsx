@@ -10,10 +10,8 @@ import { BottomNav, type NavTab } from "../components/dashboard/bottom-nav";
 import { useApp, computePriority } from "../lib/store";
 import { parseVoiceInput, type ParsedEvent } from "../lib/parse-voice-input";
 import { useEventNotifications } from "../hooks/use-event-notifications";
-import { exportEventsToPDF } from "../lib/export-pdf";
 import type { IQXOEvent } from "../lib/types";
 import { useVoiceInput } from "../hooks/use-voice-input";
-import { navigateToPath } from "../lib/navigation";
 import { lazyNamed } from "../lib/lazy";
 
 const EventFormModal = lazyNamed(() => import("../components/dashboard/event-form-modal"), "EventFormModal");
@@ -28,7 +26,6 @@ const TomorrowView = lazyNamed(() => import("../components/dashboard/tomorrow-vi
 const FutureExplorerView = lazyNamed(() => import("../components/dashboard/future-explorer-view"), "FutureExplorerView");
 const ArchiveVault = lazyNamed(() => import("../components/dashboard/archive-vault"), "ArchiveVault");
 const WorkScheduleView = lazyNamed(() => import("../components/dashboard/work-schedule-view"), "WorkScheduleView");
-const CommandPalette = lazyNamed(() => import("../components/dashboard/command-palette"), "CommandPalette");
 
 function LazySectionFallback() {
   return <div className="h-40 rounded-[24px] border border-white/5 bg-white/5 animate-pulse" />;
@@ -39,7 +36,7 @@ function LazyModalFallback() {
 }
 
 export default function Page() {
-  const { events, deleteEvent, t, signOut, theme } = useApp();
+  const { events, deleteEvent, t, theme } = useApp();
 
   // Initialize browser notifications
   useEventNotifications(events);
@@ -68,8 +65,9 @@ export default function Page() {
     undefined,
   );
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
-  const [commandOpen, setCommandOpen] = useState(false);
   const [tomorrowModalOpen, setTomorrowModalOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [fabVisible, setFabVisible] = useState(true);
   const isOnHome = activeTab === "home";
   const isDarkTheme =
     theme === "dark" ||
@@ -181,6 +179,47 @@ export default function Page() {
       setPendingUploadFile(null);
     }
   }, [uploadOpen]);
+
+  useEffect(() => {
+    const handleOpenAddEvent = () => {
+      handleManualAdd();
+    };
+
+    const handleOpenEventDetail = (event: Event) => {
+      const customEvent = event as CustomEvent<IQXOEvent>;
+      if (!customEvent.detail) return;
+      setSelectedEvent(customEvent.detail);
+      setDetailOpen(true);
+    };
+
+    window.addEventListener("iqxo-open-add-event", handleOpenAddEvent as EventListener);
+    window.addEventListener("iqxo-open-event-detail", handleOpenEventDetail as EventListener);
+
+    return () => {
+      window.removeEventListener("iqxo-open-add-event", handleOpenAddEvent as EventListener);
+      window.removeEventListener("iqxo-open-event-detail", handleOpenEventDetail as EventListener);
+    };
+  }, [handleManualAdd]);
+
+  useEffect(() => {
+    let lastY = 0;
+    if (typeof window !== "undefined") {
+      lastY = window.scrollY;
+    }
+
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y > lastY + 8) {
+        setFabVisible(false);
+      } else if (y < lastY - 8) {
+        setFabVisible(true);
+      }
+      lastY = y;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Count non-past events for empty state
   const activeEvents = events.filter((e) => computePriority(e.date) !== "past");
@@ -324,16 +363,20 @@ export default function Page() {
       </Suspense>
 
       {isOnHome && (
-        <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+120px)] md:bottom-[96px] z-40 pointer-events-none">
-          <div className="mx-auto flex w-full max-w-md justify-end overflow-visible px-1 md:px-2">
+        <motion.div
+          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+104px)] md:bottom-[96px] z-40 pointer-events-none"
+          animate={fabVisible ? { y: 0, opacity: 1 } : { y: 48, opacity: 0 }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="mx-auto flex w-full max-w-md justify-end overflow-visible px-4 md:px-6">
             <motion.div
-              className="pointer-events-auto flex flex-col items-end gap-[12px] translate-x-[40px] md:translate-x-[48px]"
+              className="pointer-events-auto flex flex-col items-end gap-[12px]"
               initial={{ y: 16, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ type: "spring", stiffness: 280, damping: 26 }}
             >
               <motion.button
-                onClick={handleManualAdd}
+                onClick={() => setComposerOpen(true)}
                 aria-label="Add item"
                 className={`flex h-[52px] w-[52px] items-center justify-center rounded-[20px] transition-[transform,box-shadow,background-color,border-color] duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-primary/40 ${
                   isDarkTheme
@@ -361,7 +404,7 @@ export default function Page() {
               </motion.button>
             </motion.div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Minimalist Action Hub - The Power Trio — only visible on home */}
@@ -374,6 +417,8 @@ export default function Page() {
           setUploadOpen(true);
         }}
         onManualAdd={handleManualAdd}
+        composerOpen={composerOpen}
+        onComposerOpenChange={setComposerOpen}
       />
 
       {/* Tomorrow's Chain Modal */}
@@ -381,27 +426,6 @@ export default function Page() {
         <TomorrowChainModal
           open={tomorrowModalOpen}
           onClose={() => setTomorrowModalOpen(false)}
-        />
-      </Suspense>
-
-      {/* Command Palette - Cmd+K */}
-      <Suspense fallback={null}>
-        <CommandPalette
-          isOpen={commandOpen}
-          onOpenChange={setCommandOpen}
-          onAddEvent={handleManualAdd}
-          onToggleDarkMode={() => {
-            // Toggle dark mode via store or theme provider
-            document.documentElement.classList.toggle("dark");
-          }}
-          onExportPDF={() => exportEventsToPDF(events, "user@example.com")}
-          onLogout={async () => {
-            await signOut();
-          }}
-          onEventSelect={(event) => {
-            setSelectedEvent(event);
-            setDetailOpen(true);
-          }}
         />
       </Suspense>
 

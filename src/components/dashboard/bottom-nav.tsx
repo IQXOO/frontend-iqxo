@@ -552,6 +552,8 @@ interface BottomNavProps {
   onTabChange: (tab: NavTab) => void;
   onUploadClick: (options?: { autoOpenPicker?: boolean; file?: File | null }) => void;
   onManualAdd: () => void;
+  composerOpen?: boolean;
+  onComposerOpenChange?: (open: boolean) => void;
   onImportEvents?: (
     events: {
       title: string;
@@ -568,13 +570,17 @@ export function BottomNav({
   onTabChange,
   onUploadClick,
   onManualAdd,
+  composerOpen,
+  onComposerOpenChange,
   onImportEvents,
 }: BottomNavProps) {
   const { language, addEvent, user } = useApp();
   const isRTL = language === "ar";
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [internalMenuOpen, setInternalMenuOpen] = useState(false);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
   const [showCalendarImport, setShowCalendarImport] = useState(false);
+  const menuOpen = composerOpen ?? internalMenuOpen;
+  const setMenuOpen = onComposerOpenChange ?? setInternalMenuOpen;
 
   const handleTakePhotoOption = (capture?: string) => {
     setMenuOpen(false);
