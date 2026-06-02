@@ -3,7 +3,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap');
 
 @font-face {
-  font-family: 'Geometric';
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
   src: url('./geometric.otf') format('opentype');
   font-weight: normal;
   font-style: normal;
@@ -11,7 +11,7 @@
 }
 
 .font-geometric {
-  font-family: 'Geometric', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
 }
 
 @custom-variant dark (&:is(.dark *));
