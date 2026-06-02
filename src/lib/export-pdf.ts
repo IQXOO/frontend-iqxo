@@ -60,7 +60,7 @@ function createPDFContent(events: IQXOEvent[], userName: string | undefined): st
         }
         
         body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
           color: #1a1a1a;
           line-height: 1.6;
           background: white;
