@@ -744,124 +744,92 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       };
 
-      // Load plan from server — wrap in async IIFE so we can use await
-      const backendUrl =
-        (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4040";
-
+      // Load plan directly from Supabase (trigger handles trial expiry automatically)
       const fetchPlanStatus = async () => {
         try {
-          const headers: Record<string, string> = {};
-          // Use sessionRef.current instead of calling supabase.auth.getSession().
+          const { data, error } = await supabase
+            .from("user_plans")
+            .select(
+              "plan_status, trial_ends_at, stripe_subscription_id, total_usage",
+            )
+            .eq("user_id", userId)
+            .maybeSingle();
 
-          const token = sessionRef.current?.access_token;
-          if (token) headers["Authorization"] = `Bearer ${token}`;
-
-          const r = await fetchWithDiagnostics(
-            "Billing",
-            "GET /plan-status",
-            `${backendUrl}/plan-status?userId=${userId}`,
-            { headers },
-            { timeoutMs: 15000, context: { userId } },
-          );
-          if (r.ok) {
-            const {
-              planStatus: rawPlanStatus,
-              trialEndsAt: trialEnd,
-              totalUsage: usage,
-            } = await r.json();
-            const normalizedPlanStatus =
-              normalizeBillingPlanStatus(rawPlanStatus);
-            setPlanStatusState(normalizedPlanStatus);
-
-            // Cache in localStorage so offline/error fallbacks work correctly
-            localStorage.setItem(`iqxo_plan_${userId}`, normalizedPlanStatus);
-            if (trialEnd) {
-              setTrialEndsAt(new Date(trialEnd));
-              localStorage.setItem(`iqxo_trial_end_${userId}`, trialEnd);
-            } else {
-              setTrialEndsAt(null);
-              localStorage.removeItem(`iqxo_trial_end_${userId}`);
-            }
-
-            if (usage !== undefined) {
-              setTotalUsage(typeof usage === "number" ? usage : 0);
-            } else {
-              const tableUsage = await fetchTotalUsage();
-              if (tableUsage !== null) {
-                setTotalUsage(tableUsage);
-              }
-            }
-            setPlanResolved(true);
-            devLog("Billing", "Plan status loaded", {
-              planStatus: normalizedPlanStatus,
-              hasTrialEnd: Boolean(trialEnd),
-              usage: usage ?? totalUsage,
+          if (error) {
+            devWarn("Billing", "Failed to load plan from Supabase", {
+              userId,
+              error,
             });
-            return normalizedPlanStatus;
-          } else {
-            devWarn(
-              "Billing",
-              "Plan status request failed, falling back to local cache",
-              { status: r.status },
-            );
-
-            // ⚠️ IMPORTANT: Do NOT assume "none" on server errors (e.g. 401, 500).
-            // A 401 can happen if the session token expired mid-request.
-            // Falling back to "none" would force a PRO user to /pricing, crashing the app.
             const savedPlan = localStorage.getItem(
               `iqxo_plan_${userId}`,
             ) as PlanStatus | null;
             const normalizedSavedPlan = normalizeBillingPlanStatus(savedPlan);
-
-            // Only show an error toast if there's no local fallback (truly unknown state)
-            if (normalizedSavedPlan === "none") {
-              toast({
-                title: "Couldn't load billing status",
-                description:
-                  "We'll keep the app usable, but billing details may be stale. Please try again later.",
-                variant: "destructive",
-              });
-            }
-
+            setPlanStatusState(normalizedSavedPlan);
             const savedTrialEnd = localStorage.getItem(
               `iqxo_trial_end_${userId}`,
             );
-            if (savedTrialEnd) {
-              setTrialEndsAt(new Date(savedTrialEnd));
-            } else {
-              setTrialEndsAt(null);
-            }
-
-            setPlanStatusState(normalizedSavedPlan);
+            setTrialEndsAt(savedTrialEnd ? new Date(savedTrialEnd) : null);
             setPlanResolved(true);
             return normalizedSavedPlan;
           }
-        } catch (e) {
-          devWarn(
-            "Billing",
-            "Plan status server unreachable, using local fallback",
+
+          if (!data) {
+            setPlanStatusState("none");
+            setTrialEndsAt(null);
+            localStorage.setItem(`iqxo_plan_${userId}`, "none");
+            localStorage.removeItem(`iqxo_trial_end_${userId}`);
+            setPlanResolved(true);
+            return "none";
+          }
+
+          const normalizedPlanStatus = normalizeBillingPlanStatus(
+            data.plan_status,
           );
-          console.log(e instanceof Error ? e.message : e);
-          toast({
-            title: "Couldn't reach billing service",
-            description: "We'll use the cached plan status for now.",
-            variant: "destructive",
+          setPlanStatusState(normalizedPlanStatus);
+          localStorage.setItem(`iqxo_plan_${userId}`, normalizedPlanStatus);
+
+          if (data.trial_ends_at) {
+            setTrialEndsAt(new Date(data.trial_ends_at));
+            localStorage.setItem(
+              `iqxo_trial_end_${userId}`,
+              data.trial_ends_at,
+            );
+          } else {
+            setTrialEndsAt(null);
+            localStorage.removeItem(`iqxo_trial_end_${userId}`);
+          }
+
+          const usage =
+            typeof data.total_usage === "number"
+              ? data.total_usage
+              : typeof data.total_usage === "string"
+                ? Number(data.total_usage)
+                : null;
+          if (usage !== null && Number.isFinite(usage)) {
+            setTotalUsage(usage);
+          } else {
+            const tableUsage = await fetchTotalUsage();
+            if (tableUsage !== null) setTotalUsage(tableUsage);
+          }
+
+          setPlanResolved(true);
+          devLog("Billing", "Plan status loaded from Supabase", {
+            planStatus: normalizedPlanStatus,
+            hasTrialEnd: Boolean(data.trial_ends_at),
           });
+          return normalizedPlanStatus;
+        } catch (e) {
+          devWarn("Billing", "Plan status query failed, using local fallback");
+          console.log(e instanceof Error ? e.message : e);
           const savedPlan = localStorage.getItem(
             `iqxo_plan_${userId}`,
           ) as PlanStatus | null;
           const normalizedSavedPlan = normalizeBillingPlanStatus(savedPlan);
           setPlanStatusState(normalizedSavedPlan);
-
           const savedTrialEnd = localStorage.getItem(
             `iqxo_trial_end_${userId}`,
           );
-          if (savedTrialEnd) {
-            setTrialEndsAt(new Date(savedTrialEnd));
-          } else {
-            setTrialEndsAt(null);
-          }
-
+          setTrialEndsAt(savedTrialEnd ? new Date(savedTrialEnd) : null);
           setPlanResolved(true);
           return normalizedSavedPlan;
         }
@@ -870,14 +838,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       let pollInterval: NodeJS.Timeout | null = null;
 
       // If the user was previously confirmed as PRO (cached in localStorage),
-      // there is no need to hit /plan-status on every load.
+      // there is no need to hit Supabase on every load.
       const cachedPlan = localStorage.getItem(
         `iqxo_plan_${userId}`,
       ) as PlanStatus | null;
       const cachedNormalized = normalizeBillingPlanStatus(cachedPlan);
 
       if (cachedNormalized === "pro") {
-        devLog("Billing", "PRO plan found in cache — skipping plan API call", {
+        devLog("Billing", "PRO plan found in cache — skipping plan query", {
           userId,
         });
         setPlanStatusState("pro");
@@ -895,7 +863,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         (async () => {
           await fetchPlanStatus();
 
-          // Poll every 5 minutes for non-PRO users to detect plan changes
+          // Poll every 5 minutes for non-PRO users to pick up trigger-driven plan changes
           devLog("Billing", "Plan-status polling enabled", {
             interval: "5min",
           });

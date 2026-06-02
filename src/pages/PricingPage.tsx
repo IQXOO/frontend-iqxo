@@ -9,14 +9,12 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useApp } from "../lib/store";
+import { supabase } from "../lib/supabase";
 import { BrandLogo } from "../components/brand-logo";
 import {
   devError,
   devLog,
-  devWarn,
-  fetchWithDiagnostics,
   getFriendlyErrorMessage,
-  readResponseText,
 } from "../lib/logger";
 import { useToast } from "../hooks/use-toast";
 import { navigateToPath } from "../lib/navigation";
@@ -28,7 +26,6 @@ const PRICING = {
   savingsPct: Math.round(100 - (79 / (9.99 * 12)) * 100),
 };
 
-const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4000";
 const PAYMENT_LINKS = {
   monthly: (import.meta as any).env?.VITE_STRIPE_MONTHLY_LINK,
   yearly: (import.meta as any).env?.VITE_STRIPE_YEARLY_LINK || "",
@@ -206,7 +203,7 @@ function PricingCard({
 }
 
 export default function PricingPage() {
-  const { language, user, session, planStatus, trialEndsAt, setPlanStatus } = useApp();
+  const { language, user, planStatus, trialEndsAt, setPlanStatus } = useApp();
   const { toast } = useToast();
   const [scrolled, setScrolled] = useState(false);
   const [trialError, setTrialError] = useState<string | null>(null);
@@ -258,68 +255,85 @@ export default function PricingPage() {
       return;
     }
 
+    // Trial is currently active — inform the user instead of silently navigating away
     if (trialActive) {
+      toast({
+        title: translate(language, "Your free trial is active", "Votre essai gratuit est actif", "تجربتك المجانية نشطة"),
+        description: translate(
+          language,
+          "You already have an active 7-day free trial. Enjoy all features!",
+          "Vous avez déjà un essai gratuit de 7 jours actif. Profitez de toutes les fonctionnalités !",
+          "لديك تجربة مجانية لمدة 7 أيام نشطة بالفعل. استمتع بجميع الميزات!",
+        ),
+      });
       navigateToPath("/");
       return;
     }
 
     setTrialError(null);
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+      // Check if trial was already used (expired)
+      const { data: existing } = await supabase
+        .from("user_plans")
+        .select("trial_started_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-      const res = await fetchWithDiagnostics(
-        "Billing",
-        "POST /start-trial",
-        `${BACKEND_URL}/start-trial`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ userId: user.id }),
-        },
-        { timeoutMs: 15000, context: { userId: user.id } },
-      );
-
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        devWarn("Billing", "Trial endpoint returned non-JSON response; using local fallback");
-        const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-        setPlanStatus("free_trial", trialEnd);
-        navigateToPath("/");
-        return;
-      }
-
-      const data = await res.json();
-
-      if (res.status === 409) {
+      if (existing?.trial_started_at) {
         const message = translate(
           language,
-          "This account has already used its free trial. Please subscribe to continue.",
-          "Ce compte a déjà utilisé l'essai gratuit. Veuillez vous abonner.",
-          "هذا الحساب استخدم التجربة المجانية من قبل. يرجى الاشتراك للمتابعة.",
+          "You've already used your free trial on this account. Subscribe to keep going.",
+          "Vous avez déjà utilisé votre essai gratuit. Abonnez-vous pour continuer.",
+          "استخدمت تجربتك المجانية من قبل على هذا الحساب. اشترك للمتابعة.",
         );
         setTrialError(message);
-        toast({ title: "Trial unavailable", description: message, variant: "destructive" });
+        toast({
+          title: translate(language, "Trial already used", "Essai déjà utilisé", "التجربة مستخدمة مسبقًا"),
+          description: message,
+          variant: "destructive",
+        });
         return;
       }
 
-      if (!res.ok) {
-        const responseText = await readResponseText(res);
-        throw new Error(data.error || responseText || `Trial request failed (${res.status})`);
-      }
+      const now = new Date();
+      const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-      devLog("Billing", "Free trial activated");
-      setPlanStatus("free_trial", new Date(data.trialEndsAt));
+      const { error } = await supabase.from("user_plans").upsert(
+        {
+          user_id: user.id,
+          plan_status: "free_trial",
+          trial_started_at: now.toISOString(),
+          trial_ends_at: trialEnd.toISOString(),
+          updated_at: now.toISOString(),
+        },
+        { onConflict: "user_id" },
+      );
+
+      if (error) throw error;
+
+      devLog("Billing", "Free trial activated via Supabase");
+      setPlanStatus("free_trial", trialEnd);
+
+      // ✅ Success — let the user know their trial just started
+      toast({
+        title: translate(language, "Free trial activated! 🎉", "Essai gratuit activé ! 🎉", "تم تفعيل التجربة المجانية! 🎉"),
+        description: translate(
+          language,
+          "Your 7-day free trial has started. Enjoy all features!",
+          "Votre essai gratuit de 7 jours a commencé. Profitez de toutes les fonctionnalités !",
+          "بدأت تجربتك المجانية لمدة 7 أيام. استمتع بجميع الميزات!",
+        ),
+      });
       navigateToPath("/");
     } catch (err: any) {
-      devError("Billing", "Free trial request failed", err);
+      devError("Billing", "Free trial activation failed", err);
       const message = getFriendlyErrorMessage(
         err,
-        translate(language, "Something went wrong. Please try again.", "Une erreur est survenue.", "حدث خطأ."),
+        translate(language, "Something went wrong. Please try again.", "Une erreur est survenue.", "حدث خطأ. حاول مرة أخرى."),
       );
       setTrialError(message);
       toast({
-        title: "Couldn't start free trial",
+        title: translate(language, "Couldn't start free trial", "Impossible de démarrer l'essai", "تعذّر بدء التجربة المجانية"),
         description: message,
         variant: "destructive",
       });
