@@ -13,13 +13,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useApp } from "../../lib/store";
+import { supabase } from "../../lib/supabase";
 import {
   devError,
   devLog,
-  devWarn,
-  fetchWithDiagnostics,
   getFriendlyErrorMessage,
-  readResponseText,
 } from "../../lib/logger";
 import { useToast } from "../../hooks/use-toast";
 import { BrandLogo } from "../brand-logo"
@@ -40,9 +38,6 @@ const PRICING = {
   yearlyPerMonth: (79 / 12).toFixed(2),
   savingsPct: Math.round(100 - (79 / (9.99 * 12)) * 100),
 };
-
-const BACKEND_URL =
-  (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4040";
 
 const PAYMENT_LINKS: Record<BillingCycle, string> = {
   monthly: (import.meta as any).env?.VITE_STRIPE_MONTHLY_LINK,
@@ -65,7 +60,7 @@ export function StripePricingPage({
   planStatus,
   trialEndsAt,
 }: StripePricingPageProps) {
-  const { language, setPlanStatus, user, session, totalUsage } = useApp();
+  const { language, setPlanStatus, user, totalUsage } = useApp();
   const { toast } = useToast();
   const isRTL = language === "ar";
   const t = useTranslate(language);
@@ -126,63 +121,77 @@ export function StripePricingPage({
   const handleTrial = async () => {
     if (!user) return;
 
+    // Trial is currently active — inform the user instead of silently closing
     if (trialActive) {
+      toast({
+        title: t("Your free trial is active", "Votre essai gratuit est actif", "تجربتك المجانية نشطة"),
+        description: t(
+          "You already have an active 7-day free trial. Enjoy all features!",
+          "Vous avez déjà un essai gratuit de 7 jours actif. Profitez de toutes les fonctionnalités !",
+          "لديك تجربة مجانية لمدة 7 أيام نشطة بالفعل. استمتع بجميع الميزات!",
+        ),
+      });
       onClose?.();
       return;
     }
 
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+      // Check if trial was already used (expired)
+      const { data: existing } = await supabase
+        .from("user_plans")
+        .select("trial_started_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-      const res = await fetchWithDiagnostics(
-        "Billing",
-        "POST /start-trial",
-        `${BACKEND_URL}/start-trial`,
+      if (existing?.trial_started_at) {
+        toast({
+          title: t("Trial already used", "Essai déjà utilisé", "التجربة مستخدمة مسبقًا"),
+          description: t(
+            "You've already used your free trial on this account. Subscribe to keep going.",
+            "Vous avez déjà utilisé votre essai gratuit. Abonnez-vous pour continuer.",
+            "استخدمت تجربتك المجانية من قبل على هذا الحساب. اشترك للمتابعة.",
+          ),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const now = new Date();
+      const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      const { error } = await supabase.from("user_plans").upsert(
         {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ userId: user.id }),
+          user_id: user.id,
+          plan_status: "free_trial",
+          trial_started_at: now.toISOString(),
+          trial_ends_at: trialEnd.toISOString(),
+          updated_at: now.toISOString(),
         },
-        { timeoutMs: 15000, context: { userId: user.id } },
+        { onConflict: "user_id" },
       );
 
-      const contentType = res.headers.get("content-type") || "";
-        if (!contentType.includes("application/json")) {
-        devWarn("Billing", "Trial endpoint returned non-JSON response; using local fallback");
-        const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-        setPlanStatus("free_trial", trialEnd);
-        onClose?.();
-        return;
-      }
+      if (error) throw error;
 
-      const data = await res.json();
+      devLog("Billing", "Free trial activated via Supabase");
+      setPlanStatus("free_trial", trialEnd);
 
-      if (res.status === 409) {
-        const message = t(
-          "This account has already used its free trial. Please subscribe to continue.",
-          "Ce compte a déjà utilisé l'essai gratuit. Veuillez vous abonner.",
-          "هذا الحساب استخدم التجربة المجانية من قبل. يرجى الاشتراك للمتابعة.",
-        );
-        toast({ title: "Trial unavailable", description: message, variant: "destructive" });
-        return;
-      }
-
-      if (!res.ok) {
-        const responseText = await readResponseText(res);
-        throw new Error(data.error || responseText || `Trial request failed (${res.status})`);
-      }
-
-      devLog("Billing", "Free trial activated");
-      setPlanStatus("free_trial", new Date(data.trialEndsAt));
+      // ✅ Success — let the user know their trial just started
+      toast({
+        title: t("Free trial activated! 🎉", "Essai gratuit activé ! 🎉", "تم تفعيل التجربة المجانية! 🎉"),
+        description: t(
+          "Your 7-day free trial has started. Enjoy all features!",
+          "Votre essai gratuit de 7 jours a commencé. Profitez de toutes les fonctionnalités !",
+          "بدأت تجربتك المجانية لمدة 7 أيام. استمتع بجميع الميزات!",
+        ),
+      });
       onClose?.();
     } catch (err: any) {
-      devError("Billing", "Free trial request failed", err);
+      devError("Billing", "Free trial activation failed", err);
       toast({
-        title: "Couldn't start free trial",
+        title: t("Couldn't start free trial", "Impossible de démarrer l'essai", "تعذّر بدء التجربة المجانية"),
         description: getFriendlyErrorMessage(
           err,
-          t("Something went wrong. Please try again.", "Une erreur est survenue.", "حدث خطأ."),
+          t("Something went wrong. Please try again.", "Une erreur est survenue.", "حدث خطأ. حاول مرة أخرى."),
         ),
         variant: "destructive",
       });
