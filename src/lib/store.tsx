@@ -141,8 +141,8 @@ const translations: Record<Language, Record<string, string>> = {
     IQXO: "IQXO",
 
     // Sections
-    urgentTitle: "This Week",
-    upcomingTitle: "Coming Up",
+    urgentTitle: "Today",
+    upcomingTitle: "This Week",
     laterTitle: "Down the Road",
     statsTitle: "Your Life",
     auto: "SMART",
@@ -200,8 +200,8 @@ const translations: Record<Language, Record<string, string>> = {
     takeItEasy: "Take it easy and enjoy your day",
 
     // Priority badges
-    urgentBadge: "This week",
-    upcomingBadge: "Next month",
+    urgentBadge: "Today",
+    upcomingBadge: "Next week",
     laterBadge: "Later",
     pastTitle: "Memory Lane",
     pastBadge: "Done",
@@ -345,8 +345,8 @@ const translations: Record<Language, Record<string, string>> = {
     IQXO: "IQXO",
 
     // Sections
-    urgentTitle: "Cette semaine",
-    upcomingTitle: "Bientôt",
+    urgentTitle: "Aujourd'hui",
+    upcomingTitle: "Cette semaine",
     laterTitle: "Plus tard",
     statsTitle: "Ta vie",
     auto: "SMART",
@@ -405,8 +405,8 @@ const translations: Record<Language, Record<string, string>> = {
     takeItEasy: "Détends-toi et profite de ta journée",
 
     // Priority badges
-    urgentBadge: "Cette semaine",
-    upcomingBadge: "Ce mois",
+    urgentBadge: "Aujourd'hui",
+    upcomingBadge: "Ce Cette semaine",
     laterBadge: "Plus tard",
     pastTitle: "Souvenirs",
     pastBadge: "Fait",
@@ -519,28 +519,182 @@ const translations: Record<Language, Record<string, string>> = {
   },
 
   ar: {
-    // "app.title": "IQXO",
-    // "events.title": "الأحداث",
-    // "events.add": "إضافة",
-    // "events.empty": "لا توجد أحداث",
-    // cancel: "إلغاء",
-    // delete: "حذف",
-    // save: "حفظ",
-    // edit: "تعديل",
-    // share: "مشاركة",
-    // today: "اليوم",
-    // tomorrow: "غداً",
-    // urgent: "عاجل",
-    // upcoming: "قادم",
-    // later: "لاحقاً",
-    // past: "ماضي",
-    // noEvents: "لا توجد أحداث",
-    // noEventsDesc: "اضغط لإضافة حدثك الأول",
-    // addEvent: "إضافة حدث",
-    // noResults: "لا توجد نتائج",
-    // live: "مباشر",
-    // IQXO: "IQXO",
-    // logout_error: "فشل تسجيل الخروج",
+    // Header
+    appName: "IQXO",
+    "app.title": "IQXO",
+    live: "مباشر",
+    IQXO: "IQXO",
+
+    // Sections
+    urgentTitle: "اليوم",
+    upcomingTitle: "هذا الأسبوع",
+    laterTitle: "لاحقاً",
+    statsTitle: "حياتك",
+    auto: "ذكي",
+
+    // Events
+    "events.title": "الأحداث",
+    "events.add": "إضافة حدث",
+    "events.empty": "لا توجد أحداث بعد",
+    addEvent: "دعونا نضيف هذا",
+    editEvent: "تعديل شيء ما",
+
+    // Stats
+    totalEvents: "الكل",
+    urgentCount: "عاجل",
+    upcomingCount: "قريب",
+    laterCount: "لاحق",
+    smartInsight: "منظم حسب الأولوية",
+
+    // Search
+    searchPlaceholder: "ابحث عن شيء...",
+
+    // Event form
+    eventTitle: "ماذا",
+    eventTitlePlaceholder: "مثال: موعد الطبيب",
+    eventDate: "متى",
+    eventTime: "الوقت",
+    eventPhone: "الهاتف",
+    eventPhonePlaceholder: "مثال: +966 5 0000 0000",
+    eventLocation: "أين",
+    eventLocationPlaceholder: "مثال: 123 الشارع الرئيسي",
+    eventNotes: "ملاحظات",
+    eventNotesPlaceholder: "أي شيء آخر تريد تذكره...",
+    save: "تم",
+    cancel: "لا يهم",
+    delete: "حذف",
+    deleteConfirm: "هل تريد حذف هذا من تقويمك؟",
+    deleteConfirmYes: "نعم، احذفه",
+    deleteConfirmNo: "احتفظ به",
+
+    // Event detail
+    eventDetail: "التفاصيل",
+    call: "اتصال",
+    openMap: "الخريطة",
+    share: "مشاركة",
+    edit: "تعديل",
+
+    // Empty state
+    noEvents: "لا يوجد شيء حتى الآن",
+    noEventsDesc: "شارك شيئاً لنبدأ",
+    noUrgent: "أنت متفرغ تماماً هذا الأسبوع",
+    noUpcoming: "لا يوجد شيء قريباً",
+    noLater: "المستقبل مفتوح تماماً",
+    noResults: "لم نجد أي نتائج مطابقة",
+    noEventsToday: "لا مواعيد اليوم",
+    takeItEasy: "استرخِ واستمتع بيومك",
+
+    // Priority badges
+    urgentBadge: "هذا الأسبوع",
+    upcomingBadge: "الشهر القادم",
+    laterBadge: "لاحقاً",
+    pastTitle: "الذكريات",
+    pastBadge: "تم",
+    noPast: "لا توجد ذكريات بعد",
+    past: "ماضي",
+    urgent: "عاجل",
+    upcoming: "قادم",
+    later: "لاحقاً",
+
+    // Voice
+    voiceListening: "أنا أستمع...",
+    voiceHint: "اضغط وتحدث",
+    voiceUnsupported: "الصوت غير مدعوم هنا",
+
+    // Nav
+    navHome: "الرئيسية",
+    navHistory: "السجل",
+    navSettings: "الإعدادات",
+    navToday: "الرئيسية",
+    navTomorrow: "غداً",
+    navFuture: "المستقبل",
+    navArchive: "الأرشيف",
+
+    // Time
+    today: "اليوم",
+    tomorrow: "غداً",
+
+    // FAB
+    fabUpload: "صورة",
+    fabVoice: "صوت",
+    fabManual: "كتابة",
+
+    // Upload
+    uploadLabel: "شارك صورة",
+    uploadPreview: "دعني أرى...",
+    uploadAnalyze: "فهمت",
+    uploadAnalyzing: "لحظة واحدة...",
+    uploadAnalyzingDesc: "أقوم بقراءة صورتك",
+    uploadSuccess: "تم العثور على المواعيد!",
+    uploadFailed: "لم أتمكن من قراءة الصورة",
+    uploadError: "حدث خطأ ما، فلنحاول مجدداً.",
+    uploadUnsupported: "أحتاج صورة JPG أو PNG أو ملف PDF.",
+    uploadTooLarge: "الملف كبير جداً. يرجى اختيار ملف أقل من 10 ميجابايت.",
+    uploadNoEvents: "لم أجد أي تواريخ هنا.",
+    uploadEventSingular: "أضيفت إلى تقويمك",
+    uploadEventPlural: "أضيفت إلى تقويمك",
+
+    // Logout & Auth
+    logout_success: "إلى اللقاء!",
+    logout_desc: "أنت جاهز.",
+    logout_error: "حدث خطأ ما...",
+    logging_out: "جاري تسجيل الخروج...",
+
+    // Tomorrow's Chain
+    tomorrowChain: "خطة الغد",
+    chainSubtitle: "مخططك اليومي الذكي بناءً على مواعيدك",
+    chainTotalTime: "إجمالي الوقت المتوقع بالخارج:",
+    chainRecommendation: "النصيحة: خذ نصف يوم إجازة إن أمكن",
+    startMyDay: "ابدأ يومي",
+    doctorAppointment: "موعد الطبيب",
+    insuranceRenewal: "تجديد التأمين",
+    carService: "صيانة السيارة",
+    bringOldPrescription: "احضر الوصفة الطبية القديمة وبطاقة التأمين",
+    travelTime: "الوقت المتوقع للتنقل: 20 دقيقة",
+    takeCarLicense: "احضر رخصة السيارة والهوية",
+    proximityNote: "على بعد 7 دقائق فقط سيراً من العيادة",
+    bringWaterBottle: "احضر زجاجة ماء - قد يكون الانتظار طويلاً",
+    chainHours: "ساعات",
+
+    // Prescription Alert
+    prescriptionExpired: "انتهت صلاحية هذه الوصفة",
+    daysAgo: "يوم مضى!",
+    medicineName: "الدواء",
+    dosage: "الجرعة",
+    purpose: "الهدف",
+    expirationDate: "ينتهي في",
+    orderRefillNow: "اطلب التجديد الآن",
+    refillSubtext: "يمكننا تجهيز طلبك مسبقاً في أقرب صيدلية",
+    remindInTwoDays: "ذكرني خلال 7 أيام",
+    addToCalendar: "أضف إلى التقويم",
+    viewRelatedNotes: "عرض الملاحظات ذات الصلة",
+    pharmacyNote: "احضر العلبة القديمة للصيدلي للمطابقة الدقيقة",
+
+    // Energy Score
+    energyScore: "مستوى الطاقة",
+    energyHigh: "طاقة كاملة",
+    energyMed: "طاقة متوسطة",
+    energyLow: "طاقة منخفضة",
+    suggestion: "اقتراح",
+
+    // Smart Reminder
+    snooze: "تأجيل",
+    confirm: "تأكيد",
+    snoozedUntil: "مؤجل حتى",
+
+    // Contextual Alert
+    locationAlert: "بالقرب من",
+    timeAlert: "خلال",
+    conflict: "تضارب",
+    prepare: "تجهيز",
+
+    // Quick Attach
+    attachPhoto: "إرفاق صورة",
+    attachDoc: "إرفاق مستند",
+    attached: "مرفق",
+
+    // Misc
+    workSchedule: "جدول العمل",
   },
 };
 
@@ -553,7 +707,7 @@ export function computePriority(dateStr: string): Priority {
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   if (eventDate < today) return "past";
   if (diffDays === 0) return "urgent";
-  if (diffDays === 1) return "upcoming";
+  if (diffDays <= 6) return "upcoming";
   return "later";
 }
 

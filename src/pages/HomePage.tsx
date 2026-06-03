@@ -8,7 +8,7 @@ import { UrgentCards } from "../components/dashboard/attention-cards";
 import { EventList } from "../components/dashboard/event-list";
 import { BottomNav, type NavTab } from "../components/dashboard/bottom-nav";
 import { useApp, computePriority } from "../lib/store";
-import { parseVoiceInput, type ParsedEvent } from "../lib/parse-voice-input";
+import { type ParsedEvent } from "../lib/parse-voice-input";
 import { useEventNotifications } from "../hooks/use-event-notifications";
 import type { IQXOEvent } from "../lib/types";
 import { useVoiceInput } from "../hooks/use-voice-input";
@@ -22,10 +22,6 @@ const EventConfirmationModal = lazyNamed(() => import("../components/dashboard/e
 const SettingsView = lazyNamed(() => import("../components/dashboard/settings-view"), "SettingsView");
 const HistoryView = lazyNamed(() => import("../components/dashboard/history-view"), "HistoryView");
 const TomorrowChainModal = lazyNamed(() => import("../components/dashboard/tomorrow-chain-modal"), "TomorrowChainModal");
-const TomorrowView = lazyNamed(() => import("../components/dashboard/tomorrow-view"), "TomorrowView");
-const FutureExplorerView = lazyNamed(() => import("../components/dashboard/future-explorer-view"), "FutureExplorerView");
-const ArchiveVault = lazyNamed(() => import("../components/dashboard/archive-vault"), "ArchiveVault");
-const WorkScheduleView = lazyNamed(() => import("../components/dashboard/work-schedule-view"), "WorkScheduleView");
 
 function LazySectionFallback() {
   return <div className="h-40 rounded-[24px] border border-white/5 bg-white/5 animate-pulse" />;

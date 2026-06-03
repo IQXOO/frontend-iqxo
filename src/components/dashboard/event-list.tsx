@@ -125,7 +125,8 @@ function EventGridCard({
   onDelete?: (id: string) => void
 }) {
   const eventDate = new Date(event.date)
-  const { t } = useApp()
+  const { t, language } = useApp()
+  const isRTL = language === "ar"
   const config = priorityConfig[priority] || priorityConfig.upcoming    
 
   const dateLabel = isToday(eventDate)
@@ -145,7 +146,7 @@ function EventGridCard({
     return (
       <button
         onClick={onClick}
-        className={`col-span-2 glass rounded-2xl p-4 flex items-center gap-4 text-left transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] group bg-gradient-to-r ${config.accentFrom} ${config.accentVia} to-transparent`}
+        className={`col-span-2 glass rounded-2xl p-4 flex items-center gap-4 text-${isRTL ? "right" : "left"} transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] group bg-gradient-to-${isRTL ? "l" : "r"} ${config.accentFrom} ${config.accentVia} to-transparent ${isRTL ? "flex-row-reverse" : ""}`}
       >
         <div className="h-14 w-14 rounded-2xl bg-secondary/60 flex flex-col items-center justify-center shrink-0">
           <span className={`text-[10px] font-bold uppercase leading-none ${config.iconColor}`}>
@@ -165,21 +166,21 @@ function EventGridCard({
           <h3 className="text-sm font-semibold text-foreground truncate">
             {event.title}
           </h3>
-          <div className="flex items-center gap-1.5 mt-1">
-            <Clock className="h-3 w-3 text-muted-foreground" />
+          <div className={`flex items-center gap-1.5 mt-1 ${isRTL ? "flex-row-reverse" : ""}`}>
+            <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
             <span className="text-xs text-muted-foreground">
               {dateLabel}{event.time ? ` \u00B7 ${event.time}` : ""}
             </span>
           </div>
           {event.location && (
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <div className={`flex items-center gap-1.5 mt-0.5 ${isRTL ? "flex-row-reverse" : ""}`}>
               <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
               <span className="text-xs text-muted-foreground truncate">{event.location}</span>
             </div>
           )}
         </div>
 
-        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+        <ChevronRight className={`h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ${isRTL ? "rotate-180" : ""}`} />
       </button>
     )
   }
@@ -191,46 +192,46 @@ function EventGridCard({
     <div className="relative">
       <button
         onClick={onClick}
-        className={`w-full glass rounded-2xl p-3.5 flex flex-col justify-between text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] group min-h-[130px] ${priority === "past" ? "opacity-70" : ""}`}
+        className={`w-full glass rounded-2xl p-3 flex flex-col justify-between text-${isRTL ? "right" : "left"} transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] group h-[150px] overflow-hidden ${priority === "past" ? "opacity-70" : ""}`}
       >
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className={`h-9 w-9 rounded-xl bg-secondary/60 flex flex-col items-center justify-center`}>
-              <span className={`text-[8px] font-bold uppercase leading-none ${config.iconColor}`}>
+        <div className="min-w-0 w-full flex-1 flex flex-col justify-start">
+          <div className={`flex items-center justify-between mb-1.5 shrink-0 ${isRTL ? "flex-row-reverse" : ""}`}>
+            <div className="h-8 w-8 rounded-lg bg-secondary/60 flex flex-col items-center justify-center shrink-0">
+              <span className={`text-[7px] font-bold uppercase leading-none ${config.iconColor}`}>
                 {format(eventDate, "MMM")}
               </span>
-              <span className="text-sm font-bold text-foreground leading-none mt-px">
+              <span className="text-xs font-bold text-foreground leading-none mt-px">
                 {format(eventDate, "d")}
               </span>
             </div>
             {event.phone && (
-              <Phone className="h-3 w-3 text-muted-foreground/50" />
+              <Phone className="h-3 w-3 text-muted-foreground/50 shrink-0" />
             )}
           </div>
-          <h3 className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2">
+          <h3 className="text-[12.5px] font-semibold text-foreground leading-snug line-clamp-2">
             {event.title}
           </h3>
           {aiInsight && (
-            <div className="mt-2 flex items-center gap-1.5 p-2 rounded-lg bg-primary/10 border border-primary/20">
-              <Lightbulb className="h-3 w-3 text-primary flex-shrink-0" />
-              <span className="text-[9px] text-primary font-medium line-clamp-1">
+            <div className={`mt-1 flex items-center gap-1 p-1 rounded bg-primary/10 border border-primary/20 shrink-0 ${isRTL ? "flex-row-reverse" : ""}`}>
+              <Lightbulb className="h-2.5 w-2.5 text-primary flex-shrink-0" />
+              <span className="text-[8.5px] text-primary font-medium line-clamp-1">
                 {aiInsight.icon} {aiInsight.text}
               </span>
             </div>
           )}
         </div>
 
-        <div className="mt-2 flex flex-col gap-0.5">
-          <div className="flex items-center gap-1">
-            <Clock className="h-2.5 w-2.5 text-muted-foreground" />
-            <span className="text-[10px] text-muted-foreground">
+        <div className="mt-1.5 flex flex-col gap-0.5 shrink-0">
+          <div className={`flex items-center gap-1 ${isRTL ? "flex-row-reverse" : ""}`}>
+            <Clock className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
+            <span className="text-[9.5px] text-muted-foreground truncate">
               {dateLabel}{event.time ? ` \u00B7 ${event.time}` : ""}
             </span>
           </div>
           {event.location && (
-            <div className="flex items-center gap-1">
+            <div className={`flex items-center gap-1 ${isRTL ? "flex-row-reverse" : ""}`}>
               <MapPin className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
-              <span className="text-[10px] text-muted-foreground truncate">{event.location}</span>
+              <span className="text-[9.5px] text-muted-foreground truncate">{event.location}</span>
             </div>
           )}
         </div>
@@ -241,7 +242,7 @@ function EventGridCard({
             e.stopPropagation()
             onDelete(event.id)
           }}
-          className="absolute top-2 right-2 h-7 w-7 rounded-lg bg-destructive/15 hover:bg-destructive/25 flex items-center justify-center transition-colors"
+          className={`absolute top-2 ${isRTL ? "left-2" : "right-2"} h-7 w-7 rounded-lg bg-destructive/15 hover:bg-destructive/25 flex items-center justify-center transition-colors`}
           aria-label={t("delete")}
         >
           <Trash2 className="h-3.5 w-3.5 text-destructive" />
