@@ -10,6 +10,7 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer"
+import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
   AlertDialogContent,
@@ -39,6 +40,7 @@ export function EventDetailModal({
   onEdit,
 }: EventDetailModalProps) {
   const { deleteEvent, t, language } = useApp()
+  const { toast } = useToast()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showImageLightbox, setShowImageLightbox] = useState(false)
   const [imgError, setImgError] = useState(false)
@@ -262,16 +264,33 @@ export function EventDetailModal({
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Event</AlertDialogTitle>
-            <AlertDialogDescription>Are you sure you want to delete this event? This action cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle>{language === "ar" ? "حذف الحدث" : "Delete Event"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {language === "ar"
+                ? "هل أنت متأكد أنك تريد حذف هذا الحدث؟ لا يمكن التراجع عن هذا الإجراء."
+                : "Are you sure you want to delete this event? This action cannot be undone."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
-                await deleteEvent(event.id)
-                onOpenChange(false)
-                setShowDeleteConfirm(false)
+                try {
+                  await deleteEvent(event.id)
+                  onOpenChange(false)
+                  setShowDeleteConfirm(false)
+                  toast({
+                    title: language === "ar" ? "تم الحذف" : "Event deleted",
+                    description: language === "ar" ? "تم حذف الحدث بنجاح." : "The event has been successfully deleted.",
+                  })
+                } catch (err: any) {
+                  console.error("Failed to delete event:", err)
+                  toast({
+                    title: language === "ar" ? "فشل الحذف" : "Delete failed",
+                    description: err?.message || (language === "ar" ? "حدث خطأ غير متوقع." : "An unexpected error occurred."),
+                    variant: "destructive",
+                  })
+                }
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
