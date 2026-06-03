@@ -91,7 +91,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
     }
     if (editEvent) {
       setTitle(editEvent.title); setDate(editEvent.date); setTime(editEvent.time);
-      setPhone(editEvent.phone || ""); setEmail((editEvent as any).email || ""); setLocation(editEvent.location || ""); setNotes(editEvent.notes || "");
+      setPhone(editEvent.phone || ""); setEmail(editEvent.email || ""); setLocation(editEvent.location || ""); setNotes(editEvent.notes || "");
       setImagePreview(editEvent.image_url || null); setImageFile(null);
       setExistingPdfUrl(editEvent.pdf_url || null); setPdfFile(null);
       setPdfName(editEvent.pdf_url ? decodeURIComponent(editEvent.pdf_url.split("/").pop() ?? "document.pdf") : null);
@@ -227,13 +227,13 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="bg-background border-border max-h-[92vh]">
+      <DrawerContent className="bg-background border-border h-[60vh]">
         <DrawerHeader>
           <DrawerTitle className="text-foreground">{editEvent ? t("editEvent") : t("addEvent")}</DrawerTitle>
           <DrawerDescription className="sr-only">{editEvent ? t("editEvent") : t("addEvent")}</DrawerDescription>
         </DrawerHeader>
 
-        <div className="px-4 overflow-y-auto flex flex-col gap-4">
+        <div className="px-4 overflow-y-auto flex-1 flex flex-col gap-4 min-h-0 pb-4">
 
           {/* ── Attachments — single button ─────────────────────────────── */}
           <div className="space-y-2">
@@ -373,7 +373,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
           )}
         </div>
 
-        <DrawerFooter className="flex-row gap-3" style={{ marginBottom: "80px" }}>
+        <DrawerFooter className="flex-row gap-3 border-t border-border px-4 py-4 shrink-0">
           <button onClick={() => onOpenChange(false)}
             className="flex-1 rounded-xl bg-secondary py-3 text-sm font-semibold text-secondary-foreground transition-all hover:bg-secondary/80 active:scale-[0.98]">
             {t("cancel")}

@@ -178,6 +178,14 @@ export function useVoiceInput(): UseVoiceInputReturn {
       audioChunksRef.current = [];
 
       try {
+        // Ensure browser mediaDevices support (requires HTTPS secure context on mobile browsers)
+        if (typeof window === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error(
+            "Microphone access is not supported or requires a secure context (HTTPS). " +
+            "Please ensure you are accessing this site via HTTPS or localhost."
+          );
+        }
+
         // Get user media stream
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,

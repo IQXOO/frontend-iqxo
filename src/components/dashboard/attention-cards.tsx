@@ -27,12 +27,12 @@ export function UrgentCards({ onEventClick }: UrgentCardsProps) {
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive" />
           </span>
         </div>
-        <span className="rounded-full bg-destructive/15 px-2.5 py-0.5 text-[11px] font-semibold text-destructive">
+        <span className="rounded-full bg-destructive/10 px-2.5 py-0.5 text-[11px] font-semibold text-destructive/80">
           {urgentEvents.length} {t("urgentBadge")}
         </span>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1 px-5 snap-x snap-mandatory">
+      <div className="flex gap-3 overflow-x-auto scrollbar-hide p-3 snap-mandatory">
         {urgentEvents.map((event) => (
           <UrgentEventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
         ))}
@@ -60,12 +60,12 @@ function UrgentEventCard({
   return (
     <button
       onClick={onClick}
-      className="snap-start shrink-0 w-[240px] rounded-2xl bg-gradient-to-br from-destructive/20 via-destructive/10 to-transparent glass p-4 flex flex-col gap-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] text-left"
+      className="snap-start shrink-0 w-[240px] rounded-2xl bg-gradient-to-br from-destructive/15 via-destructive/10 to-transparent glass p-4 flex flex-col gap-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] text-left"
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
           <Bell className="h-4 w-4 text-destructive animate-pulse" />
-          <span className="text-[11px] font-semibold text-destructive uppercase tracking-wider">
+          <span className="text-[11px] font-semibold text-destructive/90 uppercase tracking-wider">
             {t("urgentBadge")}
           </span>
         </div>

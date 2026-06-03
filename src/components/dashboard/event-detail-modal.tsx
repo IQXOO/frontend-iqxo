@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Phone, MapPin, Share2, Pencil, Trash2, FileText, Download, ImageIcon } from "lucide-react"
+import { Phone, MapPin, Share2, Pencil, Trash2, FileText, Download, ImageIcon, Mail } from "lucide-react"
 import { motion } from "framer-motion"
 import {
   Drawer,
@@ -10,6 +10,7 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer"
+import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
   AlertDialogContent,
@@ -39,6 +40,7 @@ export function EventDetailModal({
   onEdit,
 }: EventDetailModalProps) {
   const { deleteEvent, t, language } = useApp()
+  const { toast } = useToast()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showImageLightbox, setShowImageLightbox] = useState(false)
   const [imgError, setImgError] = useState(false)
@@ -172,6 +174,24 @@ export function EventDetailModal({
               </a>
             )}
 
+            {/* Email */}
+            {event.email && (
+              <a href={`mailto:${event.email}`}
+                className="flex items-center gap-3 p-3 rounded-xl bg-secondary/30 hover:bg-primary/10 transition-colors group"
+              >
+                <Mail className="w-4 h-4 text-primary flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {language === "ar" ? "البريد الإلكتروني" : language === "fr" ? "E-mail" : "Email"}
+                  </p>
+                  <p className="text-sm text-foreground mt-1 truncate">{event.email}</p>
+                </div>
+                <span className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+                  {language === "ar" ? "إرسال ›" : language === "fr" ? "Envoyer ›" : "Send ›"}
+                </span>
+              </a>
+            )}
+
             {/* Notes */}
             {event.notes && (
               <div className="space-y-2 p-3 rounded-xl bg-secondary/30">
@@ -218,6 +238,7 @@ export function EventDetailModal({
                   event.date + (event.time ? " " + event.time : ""),
                   event.location ? "📍 " + event.location : "",
                   event.phone    ? "📞 " + event.phone    : "",
+                  event.email    ? "✉️ " + event.email    : "",
                   event.notes || "",
                 ].filter(Boolean).join("\n")
                 try {
@@ -243,16 +264,33 @@ export function EventDetailModal({
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Event</AlertDialogTitle>
-            <AlertDialogDescription>Are you sure you want to delete this event? This action cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle>{language === "ar" ? "حذف الحدث" : "Delete Event"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {language === "ar"
+                ? "هل أنت متأكد أنك تريد حذف هذا الحدث؟ لا يمكن التراجع عن هذا الإجراء."
+                : "Are you sure you want to delete this event? This action cannot be undone."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
-                await deleteEvent(event.id)
-                onOpenChange(false)
-                setShowDeleteConfirm(false)
+                try {
+                  await deleteEvent(event.id)
+                  onOpenChange(false)
+                  setShowDeleteConfirm(false)
+                  toast({
+                    title: language === "ar" ? "تم الحذف" : "Event deleted",
+                    description: language === "ar" ? "تم حذف الحدث بنجاح." : "The event has been successfully deleted.",
+                  })
+                } catch (err: any) {
+                  console.error("Failed to delete event:", err)
+                  toast({
+                    title: language === "ar" ? "فشل الحذف" : "Delete failed",
+                    description: err?.message || (language === "ar" ? "حدث خطأ غير متوقع." : "An unexpected error occurred."),
+                    variant: "destructive",
+                  })
+                }
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

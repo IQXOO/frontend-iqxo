@@ -10,6 +10,7 @@ export interface IQXOEvent {
   time: string;
   phone?: string;
   location?: string;
+  email?: string;
   image_url?: string;
   pdf_url?: string;
   createdAt: string;

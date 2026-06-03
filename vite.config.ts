@@ -6,14 +6,15 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   server: {
     port: 3000,
- allowedHosts: ["myrta-xyloid-angelic.ngrok-free.dev"],
+    host: true,
+    allowedHosts: ["backend-iqxo.fly.dev"],
   },
   build: {
-    outDir: 'dist',
+    outDir: "dist",
   },
-})
+});

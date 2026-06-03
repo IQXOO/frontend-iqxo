@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppProvider, useApp } from "./lib/store";
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/toaster";
@@ -6,7 +7,6 @@ import {
   shouldAutoOpenBillingRoute,
   shouldShowBillingPopup,
 } from "./lib/billing-utils";
-import { navigateToPath } from "./lib/navigation";
 import "./styles/globals.css";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
@@ -15,6 +15,14 @@ const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
+const TomorrowPage = lazy(() => import("./pages/TomorrowPage"));
+const FuturePage = lazy(() => import("./pages/FuturePage"));
+const SchedulePage = lazy(() => import("./pages/SchedulePage"));
+const ArchivePage = lazy(() => import("./pages/ArchivePage"));
+const AppLayout = lazy(() => import("./components/AppLayout"));
+const ProtectedRoute = lazy(() => import("./components/ProtectedRoute"));
+const RouterInit = lazy(() => import("./lib/router-init"));
+const AppController = lazy(() => import("./lib/app-controller"));
 
 function RouteFallback() {
   return (
@@ -114,21 +122,7 @@ function AppShell() {
     return () => clearInterval(interval);
   }, [user, planStatus, trialEndsAt, shouldAutoOpenPricing, pathname]);
 
-  if (pathname === "/reset-password") {
-    return (
-      <Suspense fallback={<RouteFallback />}>
-        <ResetPasswordPage />
-      </Suspense>
-    );
-  }
-
-  if (pathname === "/pricing") {
-    return (
-      <Suspense fallback={<RouteFallback />}>
-        <PricingPage />
-      </Suspense>
-    );
-  }
+  // Keep reset-password and pricing public pages but we'll route via React Router
 
   if (authLoading) {
     return (
@@ -164,66 +158,8 @@ function AppShell() {
     "/index.html",
   ]);
 
-  // If user is authenticated, prevent showing the login page
-  if (user && pathname === "/login") {
-    navigateToPath("/", { replace: true });
-    return null;
-  }
-
-  // If user is NOT authenticated:
-  // - only allow explicit public pages (pricing, reset-password)
-  // - if the user requested the login route, render the LoginPage
-  // - otherwise redirect to /login (replace history to prevent back navigation)
-  if (!user) {
-    if (pathname === "/login") {
-      return (
-        <Suspense fallback={<RouteFallback />}>
-          <LoginPage />
-        </Suspense>
-      );
-    }
-
-    if (publicPaths.has(pathname)) {
-      // allow rendering of public pages without auth
-      if (pathname === "/pricing") {
-        return (
-          <Suspense fallback={<RouteFallback />}>
-            <PricingPage />
-          </Suspense>
-        );
-      }
-      if (pathname === "/reset-password") {
-        return (
-          <Suspense fallback={<RouteFallback />}>
-            <ResetPasswordPage />
-          </Suspense>
-        );
-      }
-      // fall through for other public pages if added in future
-    }
-
-    // Protect all other routes: redirect to /login
-    navigateToPath("/login", { replace: true });
-    return null;
-  }
-
-  // Authenticated user: handle protected routes
-  if (user) {
-    if (pathname === "/profile") {
-      return (
-        <Suspense fallback={<RouteFallback />}>
-          <ProfilePage />
-        </Suspense>
-      );
-    }
-  }
-
-  // ── Default: authenticated user on home route ──────────────────────────────────
-  return (
-    <Suspense fallback={<RouteFallback />}>
-      <HomePage />
-    </Suspense>
-  );
+  // We'll render the routing via React Router in App()
+  return null;
 }
 
 function App() {
@@ -231,7 +167,34 @@ function App() {
     <ThemeProvider defaultTheme="dark">
       <div className="min-h-screen bg-background text-foreground">
         <AppProvider>
-          <AppShell />
+          <BrowserRouter>
+            <Suspense fallback={<RouteFallback />}>
+              {/* Router initializer registers navigate function for legacy navigateToPath calls */}
+              <RouterInit />
+              {/* AppController runs side-effects previously in AppShell (pricing, onboarding, auth redirects) */}
+              <AppController />
+              <Routes>
+                <Route path="/" element={<Navigate to="/onboarding" replace />} />
+
+                <Route element={<ProtectedRoute />}> 
+                  <Route element={<AppLayout />}> 
+                    <Route path="/home" element={<HomePage />} />
+                    <Route path="/tomorrow" element={<TomorrowPage />} />
+                    <Route path="/future" element={<FuturePage />} />
+                    <Route path="/schedule" element={<SchedulePage />} />
+                    <Route path="/archive" element={<ArchivePage />} />
+                    <Route path="/profile" element={<ProfilePage />} />
+                  </Route>
+                </Route>
+
+                {/* Public routes */}
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/onboarding" element={<OnboardingPage />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
           <Toaster />
         </AppProvider>
       </div>

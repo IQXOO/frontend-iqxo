@@ -21,6 +21,7 @@ export interface IQXOEvent {
   time: string;
   phone?: string;
   location?: string;
+  email?: string;
   source: string;
   image_url?: string;
   is_done: boolean;

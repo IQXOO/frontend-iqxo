@@ -228,6 +228,11 @@ export default function PricingPage() {
   }, []);
 
   const handleSubscribe = (cycle: BillingCycle) => {
+    if (!user) {
+      navigateToPath("/login");
+      return;
+    }
+
     const base = PAYMENT_LINKS[cycle];
     if (!base) {
       devWarn("Billing", "Missing payment link for billing cycle", { cycle });
@@ -251,7 +256,7 @@ export default function PricingPage() {
 
   const handleTrial = async () => {
     if (!user) {
-      navigateToPath("/");
+      navigateToPath("/login");
       return;
     }
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense } from "react"
-import { Moon, Sun, Languages, Home, Settings } from "lucide-react"
+import { Moon, Sun, Languages, Settings } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { useApp } from "../../lib/store"
 import { motion } from "framer-motion"
@@ -13,14 +13,14 @@ const NotificationBell = lazyNamed(() => import("./notification-bell"), "Notific
 interface DashboardHeaderProps {
   onProfileClick?: () => void
   onSettingsClick?: () => void
-  onHomeClick?: () => void
+  onSearchClick?: () => void
   activeTab?: string
 }
 
 export function DashboardHeader({ 
   onProfileClick, 
   onSettingsClick,
-  onHomeClick,
+  onSearchClick,
   activeTab = "home"
 }: DashboardHeaderProps) {
   const { theme, toggleTheme, language, toggleLanguage, t } = useApp()
@@ -28,12 +28,6 @@ export function DashboardHeader({
   return (
     <header className="flex items-center justify-between px-5 pt-4 pb-2">
       <div className="flex flex-col">
-        <div className="flex items-center gap-1.5">
-          <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-            {t("live")}
-          </span>
-        </div>
         <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground font-geometric">
           <BrandLogo className="text-2xl font-bold tracking-tight font-geometric" />
         </h1>
@@ -41,16 +35,19 @@ export function DashboardHeader({
       
       {/* Header Controls */}
       <div className="flex items-center gap-2">
-        {/* Home Button */}
+        {/* Search Button */}
         <motion.button
-          onClick={onHomeClick}
+          onClick={onSearchClick}
           className={`glass rounded-xl p-2.5 transition-all duration-200 ${
             activeTab === "home" ? "bg-primary/20" : "hover:bg-secondary/50"
           } active:scale-95`}
-          aria-label="Home"
+          aria-label="Search"
           whileTap={{ scale: 0.95 }}
         >
-          <Home className={`h-5 w-5 ${activeTab === "home" ? "text-primary" : "text-muted-foreground"}`} />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={`h-5 w-5 ${activeTab === "home" ? "text-primary" : "text-muted-foreground"}`} aria-hidden="true">
+            <path d="m21 21-4.34-4.34"></path>
+            <circle cx="11" cy="11" r="8"></circle>
+          </svg>
         </motion.button>
 
         {/* Language Toggle */}

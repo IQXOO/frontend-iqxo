@@ -111,7 +111,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      navigateToPath("/", { replace: true });
+      navigateToPath("/home", { replace: true });
     }
   }, [user]);
 

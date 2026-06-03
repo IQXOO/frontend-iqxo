@@ -2,24 +2,16 @@
 
 import { Suspense, useState, useCallback, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CalendarPlus } from "lucide-react";
-import { DashboardHeader } from "../components/dashboard/header";
-import { SearchBar } from "../components/dashboard/search-bar";
+import { CalendarPlus, Mic, Plus } from "lucide-react";
 import { StatsCard } from "../components/dashboard/stats-card";
 import { UrgentCards } from "../components/dashboard/attention-cards";
 import { EventList } from "../components/dashboard/event-list";
 import { BottomNav, type NavTab } from "../components/dashboard/bottom-nav";
-import {
-  NavigationTabs,
-  type NavigationTab,
-} from "../components/dashboard/navigation-tabs";
 import { useApp, computePriority } from "../lib/store";
-import { parseVoiceInput, type ParsedEvent } from "../lib/parse-voice-input";
+import { type ParsedEvent } from "../lib/parse-voice-input";
 import { useEventNotifications } from "../hooks/use-event-notifications";
-import { exportEventsToPDF } from "../lib/export-pdf";
 import type { IQXOEvent } from "../lib/types";
 import { useVoiceInput } from "../hooks/use-voice-input";
-import { navigateToPath } from "../lib/navigation";
 import { lazyNamed } from "../lib/lazy";
 
 const EventFormModal = lazyNamed(() => import("../components/dashboard/event-form-modal"), "EventFormModal");
@@ -30,11 +22,6 @@ const EventConfirmationModal = lazyNamed(() => import("../components/dashboard/e
 const SettingsView = lazyNamed(() => import("../components/dashboard/settings-view"), "SettingsView");
 const HistoryView = lazyNamed(() => import("../components/dashboard/history-view"), "HistoryView");
 const TomorrowChainModal = lazyNamed(() => import("../components/dashboard/tomorrow-chain-modal"), "TomorrowChainModal");
-const TomorrowView = lazyNamed(() => import("../components/dashboard/tomorrow-view"), "TomorrowView");
-const FutureExplorerView = lazyNamed(() => import("../components/dashboard/future-explorer-view"), "FutureExplorerView");
-const ArchiveVault = lazyNamed(() => import("../components/dashboard/archive-vault"), "ArchiveVault");
-const WorkScheduleView = lazyNamed(() => import("../components/dashboard/work-schedule-view"), "WorkScheduleView");
-const CommandPalette = lazyNamed(() => import("../components/dashboard/command-palette"), "CommandPalette");
 
 function LazySectionFallback() {
   return <div className="h-40 rounded-[24px] border border-white/5 bg-white/5 animate-pulse" />;
@@ -45,13 +32,13 @@ function LazyModalFallback() {
 }
 
 export default function Page() {
-  const { events, deleteEvent, t, signOut } = useApp();
+  const { events, deleteEvent, t, theme } = useApp();
 
   // Initialize browser notifications
   useEventNotifications(events);
 
   const [activeTab, setActiveTab] = useState<NavTab>("home");
-  const [navigationTab, setNavigationTab] = useState<NavigationTab>("today");
+  // legacy in-page navigation removed; Home shows today's dashboard content
   const [showSettings, setShowSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -75,7 +62,14 @@ export default function Page() {
   );
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [tomorrowModalOpen, setTomorrowModalOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [fabVisible, setFabVisible] = useState(true);
   const isOnHome = activeTab === "home";
+  const isDarkTheme =
+    theme === "dark" ||
+    (theme === "system" &&
+      typeof document !== "undefined" &&
+      document.documentElement.classList.contains("dark"));
   const { isListening } = useVoiceInput();
   // Filter events by search
   const filteredEvents = useMemo(() => {
@@ -182,6 +176,47 @@ export default function Page() {
     }
   }, [uploadOpen]);
 
+  useEffect(() => {
+    const handleOpenAddEvent = () => {
+      handleManualAdd();
+    };
+
+    const handleOpenEventDetail = (event: Event) => {
+      const customEvent = event as CustomEvent<IQXOEvent>;
+      if (!customEvent.detail) return;
+      setSelectedEvent(customEvent.detail);
+      setDetailOpen(true);
+    };
+
+    window.addEventListener("iqxo-open-add-event", handleOpenAddEvent as EventListener);
+    window.addEventListener("iqxo-open-event-detail", handleOpenEventDetail as EventListener);
+
+    return () => {
+      window.removeEventListener("iqxo-open-add-event", handleOpenAddEvent as EventListener);
+      window.removeEventListener("iqxo-open-event-detail", handleOpenEventDetail as EventListener);
+    };
+  }, [handleManualAdd]);
+
+  useEffect(() => {
+    let lastY = 0;
+    if (typeof window !== "undefined") {
+      lastY = window.scrollY;
+    }
+
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y > lastY + 8) {
+        setFabVisible(false);
+      } else if (y < lastY - 8) {
+        setFabVisible(true);
+      }
+      lastY = y;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // Count non-past events for empty state
   const activeEvents = events.filter((e) => computePriority(e.date) !== "past");
   const hasAnyActiveEvents = activeEvents.length > 0;
@@ -205,98 +240,51 @@ export default function Page() {
       <main className="relative z-10 overflow-y-auto pb-36">
         {activeTab === "home" && (
           <>
-            <DashboardHeader
-              onProfileClick={() => navigateToPath("/profile")}
-              onSettingsClick={() => setShowSettings(true)}
-              onHomeClick={() => {
-                setActiveTab("home");
-                setNavigationTab("today");
-              }}
-              activeTab={activeTab}
-            />
-            <SearchBar value={searchQuery} onChange={setSearchQuery} />
             <StatsCard />
 
-            {/* Navigation Tabs Hub - Today/Tomorrow/Future/Archive */}
-            <NavigationTabs
-              active={navigationTab}
-              onTabChange={setNavigationTab}
-            />
-
-            {/* Today View */}
-            {navigationTab === "today" &&
-              (!hasAnyActiveEvents ? (
-                /* Empty state */
-                <div className="px-5 py-12 flex flex-col items-center gap-4">
-                  <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center">
-                    <CalendarPlus className="h-10 w-10 text-primary/50" />
-                  </div>
-                  <div className="text-center">
-                    <h3 className="text-base font-semibold text-foreground">
-                      {t("noEvents")}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {t("noEventsDesc")}
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleManualAdd}
-                    className="mt-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
-                  >
-                    {t("addEvent")}
-                  </button>
+            {/* Today View (always shown on Home). Legacy in-page tabs removed. */}
+            {!hasAnyActiveEvents ? (
+              <div className="px-5 py-12 flex flex-col items-center gap-4">
+                <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center">
+                  <CalendarPlus className="h-10 w-10 text-primary/50" />
                 </div>
-              ) : searchQuery && !hasSearchResults ? (
-                /* No search results */
-                <div className="px-5 py-12 flex flex-col items-center gap-3">
-                  <p className="text-sm text-muted-foreground">
-                    {t("noResults")}
+                <div className="text-center">
+                  <h3 className="text-base font-semibold text-foreground">
+                    {t("noEvents")}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {t("noEventsDesc")}
                   </p>
                 </div>
-              ) : (
-                <>
-                  {urgentEvents.length > 0 && (
-                    <UrgentCards onEventClick={handleEventClick} />
-                  )}
-                  <EventList
-                    priority="upcoming"
-                    events={upcomingEvents}
-                    onEventClick={handleEventClick}
-                  />
-                  <EventList
-                    priority="later"
-                    events={laterEvents}
-                    onEventClick={handleEventClick}
-                  />
-                </>
-              ))}
-
-            {/* Tomorrow View */}
-            {navigationTab === "tomorrow" && (
-              <Suspense fallback={<LazySectionFallback />}>
-                <TomorrowView onEventClick={handleEventClick} />
-              </Suspense>
-            )}
-
-            {/* Future Explorer View */}
-            {navigationTab === "future" && (
-              <Suspense fallback={<LazySectionFallback />}>
-                <FutureExplorerView onEventClick={handleEventClick} />
-              </Suspense>
-            )}
-
-            {/* Archive Vault View */}
-            {navigationTab === "archive" && (
-              <Suspense fallback={<LazySectionFallback />}>
-                <ArchiveVault onEventClick={handleEventClick} />
-              </Suspense>
-            )}
-
-            {/* Work Schedule — inside nav tabs */}
-            {navigationTab === "schedule" && (
-              <Suspense fallback={<LazySectionFallback />}>
-                <WorkScheduleView />
-              </Suspense>
+                <button
+                  onClick={handleManualAdd}
+                  className="mt-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
+                >
+                  {t("addEvent")}
+                </button>
+              </div>
+            ) : searchQuery && !hasSearchResults ? (
+              <div className="px-5 py-12 flex flex-col items-center gap-3">
+                <p className="text-sm text-muted-foreground">
+                  {t("noResults")}
+                </p>
+              </div>
+            ) : (
+              <>
+                {urgentEvents.length > 0 && (
+                  <UrgentCards onEventClick={handleEventClick} />
+                )}
+                <EventList
+                  priority="upcoming"
+                  events={upcomingEvents}
+                  onEventClick={handleEventClick}
+                />
+                <EventList
+                  priority="later"
+                  events={laterEvents}
+                  onEventClick={handleEventClick}
+                />
+              </>
             )}
           </>
         )}
@@ -372,6 +360,53 @@ export default function Page() {
         />
       </Suspense>
 
+      {isOnHome && (
+        <motion.div
+          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+72px)] z-40 pointer-events-none"
+          animate={fabVisible ? { y: 0, opacity: 1 } : { y: 56, opacity: 0 }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="mx-auto flex w-full max-w-screen-sm justify-end overflow-visible px-5">
+            <motion.div
+              className="pointer-events-auto flex flex-col items-end gap-3"
+              initial={{ y: 16, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 280, damping: 26 }}
+            >
+              {/* ── Mic button ── */}
+              <motion.button
+                onClick={() => setVoiceModalOpen(true)}
+                aria-label="Start voice input"
+                className={`flex h-14 w-14 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-blue-400/40 transition-all duration-200 ${
+                  isDarkTheme
+                    ? "bg-gradient-to-br from-purple-500 to-blue-600 text-white shadow-[0_8px_28px_rgba(99,102,241,0.45),0_2px_10px_rgba(0,0,0,0.3)]"
+                    : "bg-gradient-to-br from-purple-500 to-blue-600 text-white shadow-[0_8px_24px_rgba(99,102,241,0.32),0_2px_8px_rgba(0,0,0,0.1)]"
+                }`}
+                whileHover={{ y: -2, scale: 1.06 }}
+                whileTap={{ scale: 0.93 }}
+              >
+                <Mic className="h-[22px] w-[22px]" />
+              </motion.button>
+
+              {/* ── + Add button ── */}
+              <motion.button
+                onClick={() => setComposerOpen(true)}
+                aria-label="Add item"
+                className={`flex h-14 w-14 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-200 ${
+                  isDarkTheme
+                    ? "bg-blue-500 text-white shadow-[0_0_0_1px_rgba(99,179,237,0.2),0_8px_28px_rgba(59,130,246,0.45),0_2px_10px_rgba(0,0,0,0.3)]"
+                    : "bg-blue-600 text-white shadow-[0_8px_24px_rgba(37,99,235,0.32),0_2px_8px_rgba(0,0,0,0.1)]"
+                }`}
+                whileHover={{ y: -2, scale: 1.06 }}
+                whileTap={{ scale: 0.93 }}
+              >
+                <Plus className="h-6 w-6" strokeWidth={2.8} />
+              </motion.button>
+            </motion.div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Minimalist Action Hub - The Power Trio — only visible on home */}
       <BottomNav
         active={activeTab}
@@ -382,8 +417,8 @@ export default function Page() {
           setUploadOpen(true);
         }}
         onManualAdd={handleManualAdd}
-        onMicClick={() => setVoiceModalOpen(true)}
-        showFab={isOnHome && navigationTab === "today"}
+        composerOpen={composerOpen}
+        onComposerOpenChange={setComposerOpen}
       />
 
       {/* Tomorrow's Chain Modal */}
@@ -391,25 +426,6 @@ export default function Page() {
         <TomorrowChainModal
           open={tomorrowModalOpen}
           onClose={() => setTomorrowModalOpen(false)}
-        />
-      </Suspense>
-
-      {/* Command Palette - Cmd+K */}
-      <Suspense fallback={null}>
-        <CommandPalette
-          onAddEvent={handleManualAdd}
-          onToggleDarkMode={() => {
-            // Toggle dark mode via store or theme provider
-            document.documentElement.classList.toggle("dark");
-          }}
-          onExportPDF={() => exportEventsToPDF(events, "user@example.com")}
-          onLogout={async () => {
-            await signOut();
-          }}
-          onEventSelect={(event) => {
-            setSelectedEvent(event);
-            setDetailOpen(true);
-          }}
         />
       </Suspense>
 
