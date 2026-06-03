@@ -14,6 +14,8 @@ import {
   ChevronRight,
   Check,
   Home,
+  ArrowLeft,
+  Smartphone,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -153,18 +155,38 @@ interface CalendarImportSheetProps {
   language: string;
   onClose: () => void;
   onImport: (events: Omit<ParsedCalEvent, "uid" | "selected">[]) => void;
+  /** Events pre-fetched from the native device calendar — skips the file-pick stage */
+  preloadedEvents?: Omit<ParsedCalEvent, "uid" | "selected">[] | null;
+  /** Called when the user taps the back arrow in the preview header */
+  onBack?: () => void;
 }
 
 function CalendarImportSheet({
   language,
   onClose,
   onImport,
+  preloadedEvents,
+  onBack,
 }: CalendarImportSheetProps) {
   const [stage, setStage] = useState<"pick" | "preview" | "done">("pick");
   const [parsedEvents, setParsedEvents] = useState<ParsedCalEvent[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // If native calendar events are pre-loaded, jump straight to the preview stage
+  useEffect(() => {
+    if (preloadedEvents && preloadedEvents.length > 0) {
+      const withMeta: ParsedCalEvent[] = preloadedEvents.map((e, i) => ({
+        ...e,
+        uid: `native-${i}-${Date.now()}`,
+        selected: true,
+      }));
+      setParsedEvents(withMeta);
+      setStage("preview");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const L = (en: string, fr: string, ar: string) =>
     language === "ar" ? ar : language === "fr" ? fr : en;
@@ -386,18 +408,28 @@ function CalendarImportSheet({
             exit={{ opacity: 0 }}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <div>
-                <span className="text-sm font-semibold text-foreground">
-                  {L(
-                    "Select Events to Import",
-                    "Sélectionner les événements",
-                    "اختر الأحداث للاستيراد",
-                  )}
-                </span>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {selectedCount}/{parsedEvents.length}{" "}
-                  {L("selected", "sélectionnés", "محدد")}
-                </p>
+              <div className="flex items-center gap-3">
+                {onBack && (
+                  <button
+                    onClick={onBack}
+                    className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <div>
+                  <span className="text-sm font-semibold text-foreground">
+                    {L(
+                      "Select Events to Import",
+                      "Sélectionner les événements",
+                      "اختر الأحداث للاستيراد",
+                    )}
+                  </span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {selectedCount}/{parsedEvents.length}{" "}
+                    {L("selected", "sélectionnés", "محدد")}
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -579,6 +611,12 @@ export function BottomNav({
   const [internalMenuOpen, setInternalMenuOpen] = useState(false);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
   const [showCalendarImport, setShowCalendarImport] = useState(false);
+  // ── Calendar import sub-states ─────────────────────────────────────────────
+  const [showCalendarOptions, setShowCalendarOptions] = useState(false);
+  const [showNativeCalendarPrompt, setShowNativeCalendarPrompt] = useState(false);
+  const [nativeCalendarEvents, setNativeCalendarEvents] = useState<Omit<ParsedCalEvent, "uid" | "selected">[] | null>(null);
+  const [nativeCalendarLoading, setNativeCalendarLoading] = useState(false);
+  const [nativeCalendarError, setNativeCalendarError] = useState<string | null>(null);
   const menuOpen = composerOpen ?? internalMenuOpen;
   const setMenuOpen = onComposerOpenChange ?? setInternalMenuOpen;
 
@@ -607,12 +645,64 @@ export function BottomNav({
     setMenuOpen(false);
     setShowPhotoOptions(false);
     setShowCalendarImport(false);
+    setShowCalendarOptions(false);
+    setShowNativeCalendarPrompt(false);
+    setNativeCalendarEvents(null);
+    setNativeCalendarLoading(false);
+    setNativeCalendarError(null);
   };
 
+  // Opens the calendar import sub-menu (Phone Calendar vs Upload .ics)
   const handleCalendarImport = () => {
     setShowPhotoOptions(false);
+    setShowCalendarOptions(true);
+  };
+
+  // Opens the existing .ics file upload flow
+  const handleOpenICSUpload = () => {
+    setShowCalendarOptions(false);
+    setNativeCalendarEvents(null);
     setShowCalendarImport(true);
   };
+
+  // Requests calendar events from the native app via WebView bridge;
+  // on web, shows a "download the app" prompt instead.
+  const handleNativeCalendarRequest = useCallback(() => {
+    const isNativeApp = (window as any).isNativeApp === true;
+    if (!isNativeApp) {
+      setShowCalendarOptions(false);
+      setShowNativeCalendarPrompt(true);
+      return;
+    }
+    setNativeCalendarLoading(true);
+    setNativeCalendarError(null);
+    const handler = () => {
+      window.removeEventListener("nativeCalendarReady", handler);
+      const result = (window as any).__nativeCalendarResult;
+      setNativeCalendarLoading(false);
+      if (!result || result.error) {
+        setNativeCalendarError(result?.error ?? "unknown");
+        return;
+      }
+      if (result.events && result.events.length > 0) {
+        setNativeCalendarEvents(result.events);
+        setShowCalendarOptions(false);
+        setShowCalendarImport(true);
+      } else {
+        setNativeCalendarError("no_events");
+      }
+    };
+    window.addEventListener("nativeCalendarReady", handler);
+    try {
+      (window as any).ReactNativeWebView?.postMessage(
+        JSON.stringify({ type: "requestCalendarEvents" })
+      );
+    } catch {
+      window.removeEventListener("nativeCalendarReady", handler);
+      setNativeCalendarLoading(false);
+      setNativeCalendarError("bridge_error");
+    }
+  }, []);
 
   const handleImportedEvents = async (
     events: {
@@ -692,7 +782,7 @@ export function BottomNav({
             >
               <AnimatePresence mode="wait">
                 {/* ── Main options ── */}
-                {!showPhotoOptions && !showCalendarImport && (
+                {!showPhotoOptions && !showCalendarImport && !showCalendarOptions && !showNativeCalendarPrompt && (
                   <motion.div
                     key="main"
                     initial={{ opacity: 0, y: 10 }}
@@ -917,7 +1007,174 @@ export function BottomNav({
                   </motion.div>
                 )}
 
-                {/* ── Calendar Import Sheet ── */}
+                {/* ── Calendar Options sub-menu (Phone Calendar vs Upload .ics) ── */}
+                {showCalendarOptions && !showCalendarImport && (
+                  <motion.div
+                    key="calendar-options"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="rounded-2xl bg-background border border-border shadow-2xl overflow-hidden"
+                  >
+                    <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+                      <button
+                        onClick={() => { setShowCalendarOptions(false); setNativeCalendarError(null); }}
+                        className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-sm font-semibold text-foreground flex-1">
+                        {language === "ar"
+                          ? "استيراد من التقويم"
+                          : language === "fr"
+                            ? "Importer depuis Calendrier"
+                            : "Import from Calendar"}
+                      </span>
+                      <button
+                        onClick={handleClose}
+                        className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="p-3 space-y-2">
+                      {/* ── Option 1: From Phone Calendar (native bridge) ── */}
+                      <motion.button
+                        onClick={handleNativeCalendarRequest}
+                        disabled={nativeCalendarLoading}
+                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-secondary/60 transition-colors text-left disabled:opacity-60"
+                        whileTap={{ scale: nativeCalendarLoading ? 1 : 0.98 }}
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                          {nativeCalendarLoading ? (
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                              className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full"
+                            />
+                          ) : (
+                            <Smartphone className="w-5 h-5 text-emerald-500" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">
+                            {language === "ar"
+                              ? "من تقويم الهاتف"
+                              : language === "fr"
+                                ? "Depuis le calendrier du téléphone"
+                                : "From Phone Calendar"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {nativeCalendarError === "permission_denied"
+                              ? (language === "ar" ? "❌ الإذن مرفوض — اسمح من الإعدادات" : language === "fr" ? "❌ Permission refusée — autorisez dans Réglages" : "❌ Permission denied — allow in Settings")
+                              : nativeCalendarError === "no_events"
+                                ? (language === "ar" ? "لا توجد أحداث قادمة" : language === "fr" ? "Aucun événement à venir" : "No upcoming events found")
+                                : nativeCalendarLoading
+                                  ? (language === "ar" ? "جارٍ التحميل…" : language === "fr" ? "Chargement…" : "Loading your calendar…")
+                                  : (language === "ar" ? "يجلب مواعيدك تلقائياً" : language === "fr" ? "Importe automatiquement" : "Auto-imports all your events")}
+                          </p>
+                        </div>
+                        {!nativeCalendarLoading && <span className="text-muted-foreground text-xs">›</span>}
+                      </motion.button>
+
+                      {/* ── Option 2: Upload .ics file (existing feature — kept as-is) ── */}
+                      <motion.button
+                        onClick={handleOpenICSUpload}
+                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-secondary/60 transition-colors text-left"
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                          <Calendar className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">
+                            {language === "ar"
+                              ? "رفع ملف .ics"
+                              : language === "fr"
+                                ? "Importer un fichier .ics"
+                                : "Upload .ics File"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {language === "ar"
+                              ? "Apple ، Google ، Outlook (.ics)"
+                              : language === "fr"
+                                ? "Apple, Google, Outlook (.ics)"
+                                : "Apple, Google, Outlook (.ics)"}
+                          </p>
+                        </div>
+                        <span className="text-muted-foreground text-xs">›</span>
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ── "Download the App" prompt — shown on web for native-only feature ── */}
+                {showNativeCalendarPrompt && (
+                  <motion.div
+                    key="native-prompt"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="rounded-2xl bg-background border border-border shadow-2xl overflow-hidden"
+                  >
+                    <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+                      <button
+                        onClick={() => { setShowNativeCalendarPrompt(false); setShowCalendarOptions(true); }}
+                        className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-sm font-semibold text-foreground flex-1">
+                        {language === "ar" ? "من تقويم الهاتف" : language === "fr" ? "Calendrier du téléphone" : "From Phone Calendar"}
+                      </span>
+                      <button
+                        onClick={handleClose}
+                        className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="p-5 flex flex-col items-center text-center gap-4">
+                      <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                        <Smartphone className="w-8 h-8 text-emerald-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-foreground">
+                          {language === "ar" ? "متاحة على التطبيق" : language === "fr" ? "Disponible sur l'app" : "Available on the App"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed max-w-[240px] mx-auto">
+                          {language === "ar"
+                            ? "الوصول المباشر لتقويم هاتفك متاح في تطبيق IQXO. نزّل التطبيق للاستيراد التلقائي."
+                            : language === "fr"
+                              ? "L'accès direct au calendrier est disponible dans l'app IQXO. Téléchargez-la pour importer automatiquement."
+                              : "Direct phone calendar access is available in the IQXO app. Download it to auto-import all your events."}
+                        </p>
+                      </div>
+                      <div className="flex gap-3 w-full">
+                        <a
+                          href="https://apps.apple.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-foreground text-background text-xs font-semibold hover:opacity-90 transition-opacity"
+                        >
+                          <span className="text-base leading-none"></span>
+                          App Store
+                        </a>
+                        <a
+                          href="https://play.google.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-500 text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+                        >
+                          <span className="text-base leading-none">▶</span>
+                          Play Store
+                        </a>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ── Calendar Import Sheet (.ics upload OR pre-loaded native events) ── */}
                 {showCalendarImport && (
                   <motion.div
                     key="calendar"
@@ -928,6 +1185,13 @@ export function BottomNav({
                     <CalendarImportSheet
                       language={language}
                       onClose={handleClose}
+                      preloadedEvents={nativeCalendarEvents}
+                      onBack={nativeCalendarEvents != null ? () => {
+                        setShowCalendarImport(false);
+                        setNativeCalendarEvents(null);
+                        setNativeCalendarError(null);
+                        setShowCalendarOptions(true);
+                      } : undefined}
                       onImport={async (events) => {
                         await handleImportedEvents(events);
                       }}
@@ -940,44 +1204,101 @@ export function BottomNav({
         )}
       </AnimatePresence>
 
-      {/* Bottom Nav bar */}
+      {/* Bottom Nav bar — full-width backdrop, phone-width content */}
       <motion.div
-        className="fixed bottom-0 left-0 right-0 z-50 flex items-end justify-center"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-background/85 backdrop-blur-md border-t border-border/30"
         animate={visible ? { translateY: 0, opacity: 1 } : { translateY: "100%", opacity: 0 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="w-full max-w-md px-4">
-          <nav
-            className="h-20 flex items-center justify-between bg-background/80 backdrop-blur-md border-t border-border/30 rounded-t-xl px-6"
-            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        <nav
+          className="mx-auto w-full max-w-md flex items-center justify-around px-1"
+          style={{
+            height: "calc(64px + env(safe-area-inset-bottom))",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
+        >
+          <NavLink
+            to="/home"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center gap-1 flex-1 py-2 text-xs transition-all duration-200 ${
+                isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/70"
+              }`
+            }
           >
-            <NavLink to="/home" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-xs ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
-              <Home className="w-5 h-5" />
-              <span>Home</span>
-            </NavLink>
+            {({ isActive }) => (
+              <>
+                <Home className={`w-5 h-5 transition-transform duration-200 ${isActive ? "scale-110" : ""}`} />
+                <span className={`font-medium ${isActive ? "opacity-100" : "opacity-60"}`}>Home</span>
+              </>
+            )}
+          </NavLink>
 
-            <NavLink to="/tomorrow" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-xs ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
-              <Calendar className="w-5 h-5" />
-              <span>Tomorrow</span>
-            </NavLink>
+          <NavLink
+            to="/tomorrow"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center gap-1 flex-1 py-2 text-xs transition-all duration-200 ${
+                isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/70"
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Calendar className={`w-5 h-5 transition-transform duration-200 ${isActive ? "scale-110" : ""}`} />
+                <span className={`font-medium ${isActive ? "opacity-100" : "opacity-60"}`}>Tomorrow</span>
+              </>
+            )}
+          </NavLink>
 
-            <NavLink to="/future" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-xs ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
-              <CheckCircle2 className="w-5 h-5" />
-              <span>Future</span>
-            </NavLink>
+          <NavLink
+            to="/future"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center gap-1 flex-1 py-2 text-xs transition-all duration-200 ${
+                isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/70"
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <CheckCircle2 className={`w-5 h-5 transition-transform duration-200 ${isActive ? "scale-110" : ""}`} />
+                <span className={`font-medium ${isActive ? "opacity-100" : "opacity-60"}`}>Future</span>
+              </>
+            )}
+          </NavLink>
 
-            <NavLink to="/schedule" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-xs ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
-              <CalendarPlus className="w-5 h-5" />
-              <span>Schedule</span>
-            </NavLink>
+          <NavLink
+            to="/schedule"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center gap-1 flex-1 py-2 text-xs transition-all duration-200 ${
+                isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/70"
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <CalendarPlus className={`w-5 h-5 transition-transform duration-200 ${isActive ? "scale-110" : ""}`} />
+                <span className={`font-medium ${isActive ? "opacity-100" : "opacity-60"}`}>Schedule</span>
+              </>
+            )}
+          </NavLink>
 
-            <NavLink to="/archive" className={({ isActive }) => `flex flex-col items-center justify-center gap-1 text-xs ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
-              <FolderOpen className="w-5 h-5" />
-              <span>Archive</span>
-            </NavLink>
-          </nav>
-        </div>
+          <NavLink
+            to="/archive"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center gap-1 flex-1 py-2 text-xs transition-all duration-200 ${
+                isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/70"
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <FolderOpen className={`w-5 h-5 transition-transform duration-200 ${isActive ? "scale-110" : ""}`} />
+                <span className={`font-medium ${isActive ? "opacity-100" : "opacity-60"}`}>Archive</span>
+              </>
+            )}
+          </NavLink>
+        </nav>
       </motion.div>
+
     </>
   );
 }

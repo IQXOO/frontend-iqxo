@@ -212,6 +212,21 @@ export function WorkScheduleView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const today = new Date().getDay();
 
+  // ── FAB scroll visibility (matches Home page behaviour) ────────────────────
+  const [fabVisible, setFabVisible] = useState(true);
+
+  useEffect(() => {
+    let lastY = typeof window !== "undefined" ? window.scrollY : 0;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y > lastY + 8) setFabVisible(false);
+      else if (y < lastY - 8) setFabVisible(true);
+      lastY = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // ── Derived: rows for the active label only ────────────────────────────────
   const schedule = allRows.filter((r) => r.schedule_label === activeLabel);
   const activeDays = schedule.filter((d) => d.is_active);
@@ -748,8 +763,14 @@ export function WorkScheduleView() {
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="relative">
-      {/* ── Floating Upload FAB ───────────────────────────────────────────────── */}
-      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2">
+      {/* ── Floating Upload FAB — shows/hides on scroll like Home page ─────────── */}
+      <motion.div
+        className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+72px)] z-40 pointer-events-none"
+        animate={fabVisible ? { y: 0, opacity: 1 } : { y: 56, opacity: 0 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <div className="mx-auto flex w-full max-w-screen-sm justify-end overflow-visible px-5 pointer-events-auto">
+          <div className="flex flex-col items-end gap-3">
         {/* Name prompt */}
         <AnimatePresence>
           {showNamePrompt && (
@@ -899,30 +920,27 @@ export function WorkScheduleView() {
               </button>
             </motion.div>
           )}
-        </AnimatePresence>
+            </AnimatePresence>
 
-        <motion.div
-          className="flex items-center justify-center"
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        >
-          <motion.button
-            onClick={() => setShowNamePrompt(true)}
-            disabled={uploadState === "analyzing"}
-            className="w-14 h-14 rounded-full bg-blue-500/15 border-2 border-blue-400/50 flex items-center justify-center text-blue-500 dark:text-blue-400 shadow-lg shadow-blue-400/25 hover:bg-blue-500/25 hover:border-blue-400/70 transition-all duration-200 disabled:opacity-40"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 300, damping: 15 }}
-          >
-            {uploadState === "analyzing" ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Upload className="w-6 h-6" />
-            )}
-          </motion.button>
-        </motion.div>
-      </div>
+            {/* Upload FAB button — styled to match Home page */}
+            <motion.button
+              onClick={() => setShowNamePrompt(true)}
+              disabled={uploadState === "analyzing"}
+              className="w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-50
+                bg-blue-600 text-white shadow-[0_8px_24px_rgba(37,99,235,0.32),0_2px_8px_rgba(0,0,0,0.1)]
+                dark:bg-blue-500 dark:shadow-[0_0_0_1px_rgba(99,179,237,0.2),0_8px_28px_rgba(59,130,246,0.45),0_2px_10px_rgba(0,0,0,0.3)]"
+              whileHover={{ y: -2, scale: 1.06 }}
+              whileTap={{ scale: 0.93 }}
+            >
+              {uploadState === "analyzing" ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Upload className="w-6 h-6" />
+              )}
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
 
       <input
         ref={fileInputRef}

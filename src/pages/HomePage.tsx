@@ -364,43 +364,45 @@ export default function Page() {
 
       {isOnHome && (
         <motion.div
-          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+104px)] md:bottom-[96px] z-40 pointer-events-none"
-          animate={fabVisible ? { y: 0, opacity: 1 } : { y: 48, opacity: 0 }}
+          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+72px)] z-40 pointer-events-none"
+          animate={fabVisible ? { y: 0, opacity: 1 } : { y: 56, opacity: 0 }}
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="mx-auto flex w-full max-w-md justify-end overflow-visible px-4 md:px-6">
+          <div className="mx-auto flex w-full max-w-screen-sm justify-end overflow-visible px-5">
             <motion.div
-              className="pointer-events-auto flex flex-col items-end gap-[12px]"
+              className="pointer-events-auto flex flex-col items-end gap-3"
               initial={{ y: 16, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ type: "spring", stiffness: 280, damping: 26 }}
             >
+              {/* ── + Add button ── */}
               <motion.button
                 onClick={() => setComposerOpen(true)}
                 aria-label="Add item"
-                className={`flex h-[52px] w-[52px] items-center justify-center rounded-[20px] transition-[transform,box-shadow,background-color,border-color] duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-primary/40 ${
+                className={`flex h-14 w-14 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-200 ${
                   isDarkTheme
-                    ? "bg-[#D4A853] text-[#0C0C0E] shadow-[0_12px_32px_rgba(212,168,83,0.22)]"
-                    : "border border-transparent bg-gradient-to-br from-[#2563eb] to-[#3b82f6] text-white shadow-[0_12px_30px_rgba(37,99,235,0.18),0_4px_12px_rgba(0,0,0,0.08)] hover:scale-[1.03] hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(37,99,235,0.22),0_8px_16px_rgba(0,0,0,0.10)] active:scale-[0.96]"
+                    ? "bg-blue-500 text-white shadow-[0_0_0_1px_rgba(99,179,237,0.2),0_8px_28px_rgba(59,130,246,0.45),0_2px_10px_rgba(0,0,0,0.3)]"
+                    : "bg-blue-600 text-white shadow-[0_8px_24px_rgba(37,99,235,0.32),0_2px_8px_rgba(0,0,0,0.1)]"
                 }`}
-                whileHover={{ y: -2, scale: 1.02 }}
-                whileTap={{ scale: 0.96 }}
+                whileHover={{ y: -2, scale: 1.06 }}
+                whileTap={{ scale: 0.93 }}
               >
                 <Plus className="h-6 w-6" strokeWidth={2.8} />
               </motion.button>
 
+              {/* ── Mic button ── */}
               <motion.button
                 onClick={() => setVoiceModalOpen(true)}
                 aria-label="Start voice input"
-                className={`flex h-[60px] w-[60px] items-center justify-center rounded-[20px] transition-[transform,box-shadow,background-color,border-color] duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-primary/40 ${
+                className={`flex h-14 w-14 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-200 ${
                   isDarkTheme
-                    ? "bg-[#5BC0DE] text-[#0C0C0E] shadow-[0_12px_32px_rgba(91,192,222,0.28)]"
-                    : "border border-[rgba(37,99,235,0.12)] bg-white text-[#2563eb] shadow-[0_8px_24px_rgba(0,0,0,0.10)] hover:scale-[1.03] hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(37,99,235,0.14),0_8px_24px_rgba(0,0,0,0.10)] active:scale-[0.96]"
+                    ? "bg-white/10 text-white border border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.3),0_1px_6px_rgba(0,0,0,0.2)] backdrop-blur-sm"
+                    : "bg-white text-blue-600 border border-blue-100 shadow-[0_4px_16px_rgba(0,0,0,0.10),0_1px_4px_rgba(37,99,235,0.08)]"
                 }`}
-                whileHover={{ y: -2, scale: 1.02 }}
-                whileTap={{ scale: 0.96 }}
+                whileHover={{ y: -2, scale: 1.06 }}
+                whileTap={{ scale: 0.93 }}
               >
-                <Mic className="h-6 w-6" />
+                <Mic className="h-[22px] w-[22px]" />
               </motion.button>
             </motion.div>
           </div>
