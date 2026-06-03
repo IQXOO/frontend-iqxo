@@ -11,7 +11,8 @@ export default defineConfig({
   },
   server: {
     port: 3000,
- allowedHosts: ["myrta-xyloid-angelic.ngrok-free.dev"],
+    host: true,
+    allowedHosts: ["myrta-xyloid-angelic.ngrok-free.dev"],
   },
   build: {
     outDir: 'dist',

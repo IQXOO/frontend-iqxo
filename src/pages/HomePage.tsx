@@ -269,7 +269,9 @@ export default function Page() {
               </div>
             ) : searchQuery && !hasSearchResults ? (
               <div className="px-5 py-12 flex flex-col items-center gap-3">
-                <p className="text-sm text-muted-foreground">{t("noResults")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("noResults")}
+                </p>
               </div>
             ) : (
               <>
@@ -375,6 +377,21 @@ export default function Page() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ type: "spring", stiffness: 280, damping: 26 }}
             >
+              {/* ── Mic button ── */}
+              <motion.button
+                onClick={() => setVoiceModalOpen(true)}
+                aria-label="Start voice input"
+                className={`flex h-14 w-14 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-blue-400/40 transition-all duration-200 ${
+                  isDarkTheme
+                    ? "bg-gradient-to-br from-purple-500 to-blue-600 text-white shadow-[0_8px_28px_rgba(99,102,241,0.45),0_2px_10px_rgba(0,0,0,0.3)]"
+                    : "bg-gradient-to-br from-purple-500 to-blue-600 text-white shadow-[0_8px_24px_rgba(99,102,241,0.32),0_2px_8px_rgba(0,0,0,0.1)]"
+                }`}
+                whileHover={{ y: -2, scale: 1.06 }}
+                whileTap={{ scale: 0.93 }}
+              >
+                <Mic className="h-[22px] w-[22px]" />
+              </motion.button>
+
               {/* ── + Add button ── */}
               <motion.button
                 onClick={() => setComposerOpen(true)}
@@ -388,21 +405,6 @@ export default function Page() {
                 whileTap={{ scale: 0.93 }}
               >
                 <Plus className="h-6 w-6" strokeWidth={2.8} />
-              </motion.button>
-
-              {/* ── Mic button ── */}
-              <motion.button
-                onClick={() => setVoiceModalOpen(true)}
-                aria-label="Start voice input"
-                className={`flex h-14 w-14 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-200 ${
-                  isDarkTheme
-                    ? "bg-white/10 text-white border border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.3),0_1px_6px_rgba(0,0,0,0.2)] backdrop-blur-sm"
-                    : "bg-white text-blue-600 border border-blue-100 shadow-[0_4px_16px_rgba(0,0,0,0.10),0_1px_4px_rgba(37,99,235,0.08)]"
-                }`}
-                whileHover={{ y: -2, scale: 1.06 }}
-                whileTap={{ scale: 0.93 }}
-              >
-                <Mic className="h-[22px] w-[22px]" />
               </motion.button>
             </motion.div>
           </div>
