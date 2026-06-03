@@ -149,13 +149,6 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
   const handleDateChange = (val: string) => { setDate(val); setConflictTitle(findConflict(val, time)); };
   const handleTimeChange = (val: string) => { setTime(val); setConflictTitle(findConflict(date, val)); };
 
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const target = e.target;
-    setTimeout(() => {
-      target.scrollIntoView({ block: "center", behavior: "smooth" });
-    }, 250);
-  };
-
   // ── File handlers ──────────────────────────────────────────────────────────
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -234,7 +227,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="bg-background border-border max-h-[92dvh] overflow-hidden flex flex-col">
+      <DrawerContent className="bg-background border-border h-[60vh]">
         <DrawerHeader>
           <DrawerTitle className="text-foreground">{editEvent ? t("editEvent") : t("addEvent")}</DrawerTitle>
           <DrawerDescription className="sr-only">{editEvent ? t("editEvent") : t("addEvent")}</DrawerDescription>
@@ -308,7 +301,6 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-muted-foreground">{t("eventTitle")}</label>
             <input type="text" value={title} onChange={e => setTitle(e.target.value)}
-              onFocus={handleFocus}
               placeholder={t("eventTitlePlaceholder")}
               className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all" />
           </div>
@@ -318,13 +310,11 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">{t("eventDate")}</label>
               <input type="date" value={date} onChange={e => handleDateChange(e.target.value)}
-                onFocus={handleFocus}
                 className={`rounded-xl bg-input px-4 py-3 text-sm text-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">{t("eventTime")}</label>
               <input type="time" value={time} onChange={e => handleTimeChange(e.target.value)}
-                onFocus={handleFocus}
                 className={`rounded-xl bg-input px-4 py-3 text-sm text-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
             </div>
           </div>
@@ -345,7 +335,6 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">{t("eventPhone")}</label>
               <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                onFocus={handleFocus}
                 placeholder={t("eventPhonePlaceholder")}
                 className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all" />
             </div>
@@ -354,7 +343,6 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
                 {language === "ar" ? "البريد الإلكتروني" : language === "fr" ? "E-mail" : "Email"}
               </label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                onFocus={handleFocus}
                 placeholder="email@..."
                 className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all" />
             </div>
@@ -364,7 +352,6 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-muted-foreground">{t("eventLocation")}</label>
             <input type="text" value={location} onChange={e => setLocation(e.target.value)}
-              onFocus={handleFocus}
               placeholder={t("eventLocationPlaceholder")}
               className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all" />
           </div>
@@ -373,7 +360,6 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-muted-foreground">{t("eventNotes")}</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)}
-              onFocus={handleFocus}
               placeholder={t("eventNotesPlaceholder")} rows={3}
               className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all resize-none" />
           </div>
