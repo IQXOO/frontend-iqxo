@@ -163,7 +163,7 @@ function EventGridCard({
         </div>
 
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-foreground truncate">
+          <h3 className="text-lg font-semibold text-foreground truncate">
             {event.title}
           </h3>
           <div className={`flex items-center gap-1.5 mt-1 ${isRTL ? "flex-row-reverse" : ""}`}>
@@ -192,7 +192,7 @@ function EventGridCard({
     <div className="relative">
       <button
         onClick={onClick}
-        className={`w-full glass rounded-2xl p-3 flex flex-col justify-between text-${isRTL ? "right" : "left"} transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] group h-[150px] overflow-hidden ${priority === "past" ? "opacity-70" : ""}`}
+        className={`w-full glass rounded-2xl p-3 flex flex-col justify-between text-${isRTL ? "right" : "left"} transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] group h-[140px] overflow-hidden ${priority === "past" ? "opacity-70" : ""}`}
       >
         <div className="min-w-0 w-full flex-1 flex flex-col justify-start">
           <div className={`flex items-center justify-between mb-1.5 shrink-0 ${isRTL ? "flex-row-reverse" : ""}`}>

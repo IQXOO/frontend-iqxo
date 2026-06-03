@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Phone, MapPin, Share2, Pencil, Trash2, FileText, Download, ImageIcon } from "lucide-react"
+import { Phone, MapPin, Share2, Pencil, Trash2, FileText, Download, ImageIcon, Mail } from "lucide-react"
 import { motion } from "framer-motion"
 import {
   Drawer,
@@ -172,6 +172,24 @@ export function EventDetailModal({
               </a>
             )}
 
+            {/* Email */}
+            {event.email && (
+              <a href={`mailto:${event.email}`}
+                className="flex items-center gap-3 p-3 rounded-xl bg-secondary/30 hover:bg-primary/10 transition-colors group"
+              >
+                <Mail className="w-4 h-4 text-primary flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {language === "ar" ? "البريد الإلكتروني" : language === "fr" ? "E-mail" : "Email"}
+                  </p>
+                  <p className="text-sm text-foreground mt-1 truncate">{event.email}</p>
+                </div>
+                <span className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+                  {language === "ar" ? "إرسال ›" : language === "fr" ? "Envoyer ›" : "Send ›"}
+                </span>
+              </a>
+            )}
+
             {/* Notes */}
             {event.notes && (
               <div className="space-y-2 p-3 rounded-xl bg-secondary/30">
@@ -218,6 +236,7 @@ export function EventDetailModal({
                   event.date + (event.time ? " " + event.time : ""),
                   event.location ? "📍 " + event.location : "",
                   event.phone    ? "📞 " + event.phone    : "",
+                  event.email    ? "✉️ " + event.email    : "",
                   event.notes || "",
                 ].filter(Boolean).join("\n")
                 try {

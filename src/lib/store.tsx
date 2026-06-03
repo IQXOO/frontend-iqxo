@@ -33,6 +33,7 @@ export interface IQXOEvent {
   time: string;
   phone?: string;
   location?: string;
+  email?: string;
   source: string;
   image_url?: string;
   pdf_url?: string;
@@ -173,6 +174,8 @@ const translations: Record<Language, Record<string, string>> = {
     eventPhonePlaceholder: "e.g. +1 555 0123",
     eventLocation: "Where",
     eventLocationPlaceholder: "e.g. 123 Main St",
+    eventEmail: "Email",
+    eventEmailPlaceholder: "e.g. hello@example.com",
     eventNotes: "Notes",
     eventNotesPlaceholder: "Anything else to remember...",
     save: "Done",
@@ -377,6 +380,8 @@ const translations: Record<Language, Record<string, string>> = {
     eventPhonePlaceholder: "ex. +33 6 12 34 56 78",
     eventLocation: "Où",
     eventLocationPlaceholder: "ex. 123 Rue Principale",
+    eventEmail: "E-mail",
+    eventEmailPlaceholder: "ex. bonjour@exemple.com",
     eventNotes: "Notes",
     eventNotesPlaceholder: "Autre chose à retenir...",
     save: "C'est bon",
@@ -558,6 +563,8 @@ const translations: Record<Language, Record<string, string>> = {
     eventPhonePlaceholder: "مثال: +966 5 0000 0000",
     eventLocation: "أين",
     eventLocationPlaceholder: "مثال: 123 الشارع الرئيسي",
+    eventEmail: "البريد الإلكتروني",
+    eventEmailPlaceholder: "مثال: hello@example.com",
     eventNotes: "ملاحظات",
     eventNotesPlaceholder: "أي شيء آخر تريد تذكره...",
     save: "تم",
@@ -723,6 +730,7 @@ function rowToEvent(row: any): IQXOEvent {
     time: row.time ?? "",
     phone: row.phone ?? undefined,
     location: row.location ?? undefined,
+    email: row.email ?? undefined,
     source: row.source ?? "manual",
     image_url: row.image_url ?? undefined,
     pdf_url: row.pdf_url ?? undefined,
@@ -835,7 +843,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase
         .from("events")
         .select(
-          "id,user_id,title,notes,date,time,phone,location,source,image_url,pdf_url,is_done,created_at,updated_at",
+          "id,user_id,title,notes,date,time,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
         )
         .eq("user_id", uid)
         .order("date", { ascending: true });
@@ -1259,6 +1267,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           time: data.time,
           phone: data.phone ?? null,
           location: data.location ?? null,
+          email: data.email ?? null,
           source: data.source,
           image_url: data.image_url ?? null,
           pdf_url: data.pdf_url ?? null,
@@ -1291,6 +1300,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ...(data.time !== undefined && { time: data.time }),
           ...(data.phone !== undefined && { phone: data.phone }),
           ...(data.location !== undefined && { location: data.location }),
+          ...(data.email !== undefined && { email: data.email }),
           ...(data.image_url !== undefined && { image_url: data.image_url }),
           ...(data.pdf_url !== undefined && { pdf_url: data.pdf_url }),
           ...(data.is_done !== undefined && { is_done: data.is_done }),

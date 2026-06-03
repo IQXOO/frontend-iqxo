@@ -91,7 +91,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
     }
     if (editEvent) {
       setTitle(editEvent.title); setDate(editEvent.date); setTime(editEvent.time);
-      setPhone(editEvent.phone || ""); setEmail((editEvent as any).email || ""); setLocation(editEvent.location || ""); setNotes(editEvent.notes || "");
+      setPhone(editEvent.phone || ""); setEmail(editEvent.email || ""); setLocation(editEvent.location || ""); setNotes(editEvent.notes || "");
       setImagePreview(editEvent.image_url || null); setImageFile(null);
       setExistingPdfUrl(editEvent.pdf_url || null); setPdfFile(null);
       setPdfName(editEvent.pdf_url ? decodeURIComponent(editEvent.pdf_url.split("/").pop() ?? "document.pdf") : null);
