@@ -3,6 +3,7 @@
 import { motion } from "framer-motion"
 import { Archive, RotateCcw, X } from "lucide-react"
 import { useApp } from "@/lib/store"
+import { toLocalDateStr, parseLocalDate } from "@/lib/store"
 import type { IQXOEvent } from "@/lib/types"
 
 interface ArchiveVaultProps {
@@ -13,21 +14,21 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
   const { events, deleteEvent, addEvent, t, language } = useApp()
   const isRTL = language === "ar"
 
-  // Get past events
+  // Get past events (using LOCAL today, exclude virtual schedule events)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const todayStr = today.toISOString().split("T")[0]
+  const todayStr = toLocalDateStr(today)
 
   const pastEvents = events
-    .filter((e) => new Date(e.date) < new Date(todayStr))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .filter((e) => e.date < todayStr && e.source !== "work_schedule_virtual")
+    .sort((a, b) => b.date.localeCompare(a.date))
 
   const handleRestore = async (event: IQXOEvent) => {
     // Delete from past and re-add with today's date
     await deleteEvent(event.id)
     await addEvent({
       ...event,
-      date: new Date().toISOString().split("T")[0],
+      date: toLocalDateStr(),
     })
   }
 

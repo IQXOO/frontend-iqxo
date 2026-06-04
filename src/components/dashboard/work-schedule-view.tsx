@@ -138,7 +138,7 @@ function fmtDate(iso: string, language: string): string {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function WorkScheduleView() {
-  const { user, language, addEvent, events, setTotalUsage } = useApp();
+  const { user, language, addEvent, events, setTotalUsage, refreshEvents } = useApp();
   const { toast } = useToast();
   const isRTL = language === "ar";
 
@@ -409,6 +409,7 @@ export function WorkScheduleView() {
         setShowEditor(false);
       }, 1800);
       await loadSchedule();
+      await refreshEvents(); // sync virtual events in all views
     } catch (e) {
       const message = getFriendlyErrorMessage(
         e,
@@ -471,6 +472,7 @@ export function WorkScheduleView() {
       setShowEditor(false);
       setUploadState("idle");
       setAiResult(null);
+      await refreshEvents(); // sync virtual events in all views
     } catch (e) {
       const message = getFriendlyErrorMessage(
         e,

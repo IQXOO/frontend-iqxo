@@ -162,6 +162,15 @@ function AppShell() {
   return null;
 }
 
+function RootRedirect() {
+  const { user } = useApp();
+  const isDismissed = typeof window !== "undefined" && localStorage.getItem("iqxo_intro_dismissed") === "1";
+  if (user) {
+    return <Navigate to="/home" replace />;
+  }
+  return <Navigate to={isDismissed ? "/pricing" : "/onboarding"} replace />;
+}
+
 function App() {
   return (
     <ThemeProvider defaultTheme="dark">
@@ -174,7 +183,7 @@ function App() {
               {/* AppController runs side-effects previously in AppShell (pricing, onboarding, auth redirects) */}
               <AppController />
               <Routes>
-                <Route path="/" element={<Navigate to="/onboarding" replace />} />
+                <Route path="/" element={<RootRedirect />} />
 
                 <Route element={<ProtectedRoute />}> 
                   <Route element={<AppLayout />}> 

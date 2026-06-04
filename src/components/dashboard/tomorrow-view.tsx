@@ -3,6 +3,7 @@
 import { motion } from "framer-motion"
 import { Zap, MapPin, Phone, Clock } from "lucide-react"
 import { useApp } from "../../lib/store"
+import { toLocalDateStr } from "../../lib/store"
 import type { IQXOEvent } from "../../lib/types"
 
 interface TomorrowViewProps {
@@ -13,10 +14,10 @@ export function TomorrowView({ onEventClick }: TomorrowViewProps) {
   const { events, t, language } = useApp()
   const isRTL = language === "ar"
 
-  // Get tomorrow's date
+  // Get tomorrow's date in LOCAL timezone (avoids UTC-shift bugs)
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowDateStr = tomorrow.toISOString().split("T")[0]
+  const tomorrowDateStr = toLocalDateStr(tomorrow)
 
   // Filter events for tomorrow
   const tomorrowEvents = events.filter((e) => e.date === tomorrowDateStr)

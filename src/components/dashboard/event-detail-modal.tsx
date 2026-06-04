@@ -22,6 +22,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog"
 import { useApp, computePriority } from "@/lib/store"
+import { parseLocalDate } from "@/lib/store"
 import { ImageLightbox } from "./image-lightbox"
 import type { IQXOEvent } from "@/lib/types"
 import { format, isToday, isTomorrow } from "date-fns"
@@ -49,10 +50,12 @@ export function EventDetailModal({
   if (!event) return null
 
   const priority = computePriority(event.date)
-  const dateStr = format(new Date(event.date), "MMM d, yyyy")
-  const isEventToday = isToday(new Date(event.date))
-  const isEventTomorrow = isTomorrow(new Date(event.date))
+  const localDate = parseLocalDate(event.date)
+  const dateStr = format(localDate, "MMM d, yyyy")
+  const isEventToday = isToday(localDate)
+  const isEventTomorrow = isTomorrow(localDate)
   const hasImage = !!event.image_url && !imgError
+  const isVirtual = event.source === "work_schedule_virtual"
 
   return (
     <>
@@ -85,13 +88,15 @@ export function EventDetailModal({
                 </span>
               </div>
 
-              {/* Edit button overlaid on image */}
-              <button
-                onClick={(e) => { e.stopPropagation(); onEdit(event); onOpenChange(false) }}
-                className="absolute top-3 right-3 h-8 w-8 rounded-xl bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
+              {/* Edit button overlaid on image — hidden for virtual schedule events */}
+              {!isVirtual && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onEdit(event); onOpenChange(false) }}
+                  className="absolute top-3 right-3 h-8 w-8 rounded-xl bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              )}
             </div>
           )}
 
@@ -102,8 +107,8 @@ export function EventDetailModal({
             </DrawerTitle>
             <DrawerDescription className="sr-only">{event.title} details</DrawerDescription>
 
-            {/* Edit button (only shown when no image — otherwise it's on the image) */}
-            {!hasImage && (
+            {/* Edit button (only shown when no image — hidden for virtual schedule events) */}
+            {!hasImage && !isVirtual && (
               <button
                 onClick={() => { onEdit(event); onOpenChange(false) }}
                 className="absolute top-3 right-4 h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20 transition-colors"
@@ -223,14 +228,17 @@ export function EventDetailModal({
 
           {/* ── ACTION BUTTONS ── */}
           <div className="px-4 py-4 border-t border-border flex gap-3 shrink-0">
-            <motion.button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive font-medium text-sm transition-colors"
-              whileTap={{ scale: 0.98 }}
-            >
-              <Trash2 className="w-4 h-4" />
-              {t("delete")}
-            </motion.button>
+            {/* Delete hidden for virtual work schedule events */}
+            {!isVirtual && (
+              <motion.button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive font-medium text-sm transition-colors"
+                whileTap={{ scale: 0.98 }}
+              >
+                <Trash2 className="w-4 h-4" />
+                {t("delete")}
+              </motion.button>
+            )}
             <motion.button
               onClick={async () => {
                 const text = [

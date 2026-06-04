@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { Bell, AlertCircle, Calendar, CheckCircle, Trash2, X } from "lucide-react"
 import { useApp } from "@/lib/store"
+import { toLocalDateStr, parseLocalDate } from "@/lib/store"
 import { useState, useEffect } from "react"
 
 interface Notification {
@@ -27,7 +28,7 @@ export function SmartNotificationCenter() {
 
     // Check for events expiring soon
     events.forEach((event) => {
-      const eventDate = new Date(event.date)
+      const eventDate = parseLocalDate(event.date)
       const today = new Date()
       const daysUntil = Math.ceil(
         (eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
@@ -66,7 +67,7 @@ export function SmartNotificationCenter() {
     })
 
     // Completed events celebration
-    const today = new Date().toISOString().split("T")[0]
+    const today = toLocalDateStr()
     const completedToday = events.filter((e) => e.date === today).length
     if (completedToday > 0) {
       generatedNotifications.push({

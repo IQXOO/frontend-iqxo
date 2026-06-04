@@ -94,6 +94,7 @@ interface AppContextValue {
   getEventsByPriority: (priority: Priority) => IQXOEvent[];
   addEventOptimistic: (event: IQXOEvent) => void;
   removeEventOptimistic: (id: string) => void;
+  refreshEvents: () => Promise<void>;
 
   // UI helpers
   theme: Theme;
@@ -705,16 +706,37 @@ const translations: Record<Language, Record<string, string>> = {
   },
 };
 
+// ─── Local-date helpers ───────────────────────────────────────────────────────
+// Return a YYYY-MM-DD string in the user's LOCAL timezone (avoids UTC midnight
+// shift when just calling toISOString() on a local Date).
+export function toLocalDateStr(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// Parse a YYYY-MM-DD string as LOCAL midnight (not UTC) so comparisons are
+// always relative to the user's clock.
+export function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 // ─── Priority helper ──────────────────────────────────────────────────────────
 export function computePriority(dateStr: string): Priority {
-  const eventDate = new Date(dateStr);
+  // Parse as local midnight to avoid UTC-shift bugs (e.g. GMT+3)
+  const eventDate = parseLocalDate(dateStr);
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diffTime = eventDate.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  if (eventDate < today) return "past";
-  if (diffDays === 0) return "urgent";
-  if (diffDays <= 6) return "upcoming";
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrowMidnight = new Date(todayMidnight);
+  tomorrowMidnight.setDate(todayMidnight.getDate() + 1);
+  const sevenDaysMidnight = new Date(todayMidnight);
+  sevenDaysMidnight.setDate(todayMidnight.getDate() + 7);
+
+  if (eventDate < todayMidnight) return "past";
+  if (eventDate < tomorrowMidnight) return "urgent";     // today
+  if (eventDate < sevenDaysMidnight) return "upcoming";  // this week
   return "later";
 }
 
@@ -740,6 +762,16 @@ function rowToEvent(row: any): IQXOEvent {
   };
 }
 
+// ─── Work schedule row type ───────────────────────────────────────────────────
+interface WorkScheduleRow {
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  is_active: boolean;
+  location?: string | null;
+  schedule_label: string;
+}
+
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -752,7 +784,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // side-effects that land in the catch block and break plan resolution.
   const sessionRef = React.useRef<Session | null>(null);
 
-  const [events, setEvents] = useState<IQXOEvent[]>([]);
+  const [dbEvents, setDbEvents] = useState<IQXOEvent[]>([]);
+  const [workScheduleRows, setWorkScheduleRows] = useState<WorkScheduleRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -825,7 +858,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("iqxo_language", language);
   }, [language, hydrated]);
 
-  // ── Load events from Supabase when user changes ──────────────────────────────
+  // ── Load events + work schedules from Supabase ───────────────────────────────
   const fetchEvents = useCallback(async (uid: string) => {
     setLoading(true);
     try {
@@ -835,22 +868,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (!uid) {
         devWarn("Events", "fetchEvents called without uid — aborting");
-        setEvents([]);
+        setDbEvents([]);
+        setWorkScheduleRows([]);
         return;
       }
 
-      // Explicit column projection to avoid overfetching sensitive fields
-      const { data, error } = await supabase
-        .from("events")
-        .select(
-          "id,user_id,title,notes,date,time,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
-        )
-        .eq("user_id", uid)
-        .order("date", { ascending: true });
+      // Fetch calendar events and work schedules in parallel
+      const [eventsRes, scheduleRes] = await Promise.all([
+        supabase
+          .from("events")
+          .select(
+            "id,user_id,title,notes,date,time,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
+          )
+          .eq("user_id", uid)
+          .order("date", { ascending: true }),
+        supabase
+          .from("work_schedules")
+          .select("day_of_week,start_time,end_time,is_active,location,schedule_label")
+          .eq("user_id", uid),
+      ]);
 
-      if (error) throw error;
-      devLog("Events", "Events loaded", { count: (data ?? []).length });
-      setEvents((data ?? []).map(rowToEvent));
+      if (eventsRes.error) throw eventsRes.error;
+      devLog("Events", "Events loaded", { count: (eventsRes.data ?? []).length });
+      setDbEvents((eventsRes.data ?? []).map(rowToEvent));
+
+      if (!scheduleRes.error && scheduleRes.data) {
+        setWorkScheduleRows(
+          scheduleRes.data
+            .filter((r) => r.is_active)
+            .map((r) => ({
+              day_of_week: r.day_of_week,
+              start_time: r.start_time,
+              end_time: r.end_time,
+              is_active: r.is_active,
+              location: r.location ?? null,
+              schedule_label: r.schedule_label ?? "Main",
+            }))
+        );
+      }
     } catch (err) {
       devError("Events", "Failed to load events", err, { userId: uid });
       toast({
@@ -867,6 +922,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const userId = user?.id;
+
+  // ── refreshEvents: public method called after schedule edits ─────────────────
+  const refreshEvents = useCallback(async () => {
+    if (userId) await fetchEvents(userId);
+  }, [userId, fetchEvents]);
 
   useEffect(() => {
     if (userId) {
@@ -1039,7 +1099,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (pollInterval) clearInterval(pollInterval);
       };
     } else {
-      setEvents([]);
+      setDbEvents([]);
+      setWorkScheduleRows([]);
       setPlanStatusState("none");
       setTrialEndsAt(null);
       setPlanResolved(false);
@@ -1088,7 +1149,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           email,
           password,
           options: {
-            data: { full_name: fullName ?? "" },
+            data: {
+              full_name: fullName ?? "",
+              onboarding_done: true,
+            },
             // Email confirmation is disabled — user is logged in immediately after sign-up
           },
         });
@@ -1224,8 +1288,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setOnboardingDone = useCallback(
     async (done: boolean) => {
       if (!user) return;
-
       const previous = !!user.user_metadata?.onboarding_done;
+      if (previous === done) {
+        setOnboardingDoneState(done);
+        return;
+      }
       setOnboardingDoneState(done);
 
       try {
@@ -1238,11 +1305,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         setOnboardingDoneState(previous);
         devError("Onboarding", "Error updating onboarding flag", err);
-        toast({
-          title: "Could not save onboarding state",
-          description: "Please try again.",
-          variant: "destructive",
-        });
       }
     },
     [user],
@@ -1280,7 +1342,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error("addEvent:", error);
         throw error;
       }
-      setEvents((prev) => [rowToEvent(row), ...prev]);
+      setDbEvents((prev) => [rowToEvent(row), ...prev]);
     },
     [user],
   );
@@ -1315,7 +1377,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error("updateEvent:", error);
         throw error;
       }
-      setEvents((prev) => prev.map((e) => (e.id === id ? rowToEvent(row) : e)));
+      setDbEvents((prev) => prev.map((e) => (e.id === id ? rowToEvent(row) : e)));
     },
     [user],
   );
@@ -1336,10 +1398,65 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error("deleteEvent:", error);
         throw error;
       }
-      setEvents((prev) => prev.filter((e) => e.id !== id));
+      setDbEvents((prev) => prev.filter((e) => e.id !== id));
     },
     [user],
   );
+
+  // ── Generate virtual shift events from work schedule (next 30 days) ──────────
+  const virtualShiftEvents = React.useMemo<IQXOEvent[]>(() => {
+    if (!userId || workScheduleRows.length === 0) return [];
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const virtualEvents: IQXOEvent[] = [];
+
+    // Build a set of dates that already have a work_schedule calendar event
+    // so we don't duplicate if the user clicked "Add to calendar" on that day.
+    const alreadyAdded = new Set(
+      dbEvents
+        .filter((e) => e.source === "work_schedule")
+        .map((e) => e.date)
+    );
+
+    for (let daysAhead = 0; daysAhead <= 30; daysAhead++) {
+      const d = new Date(todayMidnight);
+      d.setDate(todayMidnight.getDate() + daysAhead);
+      const dow = d.getDay();
+      const dateStr = toLocalDateStr(d);
+
+      // Skip if user already manually added this day to their calendar
+      if (alreadyAdded.has(dateStr)) continue;
+
+      const shiftsForDay = workScheduleRows.filter((r) => r.day_of_week === dow);
+      for (const shift of shiftsForDay) {
+        virtualEvents.push({
+          id: `virtual-ws-${dateStr}-${shift.schedule_label}-${shift.start_time}`,
+          user_id: userId,
+          title: shift.schedule_label && shift.schedule_label !== "Main"
+            ? shift.schedule_label
+            : "Work Day",
+          notes: `${shift.start_time} – ${shift.end_time}`,
+          date: dateStr,
+          time: shift.start_time,
+          location: shift.location ?? undefined,
+          source: "work_schedule_virtual",
+          is_done: false,
+          createdAt: "",
+          updatedAt: "",
+        });
+      }
+    }
+    return virtualEvents;
+  }, [userId, workScheduleRows, dbEvents]);
+
+  // ── Merged events (DB events + virtual shift events) ─────────────────────────
+  const events = React.useMemo<IQXOEvent[]>(() => {
+    const combined = [...dbEvents, ...virtualShiftEvents];
+    return combined.sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return (a.time || "00:00").localeCompare(b.time || "00:00");
+    });
+  }, [dbEvents, virtualShiftEvents]);
 
   const getEventsByPriority = useCallback(
     (priority: Priority) =>
@@ -1348,11 +1465,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addEventOptimistic = useCallback((event: IQXOEvent) => {
-    setEvents((prev) => [event, ...prev]);
+    setDbEvents((prev) => [event, ...prev]);
   }, []);
 
   const removeEventOptimistic = useCallback((id: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+    setDbEvents((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
   // ── Theme / language ──────────────────────────────────────────────────────────
@@ -1393,6 +1510,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         refreshUsage,
         events,
         loading,
+        refreshEvents,
         hydrated,
         addEvent,
         updateEvent,
