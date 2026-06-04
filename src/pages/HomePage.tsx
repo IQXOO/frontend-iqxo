@@ -8,20 +8,23 @@ import { UrgentCards } from "../components/dashboard/attention-cards";
 import { EventList } from "../components/dashboard/event-list";
 import { BottomNav, type NavTab } from "../components/dashboard/bottom-nav";
 import { useApp, computePriority } from "../lib/store";
-import { type ParsedEvent } from "../lib/parse-voice-input";
+import { parseVoiceInput, type ParsedEvent } from "../lib/parse-voice-input";
 import { useEventNotifications } from "../hooks/use-event-notifications";
 import type { IQXOEvent } from "../lib/types";
 import { useVoiceInput } from "../hooks/use-voice-input";
+import { useEventEditor } from "../lib/event-editor-context";
 import { lazyNamed } from "../lib/lazy";
 
-const EventFormModal = lazyNamed(() => import("../components/dashboard/event-form-modal"), "EventFormModal");
-const EventDetailModal = lazyNamed(() => import("../components/dashboard/event-detail-modal"), "EventDetailModal");
 const UploadButton = lazyNamed(() => import("../components/dashboard/upload-button"), "UploadButton");
 const VoiceButton = lazyNamed(() => import("../components/dashboard/voice-button"), "VoiceButton");
 const EventConfirmationModal = lazyNamed(() => import("../components/dashboard/event-confirmation-modal"), "EventConfirmationModal");
 const SettingsView = lazyNamed(() => import("../components/dashboard/settings-view"), "SettingsView");
 const HistoryView = lazyNamed(() => import("../components/dashboard/history-view"), "HistoryView");
 const TomorrowChainModal = lazyNamed(() => import("../components/dashboard/tomorrow-chain-modal"), "TomorrowChainModal");
+const TomorrowView = lazyNamed(() => import("../components/dashboard/tomorrow-view"), "TomorrowView");
+const FutureExplorerView = lazyNamed(() => import("../components/dashboard/future-explorer-view"), "FutureExplorerView");
+const ArchiveVault = lazyNamed(() => import("../components/dashboard/archive-vault"), "ArchiveVault");
+const WorkScheduleView = lazyNamed(() => import("../components/dashboard/work-schedule-view"), "WorkScheduleView");
 
 function LazySectionFallback() {
   return <div className="h-40 rounded-[24px] border border-white/5 bg-white/5 animate-pulse" />;
@@ -41,14 +44,6 @@ export default function Page() {
   // legacy in-page navigation removed; Home shows today's dashboard content
   const [showSettings, setShowSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [formOpen, setFormOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<IQXOEvent | null>(null);
-  const [editEvent, setEditEvent] = useState<IQXOEvent | null>(null);
-  const [voicePrefill, setVoicePrefill] = useState<ParsedEvent | null>(null);
-  const [prefillImageUrl, setPrefillImageUrl] = useState<string | undefined>(
-    undefined,
-  );
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadAutoOpenPicker, setUploadAutoOpenPicker] = useState(true);
   const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
@@ -71,6 +66,8 @@ export default function Page() {
       typeof document !== "undefined" &&
       document.documentElement.classList.contains("dark"));
   const { isListening } = useVoiceInput();
+  const { openEventDetail, openEventForm } = useEventEditor();
+
   // Filter events by search
   const filteredEvents = useMemo(() => {
     if (!searchQuery.trim()) return events;
@@ -118,84 +115,46 @@ export default function Page() {
     [filteredEvents],
   );
 
-  const handleEventClick = useCallback((event: IQXOEvent) => {
-    setSelectedEvent(event);
-    setDetailOpen(true);
-  }, []);
-
-  const handleEditFromDetail = useCallback((event: IQXOEvent) => {
-    setEditEvent(event);
-    setFormOpen(true);
-  }, []);
+  const handleEventClick = useCallback(
+    (event: IQXOEvent) => {
+      openEventDetail(event);
+    },
+    [openEventDetail],
+  );
 
   const handleManualAdd = useCallback(() => {
-    setEditEvent(null);
-    setVoicePrefill(null);
-    setFormOpen(true);
-  }, []);
+    openEventForm(null);
+  }, [openEventForm]);
 
-  const handleVoiceResult = useCallback((data: any) => {
-    // Build a ParsedEvent and open the edit form directly
-    const parsed: ParsedEvent =
-      typeof data === "string"
-        ? { title: data }
-        : {
-            title: data.title || "",
-            date: data.date || "",
-            time: data.time || "",
-            location: data.location || undefined,
-            phone: data.phone || undefined,
-          };
-    setEditEvent(null);
-    setVoicePrefill(parsed);
-    setFormOpen(true);
-  }, []);
+  const handleVoiceResult = useCallback(
+    (data: any) => {
+      const parsed: ParsedEvent =
+        typeof data === "string"
+          ? { title: data }
+          : {
+              title: data.title || "",
+              date: data.date || "",
+              time: data.time || "",
+              location: data.location || undefined,
+              phone: data.phone || undefined,
+            };
+      openEventForm(null, { prefillData: parsed });
+    },
+    [openEventForm],
+  );
 
   const handlePhotoExtracted = useCallback(
     (data: ParsedEvent, imageUrl?: string) => {
-      setEditEvent(null);
-      setVoicePrefill(data);
-      setPrefillImageUrl(imageUrl); // carry photo into the form
-      setFormOpen(true);
+      openEventForm(null, { prefillData: data, prefillImageUrl: imageUrl });
     },
-    [],
+    [openEventForm],
   );
-
-  const handleFormClose = useCallback((open: boolean) => {
-    setFormOpen(open);
-    if (!open) {
-      setEditEvent(null);
-      setVoicePrefill(null);
-      setPrefillImageUrl(undefined);
-    }
-  }, []);
 
   useEffect(() => {
     if (!uploadOpen) {
       setPendingUploadFile(null);
     }
   }, [uploadOpen]);
-
-  useEffect(() => {
-    const handleOpenAddEvent = () => {
-      handleManualAdd();
-    };
-
-    const handleOpenEventDetail = (event: Event) => {
-      const customEvent = event as CustomEvent<IQXOEvent>;
-      if (!customEvent.detail) return;
-      setSelectedEvent(customEvent.detail);
-      setDetailOpen(true);
-    };
-
-    window.addEventListener("iqxo-open-add-event", handleOpenAddEvent as EventListener);
-    window.addEventListener("iqxo-open-event-detail", handleOpenEventDetail as EventListener);
-
-    return () => {
-      window.removeEventListener("iqxo-open-add-event", handleOpenAddEvent as EventListener);
-      window.removeEventListener("iqxo-open-event-detail", handleOpenEventDetail as EventListener);
-    };
-  }, [handleManualAdd]);
 
   useEffect(() => {
     let lastY = 0;
@@ -265,9 +224,7 @@ export default function Page() {
               </div>
             ) : searchQuery && !hasSearchResults ? (
               <div className="px-5 py-12 flex flex-col items-center gap-3">
-                <p className="text-sm text-muted-foreground">
-                  {t("noResults")}
-                </p>
+                <p className="text-sm text-muted-foreground">{t("noResults")}</p>
               </div>
             ) : (
               <>
@@ -362,45 +319,43 @@ export default function Page() {
 
       {isOnHome && (
         <motion.div
-          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+72px)] z-40 pointer-events-none"
-          animate={fabVisible ? { y: 0, opacity: 1 } : { y: 56, opacity: 0 }}
+          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+104px)] md:bottom-[96px] z-40 pointer-events-none"
+          animate={fabVisible ? { y: 0, opacity: 1 } : { y: 48, opacity: 0 }}
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="mx-auto flex w-full max-w-screen-sm justify-end overflow-visible px-5">
+          <div className="mx-auto flex w-full max-w-md justify-end overflow-visible px-4 md:px-6">
             <motion.div
-              className="pointer-events-auto flex flex-col items-end gap-3"
+              className="pointer-events-auto flex flex-col items-end gap-[12px]"
               initial={{ y: 16, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ type: "spring", stiffness: 280, damping: 26 }}
             >
-              {/* ── Mic button ── */}
-              <motion.button
-                onClick={() => setVoiceModalOpen(true)}
-                aria-label="Start voice input"
-                className={`flex h-14 w-14 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-blue-400/40 transition-all duration-200 ${
-                  isDarkTheme
-                    ? "bg-gradient-to-br from-purple-500 to-blue-600 text-white shadow-[0_8px_28px_rgba(99,102,241,0.45),0_2px_10px_rgba(0,0,0,0.3)]"
-                    : "bg-gradient-to-br from-purple-500 to-blue-600 text-white shadow-[0_8px_24px_rgba(99,102,241,0.32),0_2px_8px_rgba(0,0,0,0.1)]"
-                }`}
-                whileHover={{ y: -2, scale: 1.06 }}
-                whileTap={{ scale: 0.93 }}
-              >
-                <Mic className="h-[22px] w-[22px]" />
-              </motion.button>
-
-              {/* ── + Add button ── */}
               <motion.button
                 onClick={() => setComposerOpen(true)}
                 aria-label="Add item"
-                className={`flex h-14 w-14 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-200 ${
+                className={`flex h-[52px] w-[52px] items-center justify-center rounded-[20px] transition-[transform,box-shadow,background-color,border-color] duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-primary/40 ${
                   isDarkTheme
-                    ? "bg-blue-500 text-white shadow-[0_0_0_1px_rgba(99,179,237,0.2),0_8px_28px_rgba(59,130,246,0.45),0_2px_10px_rgba(0,0,0,0.3)]"
-                    : "bg-blue-600 text-white shadow-[0_8px_24px_rgba(37,99,235,0.32),0_2px_8px_rgba(0,0,0,0.1)]"
+                    ? "bg-[#D4A853] text-[#0C0C0E] shadow-[0_12px_32px_rgba(212,168,83,0.22)]"
+                    : "border border-transparent bg-gradient-to-br from-[#2563eb] to-[#3b82f6] text-white shadow-[0_12px_30px_rgba(37,99,235,0.18),0_4px_12px_rgba(0,0,0,0.08)] hover:scale-[1.03] hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(37,99,235,0.22),0_8px_16px_rgba(0,0,0,0.10)] active:scale-[0.96]"
                 }`}
-                whileHover={{ y: -2, scale: 1.06 }}
-                whileTap={{ scale: 0.93 }}
+                whileHover={{ y: -2, scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
               >
                 <Plus className="h-6 w-6" strokeWidth={2.8} />
+              </motion.button>
+
+              <motion.button
+                onClick={() => setVoiceModalOpen(true)}
+                aria-label="Start voice input"
+                className={`flex h-[60px] w-[60px] items-center justify-center rounded-[20px] transition-[transform,box-shadow,background-color,border-color] duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-primary/40 ${
+                  isDarkTheme
+                    ? "bg-[#5BC0DE] text-[#0C0C0E] shadow-[0_12px_32px_rgba(91,192,222,0.28)]"
+                    : "border border-[rgba(37,99,235,0.12)] bg-white text-[#2563eb] shadow-[0_8px_24px_rgba(0,0,0,0.10)] hover:scale-[1.03] hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(37,99,235,0.14),0_8px_24px_rgba(0,0,0,0.10)] active:scale-[0.96]"
+                }`}
+                whileHover={{ y: -2, scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
+              >
+                <Mic className="h-6 w-6" />
               </motion.button>
             </motion.div>
           </div>
@@ -426,25 +381,6 @@ export default function Page() {
         <TomorrowChainModal
           open={tomorrowModalOpen}
           onClose={() => setTomorrowModalOpen(false)}
-        />
-      </Suspense>
-
-      {/* Modals */}
-      <Suspense fallback={null}>
-        <EventFormModal
-          open={formOpen}
-          onOpenChange={handleFormClose}
-          editEvent={editEvent}
-          prefillData={voicePrefill}
-          prefillImageUrl={prefillImageUrl}
-        />
-      </Suspense>
-      <Suspense fallback={null}>
-        <EventDetailModal
-          open={detailOpen}
-          onOpenChange={setDetailOpen}
-          event={selectedEvent}
-          onEdit={handleEditFromDetail}
         />
       </Suspense>
     </div>
