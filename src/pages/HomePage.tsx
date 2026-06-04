@@ -224,7 +224,9 @@ export default function Page() {
               </div>
             ) : searchQuery && !hasSearchResults ? (
               <div className="px-5 py-12 flex flex-col items-center gap-3">
-                <p className="text-sm text-muted-foreground">{t("noResults")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("noResults")}
+                </p>
               </div>
             ) : (
               <>
@@ -331,31 +333,32 @@ export default function Page() {
               transition={{ type: "spring", stiffness: 280, damping: 26 }}
             >
               <motion.button
-                onClick={() => setComposerOpen(true)}
-                aria-label="Add item"
-                className={`flex h-[52px] w-[52px] items-center justify-center rounded-[20px] transition-[transform,box-shadow,background-color,border-color] duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-primary/40 ${
-                  isDarkTheme
-                    ? "bg-[#D4A853] text-[#0C0C0E] shadow-[0_12px_32px_rgba(212,168,83,0.22)]"
-                    : "border border-transparent bg-gradient-to-br from-[#2563eb] to-[#3b82f6] text-white shadow-[0_12px_30px_rgba(37,99,235,0.18),0_4px_12px_rgba(0,0,0,0.08)] hover:scale-[1.03] hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(37,99,235,0.22),0_8px_16px_rgba(0,0,0,0.10)] active:scale-[0.96]"
-                }`}
-                whileHover={{ y: -2, scale: 1.02 }}
-                whileTap={{ scale: 0.96 }}
-              >
-                <Plus className="h-6 w-6" strokeWidth={2.8} />
-              </motion.button>
-
-              <motion.button
                 onClick={() => setVoiceModalOpen(true)}
                 aria-label="Start voice input"
-                className={`flex h-[60px] w-[60px] items-center justify-center rounded-[20px] transition-[transform,box-shadow,background-color,border-color] duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-primary/40 ${
+                className={`flex h-14 w-14 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-blue-400/40 transition-all duration-200 ${
                   isDarkTheme
-                    ? "bg-[#5BC0DE] text-[#0C0C0E] shadow-[0_12px_32px_rgba(91,192,222,0.28)]"
-                    : "border border-[rgba(37,99,235,0.12)] bg-white text-[#2563eb] shadow-[0_8px_24px_rgba(0,0,0,0.10)] hover:scale-[1.03] hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(37,99,235,0.14),0_8px_24px_rgba(0,0,0,0.10)] active:scale-[0.96]"
+                    ? "bg-gradient-to-br from-purple-500 to-blue-600 text-white shadow-[0_8px_28px_rgba(99,102,241,0.45),0_2px_10px_rgba(0,0,0,0.3)]"
+                    : "bg-gradient-to-br from-purple-500 to-blue-600 text-white shadow-[0_8px_24px_rgba(99,102,241,0.32),0_2px_8px_rgba(0,0,0,0.1)]"
                 }`}
-                whileHover={{ y: -2, scale: 1.02 }}
-                whileTap={{ scale: 0.96 }}
+                whileHover={{ y: -2, scale: 1.06 }}
+                whileTap={{ scale: 0.93 }}
               >
-                <Mic className="h-6 w-6" />
+                <Mic className="h-[22px] w-[22px]" />
+              </motion.button>
+
+              {/* ── + Add button ── */}
+              <motion.button
+                onClick={() => setComposerOpen(true)}
+                aria-label="Add item"
+                className={`flex h-14 w-14 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-200 ${
+                  isDarkTheme
+                    ? "bg-blue-500 text-white shadow-[0_0_0_1px_rgba(99,179,237,0.2),0_8px_28px_rgba(59,130,246,0.45),0_2px_10px_rgba(0,0,0,0.3)]"
+                    : "bg-blue-600 text-white shadow-[0_8px_24px_rgba(37,99,235,0.32),0_2px_8px_rgba(0,0,0,0.1)]"
+                }`}
+                whileHover={{ y: -2, scale: 1.06 }}
+                whileTap={{ scale: 0.93 }}
+              >
+                <Plus className="h-6 w-6" strokeWidth={2.8} />
               </motion.button>
             </motion.div>
           </div>
