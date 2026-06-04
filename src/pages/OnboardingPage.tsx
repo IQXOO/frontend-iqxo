@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../lib/store";
 
@@ -14,8 +14,17 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
   const navigate = useNavigate();
   const { setLanguage, setOnboardingDone } = useApp();
 
+  const hasInitialized = useRef(false);
+
   useEffect(() => {
-    const browserLang = (navigator.language || (navigator as any).userLanguage || "").toLowerCase();
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const browserLang = (
+      navigator.language ||
+      (navigator as any).userLanguage ||
+      ""
+    ).toLowerCase();
     const lang = browserLang.startsWith("fr") ? "fr" : "en";
 
     setLanguage(lang);
@@ -32,7 +41,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
   }, [navigate, onDone, setLanguage, setOnboardingDone]);
 
   return (
-    <div className="fixed inset-0 z-[200] overflow-hidden bg-[#0C0C0E] text-[#E8E8E8] [font-family:-apple-system,BlinkMacSystemFont,'SF_Pro_Display','Segoe_UI',Roboto,sans-serif]">
+    <div className="fixed inset-0 z-[200] overflow-hidden bg-[#0C0C0E] text-[#E8E8E8] [font-family:'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif]">
       <style>{`
         .splash-ambient {
           position: fixed;
