@@ -948,13 +948,13 @@ export function BottomNav({
       >
         <div className="w-full max-w-md">
           <nav 
-            className="flex items-center justify-between bg-background/90 backdrop-blur-xl border-t border-border/50 rounded-t-3xl px-4 pt-3 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
-            style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+            className="flex items-center justify-between bg-background/90 backdrop-blur-xl border-t border-border/50 rounded-t-2xl px-3 pt-1 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
+            style={{ paddingBottom: "max(0.35rem, env(safe-area-inset-bottom))" }}
           >
             <NavLink
               to="/home"
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] sm:text-xs transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   isActive
                     ? "text-[#3B82F6]" // Blue
                     : "bg-transparent text-[#6E6E78] hover:text-foreground"
@@ -963,8 +963,8 @@ export function BottomNav({
             >
               {({ isActive }) => (
                 <>
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all ${isActive ? 'bg-[rgba(59,130,246,0.14)]' : ''}`}>
-                    <Home className={`w-5 h-5 ${isActive ? "text-[#3B82F6]" : "opacity-75"}`} />
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all ${isActive ? 'bg-[rgba(59,130,246,0.14)]' : ''}`}>
+                    <Home className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${isActive ? "text-[#3B82F6]" : "opacity-75"}`} />
                   </div>
                   <span className={isActive ? "font-medium" : "font-normal"}>Home</span>
                 </>
@@ -974,7 +974,7 @@ export function BottomNav({
             <NavLink
               to="/tomorrow"
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] sm:text-xs transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   isActive
                     ? "text-[#EAB308]" // Yellow
                     : "bg-transparent text-[#6E6E78] hover:text-foreground"
@@ -983,8 +983,8 @@ export function BottomNav({
             >
               {({ isActive }) => (
                 <>
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all ${isActive ? 'bg-[rgba(234,179,8,0.14)]' : ''}`}>
-                    <Calendar className={`w-5 h-5 ${isActive ? "text-[#EAB308]" : "opacity-75"}`} />
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all ${isActive ? 'bg-[rgba(234,179,8,0.14)]' : ''}`}>
+                    <Calendar className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${isActive ? "text-[#EAB308]" : "opacity-75"}`} />
                   </div>
                   <span className={isActive ? "font-medium" : "font-normal"}>Tomorrow</span>
                 </>
@@ -994,7 +994,7 @@ export function BottomNav({
             <NavLink
               to="/future"
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] sm:text-xs transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   isActive
                     ? "text-[#A855F7]" // Purple
                     : "bg-transparent text-[#6E6E78] hover:text-foreground"
@@ -1003,8 +1003,8 @@ export function BottomNav({
             >
               {({ isActive }) => (
                 <>
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all ${isActive ? 'bg-[rgba(168,85,247,0.14)]' : ''}`}>
-                    <CheckCircle2 className={`w-5 h-5 ${isActive ? "text-[#A855F7]" : "opacity-75"}`} />
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all ${isActive ? 'bg-[rgba(168,85,247,0.14)]' : ''}`}>
+                    <CheckCircle2 className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${isActive ? "text-[#A855F7]" : "opacity-75"}`} />
                   </div>
                   <span className={isActive ? "font-medium" : "font-normal"}>Future</span>
                 </>
@@ -1014,7 +1014,7 @@ export function BottomNav({
             <NavLink
               to="/schedule"
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] sm:text-xs transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   isActive
                     ? "text-[#3B82F6]" // Blue
                     : "bg-transparent text-[#6E6E78] hover:text-foreground"
@@ -1023,8 +1023,8 @@ export function BottomNav({
             >
               {({ isActive }) => (
                 <>
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all ${isActive ? 'bg-[rgba(59,130,246,0.14)]' : ''}`}>
-                    <CalendarPlus className={`w-5 h-5 ${isActive ? "text-[#3B82F6]" : "opacity-75"}`} />
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all ${isActive ? 'bg-[rgba(59,130,246,0.14)]' : ''}`}>
+                    <CalendarPlus className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${isActive ? "text-[#3B82F6]" : "opacity-75"}`} />
                   </div>
                   <span className={isActive ? "font-medium" : "font-normal"}>Schedule</span>
                 </>
@@ -1034,7 +1034,7 @@ export function BottomNav({
             <NavLink
               to="/archive"
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] sm:text-xs transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   isActive
                     ? "text-[#22C55E]" // Green
                     : "bg-transparent text-[#6E6E78] hover:text-foreground"
@@ -1043,8 +1043,8 @@ export function BottomNav({
             >
               {({ isActive }) => (
                 <>
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all ${isActive ? 'bg-[rgba(34,197,94,0.14)]' : ''}`}>
-                    <FolderOpen className={`w-5 h-5 ${isActive ? "text-[#22C55E]" : "opacity-75"}`} />
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all ${isActive ? 'bg-[rgba(34,197,94,0.14)]' : ''}`}>
+                    <FolderOpen className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${isActive ? "text-[#22C55E]" : "opacity-75"}`} />
                   </div>
                   <span className={isActive ? "font-medium" : "font-normal"}>Archive</span>
                 </>

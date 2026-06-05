@@ -321,7 +321,7 @@ export default function Page() {
 
       {isOnHome && (
         <motion.div
-          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+104px)] md:bottom-[96px] z-40 pointer-events-none"
+          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+120px)] md:bottom-[112px] z-40 pointer-events-none"
           animate={fabVisible ? { y: 0, opacity: 1 } : { y: 48, opacity: 0 }}
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         >
