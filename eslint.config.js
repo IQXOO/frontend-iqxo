@@ -36,6 +36,20 @@ export default tseslint.config(
           argsIgnorePattern: "^_", // نفس الكلام للـ arguments
         },
       ],
+
+      // ✅ 3) إجبار استخدام Lazy Loading للصفحات ومنع الاستيراد المباشر
+      "@typescript-eslint/no-restricted-imports": [
+        "warn",
+        {
+          patterns: [
+            {
+              group: ["**/pages/*", "../pages/*", "./pages/*"],
+              message: "Please use React.lazy() to import pages instead of static imports to enable Lazy Loading.",
+              allowTypeImports: true
+            }
+          ]
+        }
+      ],
     },
   }
 );
