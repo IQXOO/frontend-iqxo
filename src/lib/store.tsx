@@ -1196,7 +1196,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       devLog("Auth", "Logout succeeded");
       // ── Clear all local state immediately ─────────────────────────────────
       sessionRef.current = null;
-      setEvents([]);
+      setDbEvents([]);
       setUser(null);
       setSession(null);
       setPlanStatusState("none");
