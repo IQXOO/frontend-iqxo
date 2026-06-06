@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Stethoscope, FileText, Wrench, Zap, Clock, MapPin, ArrowDown, Calendar } from "lucide-react"
 import { useApp } from "@/lib/store"
+import { toLocalDateStr, parseLocalDate } from "@/lib/store"
 import { isTomorrow, format } from "date-fns"
 import type { IQXOEvent } from "@/lib/types"
 
@@ -27,7 +28,7 @@ function getEventIcon(title: string) {
 
 function getUrgencyColor(event: IQXOEvent): "red" | "orange" | "green" {
   if (!event.date) return "green"
-  const diffMs = new Date(event.date).getTime() - Date.now()
+  const diffMs = parseLocalDate(event.date).getTime() - Date.now()
   const diffDays = diffMs / (1000 * 60 * 60 * 24)
   if (diffDays < 0) return "red"
   if (diffDays <= 1) return "red"
@@ -72,7 +73,7 @@ const MOCK_EVENTS: IQXOEvent[] = [
   { 
     id: "m1", 
     title: "موعد الطبيب", 
-    date: new Date(Date.now() + 86400000).toISOString().split("T")[0], 
+    date: toLocalDateStr(new Date(Date.now() + 86400000)), 
     time: "10:00", 
     location: "عيادة النور، شارع الجامعة", 
     notes: "فحص دوري", 
@@ -85,7 +86,7 @@ const MOCK_EVENTS: IQXOEvent[] = [
   { 
     id: "m2", 
     title: "تجديد التأمين", 
-    date: new Date(Date.now() + 86400000).toISOString().split("T")[0], 
+    date: toLocalDateStr(new Date(Date.now() + 86400000)), 
     time: "12:30", 
     location: "مكتب التأمين الوطني", 
     notes: "احضر وثيقة السيارة", 
@@ -98,7 +99,7 @@ const MOCK_EVENTS: IQXOEvent[] = [
   { 
     id: "m3", 
     title: "خدمة السيارة", 
-    date: new Date(Date.now() + 86400000).toISOString().split("T")[0], 
+    date: toLocalDateStr(new Date(Date.now() + 86400000)), 
     time: "15:00", 
     location: "مركز الصيانة", 
     notes: "تغيير الزيت + فحص الفرامل", 

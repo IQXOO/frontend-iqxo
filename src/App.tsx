@@ -162,6 +162,14 @@ function AppShell() {
   return null;
 }
 
+function RootRedirect() {
+  const { user } = useApp();
+  if (user) {
+    return <Navigate to="/home" replace />;
+  }
+  return <Navigate to="/onboarding" replace />;
+}
+
 function App() {
   return (
     <ThemeProvider defaultTheme="dark">
@@ -174,7 +182,7 @@ function App() {
               {/* AppController runs side-effects previously in AppShell (pricing, onboarding, auth redirects) */}
               <AppController />
               <Routes>
-                <Route path="/" element={<Navigate to="/onboarding" replace />} />
+                <Route path="/" element={<RootRedirect />} />
 
                 <Route element={<ProtectedRoute />}> 
                   <Route element={<AppLayout />}> 

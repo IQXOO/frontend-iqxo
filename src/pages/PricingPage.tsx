@@ -1,29 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import {
-  Mic,
-  ImageIcon,
-  Brain,
-  Lightbulb,
-  Sparkles,
-} from "lucide-react";
+import { useState, useEffect } from "react";
 import { useApp } from "../lib/store";
+import { useToast } from "../hooks/use-toast";
 import { supabase } from "../lib/supabase";
 import { BrandLogo } from "../components/brand-logo";
-import {
-  devError,
-  devLog,
-  getFriendlyErrorMessage,
-} from "../lib/logger";
-import { useToast } from "../hooks/use-toast";
+import { devError, devLog, getFriendlyErrorMessage } from "../lib/logger";
 import { navigateToPath } from "../lib/navigation";
 
 const PRICING = {
   monthlyEUR: 9.99,
   yearlyEUR: 79,
-  yearlyPerMonth: (79 / 12).toFixed(2),
-  savingsPct: Math.round(100 - (79 / (9.99 * 12)) * 100),
 };
 
 const PAYMENT_LINKS = {
@@ -31,194 +18,196 @@ const PAYMENT_LINKS = {
   yearly: (import.meta as any).env?.VITE_STRIPE_YEARLY_LINK || "",
 };
 
-type BillingCycle = keyof typeof PAYMENT_LINKS;
+type BillingCycle = "monthly" | "yearly";
 
-const lifestyleCards = [
-  {
-    title: "Remember less",
-    text: "Drop anything in — voice, photo, note, document. It stays safe.",
+const translations = {
+  en: {
+    experience: "Experience",
+    pricing: "Pricing",
+    trialBadge: "7 Days of Calm — Free",
+    heroH1: "Your mind doesn't need to hold everything anymore.",
+    heroClarity: "Voice, photos, notes, and documents — all quietly organized as you go.",
+    heroParagraph1: "What you capture stays with you.",
+    heroParagraph2: "Without effort. Without thinking.",
+    heroCta: "Start 7 Days Free",
+    heroCTANote: "30 captures. No card required. Cancel anytime.",
+    connector1: "But first, the weight we all carry…",
+    problemWhisper: "The Weight",
+    problemH2: "You carry too much in your head.",
+    problemP1: "Things you meant to remember…",
+    problemP2: "ideas, messages, small tasks…",
+    problemP3: "They don't disappear — they just pile up.",
+    connector2: "What if you could simply… let go?",
+    shiftH3: "You stop trying to remember.",
+    shiftP: "And start trusting that it's already there.",
+    connector3: "This is where IQXO lives…",
+    solutionWhisper: "The Relief",
+    solutionH2: "IQXO carries it so you don't have to.",
+    solutionSub: "Everything you capture finds its place. Your mind stays free for what matters.",
+    relief1Title: "Remember less",
+    relief1Desc: "Drop anything in — voice, photo, note, document. It stays safe.",
+    relief2Title: "Find easily",
+    relief2Desc: "Everything is where you expect it. No searching, no folders.",
+    relief3Title: "Think clearer",
+    relief3Desc: "Your mind isn't cluttered with things to remember. It's just… clear.",
+    connector4: "A day with IQXO feels like this…",
+    expWhisper: "The Flow",
+    expH2: "A calmer way to move through your day.",
+    exp1Title: "Capture",
+    exp1Desc: "Speak, snap, write, or upload. Whatever feels natural in the moment.",
+    exp2Title: "Release",
+    exp2Desc: "It quietly becomes organized for you. No steps. No thinking. No effort.",
+    exp3Title: "Be present",
+    exp3Desc: "Everything stays where it should be. Your day stays clear. Your mind stays free.",
+    breathH2: "A simpler way to move through your day.",
+    breathP: "Less noise. Less thinking. More clarity.",
+    connector5: "Some moments deserve more…",
+    premiumH2: "A more comfortable way to live your day.",
+    premiumP: "Everything you capture stays organized automatically — so your mind can stay free.",
+    connector6: "Upgrading your day…",
+    pricingWhisper: "Choose Your Pace",
+    pricingH2: "Start free. Upgrade when you're ready.",
+    pricingSub: "Start free. Upgrade when you need more. No hidden fees, ever.",
+    trialLabel: "7 Days of Calm",
+    trialTitle: "Free Trial",
+    trialSubtitle: "Feel the difference. No commitment.",
+    trialLimitNum1: "30",
+    trialLimitLabel1: "Total captures",
+    trialLimitNum2: "7",
+    trialLimitLabel2: "Days",
+    trialLimitNum3: "All",
+    trialLimitLabel3: "Features",
+    trialLimitNum4: "0",
+    trialLimitLabel4: "Card needed",
+    trialCta: "Start Free Trial",
+    trialNote: "Voice, photos, notes, documents — try everything.",
+    proLabel: "Upgrade to Pro",
+    monthlyText: "Monthly",
+    yearlyText: "Yearly",
+    yearlySavings: "-34%",
+    monthlyAmount: "€9",
+    monthlyAmountSpan: ".99",
+    monthlyPeriod: "per month",
+    yearlyAmount: "€79",
+    yearlyPeriod: "per year",
+    yearlySavingsText: "Save €40.88 vs monthly",
+    feature1: "Unlimited captures",
+    feature2: "All features unlocked",
+    feature3: "Cancel anytime",
+    feature4: "30-day money-back guarantee",
+    proCtaMonthly: "Upgrade to Calm",
+    proCtaYearly: "Commit to Calm",
+    proGuarantee: "No questions asked. Full refund within 30 days.",
+    freeTierPart1: "After your 7-day trial, continue Free with 10 captures/month.",
+    freeTierPart2: "No credit card required. Upgrade anytime.",
+    ctaFinalH2: "Let your day take care of itself.",
+    ctaFinalBtn: "Start 7 Days Free",
+    ctaFinalNote: "30 captures. No card. No strings.",
+    footerTagline: "Let your day take care of itself.",
   },
-  {
-    title: "Find easily",
-    text: "Everything is where you expect it. No searching, no folders.",
+  fr: {
+    experience: "Expérience",
+    pricing: "Tarifs",
+    trialBadge: "7 Jours de Calme — Gratuit",
+    heroH1: "Votre esprit n'a plus besoin de tout retenir.",
+    heroClarity: "Voix, photos, notes et documents — tout s'organise tranquillement au fur et à mesure.",
+    heroParagraph1: "Ce que vous capturez reste avec vous.",
+    heroParagraph2: "Sans effort. Sans y penser.",
+    heroCta: "Commencer 7 Jours Gratuits",
+    heroCTANote: "30 captures. Pas de carte requise. Annulation à tout moment.",
+    connector1: "Mais d'abord, le poids que nous portons tous…",
+    problemWhisper: "Le Poids",
+    problemH2: "Vous portez trop de choses dans votre tête.",
+    problemP1: "Les choses que vous vouliez retenir…",
+    problemP2: "idées, messages, petites tâches…",
+    problemP3: "Elles ne disparaissent pas — elles s'accumulent.",
+    connector2: "Et si vous pouviez simplement… lâcher prise ?",
+    shiftH3: "Vous arrêtez d'essayer de vous souvenir.",
+    shiftP: "Et commencez à faire confiance que c'est déjà là.",
+    connector3: "C'est ici qu'IQXO vit…",
+    solutionWhisper: "Le Soulagement",
+    solutionH2: "IQXO porte ça pour que vous n'ayez pas à le faire.",
+    solutionSub: "Tout ce que vous capturez trouve sa place. Votre esprit reste libre pour l'essentiel.",
+    relief1Title: "Moins se souvenir",
+    relief1Desc: "Déposez n'importe quoi — voix, photo, note, document. Ça reste en sécurité.",
+    relief2Title: "Trouver facilement",
+    relief2Desc: "Tout est là où vous l'attendez. Pas de recherche, pas de dossiers.",
+    relief3Title: "Penser plus clair",
+    relief3Desc: "Votre esprit n'est pas encombré de choses à retenir. Il est juste… clair.",
+    connector4: "Une journée avec IQXO ressemble à ça…",
+    expWhisper: "Le Flux",
+    expH2: "Une façon plus calme de traverser votre journée.",
+    exp1Title: "Capturer",
+    exp1Desc: "Parlez, photographiez, écrivez ou téléchargez. Ce qui vous semble naturel.",
+    exp2Title: "Libérer",
+    exp2Desc: "Ça s'organise tranquillement pour vous. Pas d'étapes. Pas de réflexion. Pas d'effort.",
+    exp3Title: "Être présent",
+    exp3Desc: "Tout reste là où il devrait être. Votre journée reste claire. Votre esprit reste libre.",
+    breathH2: "Une façon plus simple de traverser votre journée.",
+    breathP: "Moins de bruit. Moins de pensées. Plus de clarté.",
+    connector5: "Certains moments méritent plus…",
+    premiumH2: "Une façon plus confortable de vivre votre journée.",
+    premiumP: "Tout ce que vous capturez reste organisé automatiquement — pour que votre esprit reste libre.",
+    connector6: "Améliorer votre journée…",
+    pricingWhisper: "Choisissez Votre Rythme",
+    pricingH2: "Commencez gratuitement. Passez Pro quand vous êtes prêt.",
+    pricingSub: "Commencez gratuitement. Passez Pro quand vous en avez besoin. Aucun frais caché, jamais.",
+    trialLabel: "7 Jours de Calme",
+    trialTitle: "Essai Gratuit",
+    trialSubtitle: "Sentez la différence. Sans engagement.",
+    trialLimitNum1: "30",
+    trialLimitLabel1: "Captures totales",
+    trialLimitNum2: "7",
+    trialLimitLabel2: "Jours",
+    trialLimitNum3: "Tout",
+    trialLimitLabel3: "Fonctionnalités",
+    trialLimitNum4: "0",
+    trialLimitLabel4: "Carte requise",
+    trialCta: "Commencer l'Essai Gratuit",
+    trialNote: "Voix, photos, notes, documents — essayez tout.",
+    proLabel: "Améliorez Votre Journée",
+    monthlyText: "Monthly",
+    yearlyText: "Yearly",
+    yearlySavings: "-34%",
+    monthlyAmount: "9",
+    monthlyAmountSpan: ",99 €",
+    monthlyPeriod: "par mois",
+    yearlyAmount: "79",
+    yearlyPeriod: "par an",
+    yearlySavingsText: "Économisez 40,88 € vs mensuel",
+    feature1: "Captures illimitées",
+    feature2: "Toutes les fonctionnalités débloquées",
+    feature3: "Annulation à tout moment",
+    feature4: "Garantie 30 jours remboursement",
+    proCtaMonthly: "Passer au Calme",
+    proCtaYearly: "S'Engager dans le Calme",
+    proGuarantee: "Sans questions. Remboursement complet sous 30 jours.",
+    freeTierPart1: "Après votre essai de 7 jours, continuez Gratuit avec 10 captures/mois.",
+    freeTierPart2: "Pas de carte de crédit requise. Passez Pro à tout moment.",
+    ctaFinalH2: "Laissez votre journée se gérer toute seule.",
+    ctaFinalBtn: "Commencer 7 Jours Gratuits",
+    ctaFinalNote: "30 captures. Pas de carte. Pas d'engagement.",
+    footerTagline: "Laissez votre journée se gérer toute seule.",
   },
-  {
-    title: "Think clearer",
-    text: "Your mind isn't cluttered with things to remember. It's just… clear.",
-  },
-];
-
-const experienceSteps = [
-  {
-    num: "01",
-    title: "Capture",
-    text: "Speak, snap, write, or upload. Whatever feels natural in the moment.",
-  },
-  {
-    num: "02",
-    title: "Release",
-    text: "It quietly becomes organized for you. No steps. No thinking. No effort.",
-  },
-  {
-    num: "03",
-    title: "Be present",
-    text: "Everything stays where it should be. Your day stays clear. Your mind stays free.",
-  },
-];
-
-const pricingFeatures = [
-  "Unlimited captures",
-  "All features unlocked",
-  "Cancel anytime",
-  "30-day money-back guarantee",
-];
-
-const yearlyFeatures = [
-  "Everything in Monthly",
-  "12 months of uninterrupted calm",
-  "Save €40.88 vs monthly (€119.88/year)",
-  "30-day money-back guarantee",
-];
-
-const trialStats = [
-  ["30", "Total captures"],
-  ["7", "Days"],
-  ["All", "Features"],
-  ["0", "Card needed"],
-];
-
-function translate<T>(language: string, en: T, fr: T, ar: T) {
-  return language === "ar" ? ar : language === "fr" ? fr : en;
-}
-
-function PageSection({
-  whisper,
-  title,
-  subtitle,
-  children,
-  accent = "cyan",
-  id,
-}: {
-  whisper: ReactNode;
-  title: ReactNode;
-  subtitle?: ReactNode;
-  children: ReactNode;
-  accent?: "cyan" | "amber" | "muted";
-  id?: string;
-}) {
-  const whisperColor =
-    accent === "cyan" ? "text-[#5BC0DE]" : accent === "amber" ? "text-[#D4A853]" : "text-[#6E6E78]";
-
-  return (
-    <section id={id} className="relative z-10 py-14 sm:py-16 md:py-20">
-      <div className="mx-auto max-w-[640px] px-5 sm:px-8">
-        <div className={`mb-8 text-center text-[0.7rem] uppercase tracking-[0.25em] ${whisperColor} opacity-50`}>
-          {whisper}
-        </div>
-        <h2 className="mx-auto max-w-[540px] text-center text-[clamp(1.5rem,4vw,2.2rem)] font-normal leading-[1.25] tracking-[-0.02em] text-[#E8E8E8]">
-          {title}
-        </h2>
-        {subtitle ? (
-          <p className="mx-auto mt-6 max-w-[460px] text-center text-[clamp(1rem,2vw,1.1rem)] font-light leading-[1.9] text-[#A0A0A8]">
-            {subtitle}
-          </p>
-        ) : null}
-        <div className="mt-10">{children}</div>
-      </div>
-    </section>
-  );
-}
-
-function Connector({ text }: { text: ReactNode }) {
-  return (
-    <div className="relative z-10 py-10 text-center sm:py-12">
-      <div className="mx-auto mb-5 h-12 w-px bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.08),transparent)]" />
-      <p className="mx-auto max-w-[360px] px-5 text-[0.8rem] font-light italic leading-[1.8] text-[#6E6E78] opacity-70">
-        {text}
-      </p>
-    </div>
-  );
-}
-
-function PricingCard({
-  title,
-  label,
-  subtitle,
-  footer,
-  accent,
-  children,
-  cta,
-  ctaLabel,
-  ctaClassName,
-  badge,
-}: {
-  title: string;
-  label: string;
-  subtitle: string;
-  footer: string;
-  accent: "cyan" | "amber" | "luxury";
-  children: ReactNode;
-  cta: () => void;
-  ctaLabel: string;
-  ctaClassName: string;
-  badge?: React.ReactNode;
-}) {
-  const cardClassName =
-    accent === "cyan"
-      ? "bg-[linear-gradient(180deg,rgba(91,192,222,0.08),rgba(91,192,222,0.02))] border-[rgba(91,192,222,0.1)]"
-      : accent === "amber"
-        ? "bg-[linear-gradient(180deg,rgba(212,168,83,0.08),rgba(212,168,83,0.02))] border-[rgba(212,168,83,0.1)]"
-        : "bg-[#18181A] border-[rgba(255,255,255,0.06)]";
-
-  const topLine =
-    accent === "cyan"
-      ? "bg-[linear-gradient(90deg,transparent,#5BC0DE,transparent)]"
-      : accent === "amber"
-        ? "bg-[linear-gradient(90deg,transparent,#D4A853,transparent)]"
-        : "bg-[linear-gradient(90deg,transparent,#D4A853,#5BC0DE,transparent)]";
-
-  return (
-    <section
-      className={`relative overflow-hidden rounded-[32px] border px-8 py-11 text-center ${cardClassName}`}
-    >
-      <div className={`absolute inset-x-0 top-0 h-[2px] ${topLine} opacity-30`} />
-      <div className="text-[0.65rem] uppercase tracking-[0.3em] text-[#5BC0DE] opacity-80">
-        {label}
-      </div>
-      <h3 className="mt-5 text-[1.5rem] font-normal tracking-[-0.02em] text-[#E8E8E8]">
-        {title}
-      </h3>
-      <p className="mt-2 text-[0.9rem] font-light text-[#A0A0A8]">{subtitle}</p>
-      {badge ? <div className="mt-5">{badge}</div> : null}
-      <div className="mt-8">{children}</div>
-      <button
-        onClick={cta}
-        className={ctaClassName}
-      >
-        {ctaLabel}
-      </button>
-      <div className="mt-5 text-[0.75rem] text-[#6E6E78]">{footer}</div>
-    </section>
-  );
-}
+};
 
 export default function PricingPage() {
-  const { language, user, planStatus, trialEndsAt, setPlanStatus } = useApp();
+  const { user, planStatus, trialEndsAt, setPlanStatus } = useApp();
   const { toast } = useToast();
   const [scrolled, setScrolled] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
+  const [pageLang, setPageLang] = useState<"en" | "fr">("en");
   const [trialError, setTrialError] = useState<string | null>(null);
-  const trialActive = planStatus === "free_trial" && trialEndsAt && trialEndsAt > new Date();
 
-  const features = useMemo(
-    () => [
-      { icon: Mic, en: "Voice → Event", fr: "Voix → Événement", ar: "صوت ← حدث" },
-      { icon: ImageIcon, en: "Image / PDF extraction", fr: "Extraction Image / PDF", ar: "استخراج صورة / PDF" },
-      { icon: Brain, en: "Smart analysis", fr: "Analyse intelligente", ar: "تحليل ذكي" },
-      { icon: Lightbulb, en: "AI Suggestions", fr: "Suggestions IA", ar: "اقتراحات AI" },
-      { icon: Sparkles, en: "Any future AI feature", fr: "Toute future fonction IA", ar: "أي ميزة AI مستقبلية" },
-    ],
-    [],
-  );
+  const trialActive = planStatus === "free_trial" && trialEndsAt && trialEndsAt > new Date();
+  const t = translations[pageLang];
+
+  useEffect(() => {
+    const stored = localStorage.getItem("iqxo-pricing-lang");
+    if (stored === "en" || stored === "fr") {
+      setPageLang(stored);
+    }
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -227,487 +216,880 @@ export default function PricingPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const handleLanguageChange = (lang: "en" | "fr") => {
+    setPageLang(lang);
+    localStorage.setItem("iqxo-pricing-lang", lang);
+  };
+
   const handleSubscribe = (cycle: BillingCycle) => {
-    if (!user) {
-      navigateToPath("/login");
-      return;
-    }
-
-    const base = PAYMENT_LINKS[cycle];
-    if (!base) {
-      devWarn("Billing", "Missing payment link for billing cycle", { cycle });
-      toast({
-        title: "Payment link unavailable",
-        description:
-          cycle === "yearly"
-            ? "Yearly billing isn't configured yet. Please try monthly or contact support."
-            : "Monthly billing isn't configured yet. Please contact support.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const url = user?.id
-      ? `${base}?client_reference_id=${encodeURIComponent(user.id)}&prefilled_email=${encodeURIComponent(user?.email || "")}`
-      : base;
-
-    window.location.href = url;
+    navigateToPath("/login");
   };
 
   const handleTrial = async () => {
-    if (!user) {
-      navigateToPath("/login");
-      return;
-    }
-
-    // Trial is currently active — inform the user instead of silently navigating away
-    if (trialActive) {
-      toast({
-        title: translate(language, "Your free trial is active", "Votre essai gratuit est actif", "تجربتك المجانية نشطة"),
-        description: translate(
-          language,
-          "You already have an active 7-day free trial. Enjoy all features!",
-          "Vous avez déjà un essai gratuit de 7 jours actif. Profitez de toutes les fonctionnalités !",
-          "لديك تجربة مجانية لمدة 7 أيام نشطة بالفعل. استمتع بجميع الميزات!",
-        ),
-      });
-      navigateToPath("/");
-      return;
-    }
-
-    setTrialError(null);
-    try {
-      // Check if trial was already used (expired)
-      const { data: existing } = await supabase
-        .from("user_plans")
-        .select("trial_started_at")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (existing?.trial_started_at) {
-        const message = translate(
-          language,
-          "You've already used your free trial on this account. Subscribe to keep going.",
-          "Vous avez déjà utilisé votre essai gratuit. Abonnez-vous pour continuer.",
-          "استخدمت تجربتك المجانية من قبل على هذا الحساب. اشترك للمتابعة.",
-        );
-        setTrialError(message);
-        toast({
-          title: translate(language, "Trial already used", "Essai déjà utilisé", "التجربة مستخدمة مسبقًا"),
-          description: message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const now = new Date();
-      const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-      const { error } = await supabase.from("user_plans").upsert(
-        {
-          user_id: user.id,
-          plan_status: "free_trial",
-          trial_started_at: now.toISOString(),
-          trial_ends_at: trialEnd.toISOString(),
-          updated_at: now.toISOString(),
-        },
-        { onConflict: "user_id" },
-      );
-
-      if (error) throw error;
-
-      devLog("Billing", "Free trial activated via Supabase");
-      setPlanStatus("free_trial", trialEnd);
-
-      // ✅ Success — let the user know their trial just started
-      toast({
-        title: translate(language, "Free trial activated! 🎉", "Essai gratuit activé ! 🎉", "تم تفعيل التجربة المجانية! 🎉"),
-        description: translate(
-          language,
-          "Your 7-day free trial has started. Enjoy all features!",
-          "Votre essai gratuit de 7 jours a commencé. Profitez de toutes les fonctionnalités !",
-          "بدأت تجربتك المجانية لمدة 7 أيام. استمتع بجميع الميزات!",
-        ),
-      });
-      navigateToPath("/");
-    } catch (err: any) {
-      devError("Billing", "Free trial activation failed", err);
-      const message = getFriendlyErrorMessage(
-        err,
-        translate(language, "Something went wrong. Please try again.", "Une erreur est survenue.", "حدث خطأ. حاول مرة أخرى."),
-      );
-      setTrialError(message);
-      toast({
-        title: translate(language, "Couldn't start free trial", "Impossible de démarrer l'essai", "تعذّر بدء التجربة المجانية"),
-        description: message,
-        variant: "destructive",
-      });
-    }
+    navigateToPath("/login");
   };
 
-  const isRTL = language === "ar";
-
   return (
-    <div className={`relative min-h-screen overflow-x-hidden bg-[#0C0C0E] text-[#E8E8E8] ${isRTL ? "dir-rtl" : ""}`}>
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute -left-[15%] -top-[15%] h-[600px] w-[600px] rounded-full bg-[rgba(91,192,222,0.08)] blur-[120px] opacity-25 animate-[drift_25s_ease-in-out_infinite]" />
-        <div className="absolute bottom-[10%] -right-[15%] h-[500px] w-[500px] rounded-full bg-[rgba(212,168,83,0.08)] blur-[120px] opacity-25 animate-[drift_30s_ease-in-out_infinite_reverse]" />
+    <div style={{ background: "#0C0C0E", color: "#E8E8E8", overflowX: "hidden", minHeight: "100vh" }}>
+      {/* Ambient backgrounds */}
+      <div style={{ position: "fixed", pointerEvents: "none", zIndex: 0, overflow: "hidden", inset: 0 }}>
+        <div style={{
+          position: "absolute",
+          width: "600px",
+          height: "600px",
+          borderRadius: "50%",
+          background: "rgba(91, 192, 222, 0.08)",
+          filter: "blur(120px)",
+          opacity: 0.25,
+          top: "-15%",
+          left: "-15%",
+          animation: "drift 25s ease-in-out infinite",
+        }} />
+        <div style={{
+          position: "absolute",
+          width: "500px",
+          height: "500px",
+          borderRadius: "50%",
+          background: "rgba(212, 168, 83, 0.08)",
+          filter: "blur(120px)",
+          opacity: 0.25,
+          bottom: "10%",
+          right: "-15%",
+          animation: "drift 30s ease-in-out infinite reverse",
+        }} />
       </div>
 
-      <nav
-        className={`fixed inset-x-0 top-0 z-50 flex items-center justify-between px-5 py-4 transition-all duration-700 sm:px-8 ${scrolled ? "border-b border-white/[0.04] bg-[rgba(12,12,14,0.6)] backdrop-blur-[40px]" : ""}`}
-      >
-        <BrandLogo className="text-[1.05rem] font-medium tracking-[-0.01em] text-[#E8E8E8]" />
-        <div className="hidden items-center gap-4 sm:flex">
-          <a href="#experience" className="text-[0.8rem] text-[#6E6E78] transition-colors hover:text-[#A0A0A8]">Experience</a>
-          <a href="#pricing" className="text-[0.8rem] text-[#6E6E78] transition-colors hover:text-[#A0A0A8]">Pricing</a>
-          <button
-            type="button"
-            onClick={() => navigateToPath("/login")}
-            className="rounded-full border border-[rgba(255,255,255,0.06)] bg-[#161618] px-4 py-2 text-[0.75rem] font-medium text-[#A0A0A8] transition-all hover:border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.03)] hover:text-[#E8E8E8]"
-          >
-            Skip
-          </button>
+      <style>{`
+        @keyframes drift {
+          0%, 100% { transform: translate(0,0) scale(1); }
+          33% { transform: translate(40px,-30px) scale(1.05); }
+          66% { transform: translate(-20px,20px) scale(0.95); }
+        }
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.8); }
+        }
+      `}</style>
+
+      {/* Nav */}
+      <nav style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        padding: "20px 32px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        zIndex: 100,
+        transition: "all 0.8s cubic-bezier(0.22, 1, 0.36, 1)",
+        background: scrolled ? "rgba(12,12,14,0.6)" : "transparent",
+        backdropFilter: scrolled ? "blur(40px)" : "none",
+        borderBottom: scrolled ? "1px solid rgba(255,255,255,0.04)" : "none",
+      }}>
+        <div style={{ fontSize: "1.05rem", fontWeight: "500", letterSpacing: "-0.01em" }}>
+          IQ<span style={{ color: "#5BC0DE" }}>X</span>O
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
+          <a href="#experience" style={{ fontSize: "0.8rem", color: "#6E6E78", textDecoration: "none", transition: "color 0.6s ease" }}>
+            {t.experience}
+          </a>
+          <a href="#pricing" style={{ fontSize: "0.8rem", color: "#6E6E78", textDecoration: "none", transition: "color 0.6s ease" }}>
+            {t.pricing}
+          </a>
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+            background: "#161618",
+            border: "1px solid rgba(255,255,255,0.04)",
+            borderRadius: "100px",
+            padding: "3px",
+            marginLeft: "24px",
+          }}>
+            <button
+              onClick={() => handleLanguageChange("en")}
+              style={{
+                background: pageLang === "en" ? "#18181A" : "transparent",
+                border: pageLang === "en" ? "1px solid rgba(255,255,255,0.08)" : "none",
+                color: pageLang === "en" ? "#A0A0A8" : "#6E6E78",
+                padding: "6px 14px",
+                borderRadius: "100px",
+                fontSize: "0.75rem",
+                fontFamily: "inherit",
+                cursor: "pointer",
+                transition: "all 0.4s ease",
+                fontWeight: "500",
+                letterSpacing: "0.02em",
+              }}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => handleLanguageChange("fr")}
+              style={{
+                background: pageLang === "fr" ? "#18181A" : "transparent",
+                border: pageLang === "fr" ? "1px solid rgba(255,255,255,0.08)" : "none",
+                color: pageLang === "fr" ? "#A0A0A8" : "#6E6E78",
+                padding: "6px 14px",
+                borderRadius: "100px",
+                fontSize: "0.75rem",
+                fontFamily: "inherit",
+                cursor: "pointer",
+                transition: "all 0.4s ease",
+                fontWeight: "500",
+                letterSpacing: "0.02em",
+              }}
+            >
+              FR
+            </button>
+          </div>
         </div>
       </nav>
 
-      <main className="relative z-10">
-        <section className="min-h-screen px-5 pb-20 pt-32 text-center sm:px-8 sm:pb-20 sm:pt-36">
-          <div className="mx-auto max-w-[540px]">
-            <div className="mb-12 flex justify-center">
-              <BrandLogo as="div" className="block text-[0.7rem] uppercase tracking-[0.25em] text-[#6E6E78] opacity-60" />
-            </div>
-
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[rgba(91,192,222,0.12)] bg-[rgba(91,192,222,0.08)] px-5 py-2 text-[0.8rem] text-[#5BC0DE]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#5BC0DE] animate-pulse" />
-              {translate(language, "7 Days of Calm — Free", "7 jours de calme — Gratuit", "7 أيام من الهدوء — مجاناً")}
-            </div>
-
-            <h1 className="text-[clamp(1.7rem,5vw,2.6rem)] font-normal leading-[1.2] tracking-[-0.03em] text-[#E8E8E8]">
-              {translate(
-                language,
-                <>Your mind doesn't need to<br />hold <em className="font-light italic text-[#5BC0DE]">everything</em> anymore.</> as any,
-                <>Votre esprit n'a plus besoin de tout<br />retenir <em className="font-light italic text-[#5BC0DE]">en permanence</em>.</> as any,
-                <>عقلك لم يعد بحاجة إلى<br />حمل <em className="font-light italic text-[#5BC0DE]">كل شيء</em> بعد الآن.</> as any,
-              )}
-            </h1>
-
-            <div className="mx-auto mb-10 mt-8 max-w-[420px] text-[clamp(0.9rem,2vw,1rem)] font-light leading-[1.7] text-[#A0A0A8] opacity-85">
-              {translate(
-                language,
-                "Voice, photos, notes, and documents — all quietly organized as you go.",
-                "Voix, photos, notes et documents — tout s'organise discrètement au fur et à mesure.",
-                "الصوت والصور والملاحظات والمستندات — كلها تُنظم بهدوء أثناء استخدامك لها.",
-              )}
-            </div>
-
-            <div className="mx-auto mb-12 max-w-[400px] text-[clamp(0.9rem,2vw,1rem)] font-light leading-[2] text-[#6E6E78]">
-              <p>{translate(language, "What you capture stays with you.", "Ce que vous capturez reste avec vous.", "ما تلتقطه يبقى معك.")}</p>
-              <p>{translate(language, "Without effort. Without thinking.", "Sans effort. Sans y penser.", "بدون جهد. وبدون تفكير.")}</p>
-            </div>
-
-            <button
-              onClick={handleTrial}
-              className="mb-4 inline-flex items-center gap-2 rounded-full border border-[rgba(91,192,222,0.15)] bg-[rgba(91,192,222,0.08)] px-8 py-4 text-[0.9rem] font-medium text-[#5BC0DE] transition-all hover:border-[rgba(91,192,222,0.3)] hover:bg-[rgba(91,192,222,0.1)] hover:text-[#7DD3F0]"
-            >
-              {translate(language, "Start 7 Days Free", "Commencer 7 jours gratuits", "ابدأ 7 أيام مجانًا")}
-              <span>→</span>
-            </button>
-            <p className="text-[0.75rem] text-[#6E6E78]">30 captures. No card required. Cancel anytime.</p>
-          </div>
-        </section>
-
-        <Connector text={translate(language, "But first, the weight we all carry…", "Mais d'abord, le poids que nous portons…", "لكن أولًا، العبء الذي نحمله جميعًا…")} />
-
-        <section className="relative z-10 py-14 text-center sm:py-16 md:py-20">
-          <div className="mx-auto max-w-[640px] px-5 sm:px-8">
-            <div className="mb-8 text-[0.7rem] uppercase tracking-[0.25em] text-[#D4A853] opacity-50">
-              {translate(language, "The Weight", "Le poids", "العبء")}
-            </div>
-            <h2 className="text-[clamp(1.5rem,4vw,2.2rem)] font-normal leading-[1.25] tracking-[-0.02em] text-[#E8E8E8]">
-              {translate(language, <>You carry too much<br />in your head.</> as any, <>Vous portez trop de choses<br />dans votre tête.</> as any, <>تحمل الكثير<br />في رأسك.</> as any)}
-            </h2>
-            <div className="mx-auto mt-8 max-w-[460px] text-[clamp(1rem,2vw,1.15rem)] font-light leading-[2.2] text-[#A0A0A8]">
-              <p className="text-[#6E6E78]">{translate(language, "Things you meant to remember…", "Les choses que vous vouliez retenir…", "الأشياء التي كنت تنوي تذكرها…")}</p>
-              <p className="text-[#6E6E78]">{translate(language, "ideas, messages, small tasks…", "idées, messages, petites tâches…", "أفكار، رسائل، مهام صغيرة…")}</p>
-              <p className="text-[#D4A853]/70">{translate(language, "They don't disappear — they just pile up.", "Elles ne disparaissent pas — elles s'accumulent.", "لا تختفي — بل تتراكم.")}</p>
-            </div>
-          </div>
-        </section>
-
-        <Connector text={translate(language, "What if you could simply… let go?", "Et si vous pouviez simplement… laisser aller ?", "ماذا لو استطعت ببساطة… أن تتخلى؟")} />
-
-        <section className="relative z-10 py-10 text-center sm:py-12">
-          <div className="mx-auto max-w-[640px] px-5 sm:px-8">
-            <h3 className="mb-4 text-[clamp(1.3rem,3.5vw,1.8rem)] font-normal leading-[1.3] tracking-[-0.02em] text-[#A0A0A8]">
-              {translate(language, <>You stop trying<br />to remember.</> as any, <>Vous arrêtez d'essayer<br />de vous souvenir.</> as any, <>تتوقف عن المحاولة<br />للتذكر.</> as any)}
-            </h3>
-            <p className="mx-auto max-w-[380px] text-[1rem] font-light leading-[1.8] text-[#6E6E78]">
-              {translate(language, <>And start trusting<br />that it's already there.</> as any, <>Et commencez à faire confiance<br />au fait que c'est déjà là.</> as any, <>وتبدأ بالثقة<br />أنه موجود بالفعل.</> as any)}
-            </p>
-          </div>
-        </section>
-
-        <Connector
-          text={translate(
-            language,
-            <>
-              This is where <BrandLogo as="span" className="text-[0.8rem] font-medium tracking-[-0.01em] text-[#6E6E78]" /> lives…
-            </>,
-            <>
-              C'est là qu'<BrandLogo as="span" className="text-[0.8rem] font-medium tracking-[-0.01em] text-[#6E6E78]" /> vit…
-            </>,
-            <>
-              هنا يعيش <BrandLogo as="span" className="text-[0.8rem] font-medium tracking-[-0.01em] text-[#6E6E78]" />…
-            </>,
-          )}
-        />
-
-        <PageSection
-          whisper={translate(language, "The Relief", "Le soulagement", "الراحة")}
-          title={translate(
-            language,
-            <>
-              IQXO carries it<br />so you don't have to.
-            </>,
-            <>
-              IQXO le porte<br />pour que vous n'ayez pas à le faire.
-            </>,
-            <>
-              IQXO يحملها<br />حتى لا تضطر إلى ذلك.
-            </>,
-          )}
-          subtitle={translate(language, "Everything you capture finds its place. Your mind stays free for what matters.", "Tout ce que vous capturez trouve sa place. Votre esprit reste libre pour l'essentiel.", "كل ما تلتقطه يجد مكانه. ويبقى عقلك حرًا لما يهم.")}
-          accent="cyan"
-        >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {lifestyleCards.map((card) => (
-              <div key={card.title} className="rounded-[24px] border border-[rgba(255,255,255,0.04)] bg-[#161618] p-9 text-left transition-all duration-700 hover:-translate-y-0.5 hover:border-white/[0.08]">
-                <h3 className="mb-2 text-[0.95rem] font-medium tracking-[-0.01em] text-[#E8E8E8]">{card.title}</h3>
-                <p className="text-[0.85rem] leading-[1.6] text-[#6E6E78]">{card.text}</p>
+      <main style={{ position: "relative", zIndex: 1 }}>
+        {/* HERO */}
+        <section style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "120px 0 80px" }}>
+          <div style={{ maxWidth: "640px", margin: "0 auto", padding: "0 32px" }}>
+            <div style={{ maxWidth: "540px" }}>
+              <div style={{ fontSize: "0.7rem", letterSpacing: "0.25em", textTransform: "uppercase", color: "#6E6E78", marginBottom: "48px", fontWeight: "400", opacity: 0.6 }}>
+                IQXO
               </div>
-            ))}
-          </div>
-        </PageSection>
 
-        <Connector
-          text={translate(
-            language,
-            <>
-              A day with <BrandLogo as="span" className="text-[0.8rem] font-medium tracking-[-0.01em] text-[#6E6E78]" /> feels like this…
-            </>,
-            <>
-              Une journée avec <BrandLogo as="span" className="text-[0.8rem] font-medium tracking-[-0.01em] text-[#6E6E78]" /> ressemble à ceci…
-            </>,
-            <>
-              يبدو يومك مع <BrandLogo as="span" className="text-[0.8rem] font-medium tracking-[-0.01em] text-[#6E6E78]" /> هكذا…
-            </>,
-          )}
-        />
-
-        <PageSection
-          whisper={translate(language, "The Flow", "Le flux", "التدفق")}
-          title={translate(language, <>A calmer way to move<br />through your day.</> as any, <>Une façon plus calme de traverser<br />votre journée.</> as any, <>طريقة أهدأ<br />للتنقل خلال يومك.</> as any)}
-          accent="muted"
-          id="experience"
-        >
-          <div className="mx-auto max-w-[500px]">
-            {experienceSteps.map((step, index) => (
-              <div key={step.num} className={`border-b border-[rgba(255,255,255,0.04)] py-7 text-left ${index === experienceSteps.length - 1 ? "border-b-0" : ""}`}>
-                <div className="mb-2 flex items-baseline gap-5">
-                  <span className="min-w-[28px] text-[0.65rem] font-medium tracking-[0.15em] text-[#6E6E78]">{step.num}</span>
-                  <h3 className="text-[1.05rem] font-medium tracking-[-0.01em] text-[#E8E8E8]">{step.title}</h3>
-                </div>
-                <p className="pl-12 text-[0.9rem] font-light leading-[1.7] text-[#A0A0A8]">{step.text}</p>
+              <div style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                background: "rgba(91, 192, 222, 0.08)",
+                border: "1px solid rgba(91,192,222,0.12)",
+                color: "#5BC0DE",
+                padding: "10px 20px",
+                borderRadius: "100px",
+                fontSize: "0.8rem",
+                marginBottom: "32px",
+                fontWeight: "400",
+                letterSpacing: "0.02em",
+              }}>
+                <span style={{
+                  width: "6px",
+                  height: "6px",
+                  background: "#5BC0DE",
+                  borderRadius: "50%",
+                  animation: "pulse-dot 2s ease-in-out infinite",
+                }} />
+                {t.trialBadge}
               </div>
-            ))}
-          </div>
-        </PageSection>
 
-        <section className="relative z-10 py-14 text-center sm:py-16 md:py-20">
-          <div className="mx-auto max-w-[640px] px-5 sm:px-8">
-            <h2 className="text-[clamp(1.4rem,3.5vw,1.9rem)] font-normal leading-[1.3] tracking-[-0.02em] text-[#A0A0A8]">
-              {translate(language, <>A simpler way to move<br />through your day.</> as any, <>Une façon plus simple de traverser<br />votre journée.</> as any, <>طريقة أبسط<br />للتنقل خلال يومك.</> as any)}
-            </h2>
-            <p className="mt-5 text-[0.95rem] font-light text-[#6E6E78]">Less noise. Less thinking. More clarity.</p>
-          </div>
-        </section>
+              <h1 style={{
+                fontSize: "clamp(1.7rem, 5vw, 2.6rem)",
+                fontWeight: 400,
+                lineHeight: 1.2,
+                letterSpacing: "-0.03em",
+                marginBottom: "32px",
+              }}>
+                Your mind doesn't need to<br />hold <em style={{ fontStyle: "italic", color: "#5BC0DE", fontWeight: 300 }}>everything</em> anymore.
+              </h1>
 
-        <Connector text={translate(language, "Some moments deserve more…", "Certains moments méritent plus…", "بعض اللحظات تستحق أكثر…")} />
+              <div style={{
+                fontSize: "clamp(0.9rem, 2vw, 1rem)",
+                color: "#A0A0A8",
+                lineHeight: 1.7,
+                fontWeight: 300,
+                maxWidth: "420px",
+                margin: "0 auto 40px",
+                opacity: 0.85,
+              }}>
+                {t.heroClarity}
+              </div>
 
-        <section className="relative z-10 py-14 sm:py-16 md:py-20">
-          <div className="mx-auto max-w-[640px] px-5 sm:px-8">
-            <div className="rounded-[32px] border border-[rgba(255,255,255,0.06)] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.005))] px-10 py-16 text-center sm:px-14">
-              <div className="mb-7 text-[1.6rem] opacity-35">◆</div>
-              <h2 className="text-[clamp(1.4rem,3.5vw,1.9rem)] font-normal leading-[1.3] tracking-[-0.02em] text-[#E8E8E8]">
-                {translate(language, <>A more comfortable way<br />to live your day.</> as any, <>Une façon plus confortable<br />de vivre votre journée.</> as any, <>طريقة أكثر راحة<br />لعيش يومك.</> as any)}
-              </h2>
-              <p className="mx-auto mt-5 max-w-[400px] text-[0.95rem] font-light leading-[1.8] text-[#A0A0A8]">
-                {translate(language, "Everything you capture stays organized automatically — so your mind can stay free.", "Tout ce que vous capturez reste organisé automatiquement — pour que votre esprit reste libre.", "كل ما تلتقطه يبقى منظّمًا تلقائيًا — حتى يظل عقلك حرًا.")}
+              <div style={{
+                fontSize: "clamp(0.9rem, 2vw, 1rem)",
+                color: "#6E6E78",
+                lineHeight: 2,
+                fontWeight: 300,
+                maxWidth: "400px",
+                margin: "0 auto 48px",
+              }}>
+                <p>{t.heroParagraph1}</p>
+                <p>{t.heroParagraph2}</p>
+              </div>
+
+              <button
+                onClick={handleTrial}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  background: "rgba(91, 192, 222, 0.08)",
+                  border: "1px solid rgba(91,192,222,0.15)",
+                  color: "#5BC0DE",
+                  padding: "14px 32px",
+                  borderRadius: "100px",
+                  fontSize: "0.9rem",
+                  textDecoration: "none",
+                  transition: "all 0.6s ease",
+                  fontWeight: 500,
+                  marginBottom: "16px",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                {t.heroCta}
+                <span>→</span>
+              </button>
+              <p style={{ fontSize: "0.75rem", color: "#6E6E78", marginTop: "16px" }}>
+                {t.heroCTANote}
               </p>
             </div>
           </div>
         </section>
 
-        <Connector text={translate(language, "Upgrading your day…", "Améliorer votre journée…", "ترقية يومك…")} />
+        {/* CONNECTOR 1 */}
+        <div style={{ textAlign: "center", padding: "48px 0", position: "relative" }}>
+          <div style={{ width: "1px", height: "48px", background: "linear-gradient(180deg, transparent, rgba(255,255,255,0.08), transparent)", margin: "0 auto 20px" }} />
+          <p style={{ fontSize: "0.8rem", color: "#6E6E78", fontWeight: 300, fontStyle: "italic", maxWidth: "360px", margin: "0 auto", lineHeight: 1.8, opacity: 0.7 }}>
+            {t.connector1}
+          </p>
+        </div>
 
-        <section id="pricing" className="relative z-10 py-14 text-center sm:py-16 md:py-20">
-          <div className="mx-auto max-w-[640px] px-5 sm:px-8">
-            <div className="mb-8 text-[0.7rem] uppercase tracking-[0.25em] text-[#6E6E78] opacity-50">
-              {translate(language, "Choose Your Pace", "Choisissez votre rythme", "اختر وتيرتك")}
+        {/* PROBLEM */}
+        <section style={{ padding: "80px 0 40px", textAlign: "center" }}>
+          <div style={{ maxWidth: "640px", margin: "0 auto", padding: "0 32px" }}>
+            <div style={{ fontSize: "0.7rem", letterSpacing: "0.25em", textTransform: "uppercase", color: "#D4A853", marginBottom: "36px", opacity: 0.5 }}>
+              {t.problemWhisper}
             </div>
-            <h2 className="text-[clamp(1.5rem,4vw,2.2rem)] font-normal leading-[1.25] tracking-[-0.02em] text-[#E8E8E8]">
-              {translate(language, <>Start free. Upgrade when you're<br /><em className="font-light italic text-[#D4A853]">ready</em>.</> as any, <>Commencez gratuitement. Passez à la version supérieure quand vous êtes<br /><em className="font-light italic text-[#D4A853]">prêt</em>.</> as any, <>ابدأ مجانًا. وارتقِ عندما تكون<br /><em className="font-light italic text-[#D4A853]">مستعدًا</em>.</> as any)}
+            <h2 style={{ fontSize: "clamp(1.5rem, 4vw, 2.2rem)", fontWeight: 400, lineHeight: 1.25, letterSpacing: "-0.02em", marginBottom: "32px" }}>
+              {t.problemH2}
             </h2>
-            <p className="mx-auto mt-6 max-w-[360px] text-[0.95rem] font-light leading-[1.7] text-[#A0A0A8]">
-              {translate(language, "Start free. Upgrade when you need more. No hidden fees, ever.", "Commencez gratuitement. Passez à la version supérieure quand vous en avez besoin. Aucun frais caché.", "ابدأ مجانًا. وارتقِ عندما تحتاج المزيد. لا رسوم خفية أبدًا.")}
+            <div style={{ fontSize: "clamp(1rem, 2vw, 1.15rem)", color: "#A0A0A8", lineHeight: 2.2, fontWeight: 300, maxWidth: "460px", margin: "0 auto" }}>
+              <p style={{ color: "#6E6E78" }}>{t.problemP1}</p>
+              <p style={{ color: "#6E6E78" }}>{t.problemP2}</p>
+              <p style={{ color: "#D4A853", opacity: 0.7 }}>{t.problemP3}</p>
+            </div>
+          </div>
+        </section>
+
+        {/* CONNECTOR 2 */}
+        <div style={{ textAlign: "center", padding: "48px 0", position: "relative" }}>
+          <div style={{ width: "1px", height: "48px", background: "linear-gradient(180deg, transparent, rgba(255,255,255,0.08), transparent)", margin: "0 auto 20px" }} />
+          <p style={{ fontSize: "0.8rem", color: "#6E6E78", fontWeight: 300, fontStyle: "italic", maxWidth: "360px", margin: "0 auto", lineHeight: 1.8, opacity: 0.7 }}>
+            {t.connector2}
+          </p>
+        </div>
+
+        {/* SHIFT */}
+        <section style={{ padding: "40px 0", textAlign: "center" }}>
+          <div style={{ maxWidth: "640px", margin: "0 auto", padding: "0 32px" }}>
+            <h3 style={{ fontSize: "clamp(1.3rem, 3.5vw, 1.8rem)", fontWeight: 400, lineHeight: 1.3, letterSpacing: "-0.02em", marginBottom: "16px", color: "#A0A0A8" }}>
+              {t.shiftH3}
+            </h3>
+            <p style={{ fontSize: "1rem", color: "#6E6E78", fontWeight: 300, maxWidth: "380px", margin: "0 auto", lineHeight: 1.8 }}>
+              {t.shiftP}
             </p>
+          </div>
+        </section>
 
-            <div className="mt-12 grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
-              <PricingCard
-                title={translate(language, "Free Trial", "Essai gratuit", "تجربة مجانية")}
-                label={translate(language, "7 Days of Calm", "7 jours de calme", "7 أيام من الهدوء")}
-                subtitle={translate(language, "Feel the difference. No commitment.", "Ressentez la différence. Sans engagement.", "اشعر بالفرق. بدون التزام.")}
-                footer={translate(language, "Voice, photos, notes, documents — try everything.", "Voix, photos, notes, documents — essayez tout.", "الصوت والصور والملاحظات والمستندات — جرّب كل شيء.")}
-                accent="cyan"
-                cta={handleTrial}
-                ctaLabel={translate(language, "Start Free Trial", "Commencer l'essai gratuit", "ابدأ التجربة المجانية")}
-                ctaClassName="mt-8 block w-full rounded-full border border-[rgba(91,192,222,0.15)] bg-[rgba(91,192,222,0.08)] px-4 py-4 text-[0.9rem] font-medium text-[#5BC0DE] transition-all hover:border-[rgba(91,192,222,0.25)] hover:bg-[rgba(91,192,222,0.1)] hover:text-[#7DD3F0]"
-              >
-                <div className="grid grid-cols-2 gap-3 text-left">
-                  {trialStats.map(([num, label]) => (
-                    <div key={label} className="rounded-[16px] border border-[rgba(91,192,222,0.06)] bg-[rgba(91,192,222,0.04)] p-4">
-                      <div className="mb-1 text-[1.4rem] font-light leading-none text-[#5BC0DE]">{num}</div>
-                      <div className="text-[0.75rem] text-[#6E6E78]">{label}</div>
-                    </div>
-                  ))}
-                </div>
-                {trialError ? (
-                  <div className="mt-4 rounded-[16px] border border-[rgba(212,168,83,0.1)] bg-[rgba(212,168,83,0.06)] px-4 py-3 text-left text-[0.75rem] text-[#A0A0A8]">
-                    {trialError}
-                  </div>
-                ) : null}
-                {trialActive ? (
-                  <div className="mt-4 rounded-[16px] border border-[rgba(212,168,83,0.08)] bg-[rgba(212,168,83,0.06)] px-4 py-3 text-left text-[0.75rem] text-[#A0A0A8]">
-                    {translate(language, "Your free trial is already active.", "Votre essai gratuit est déjà actif.", "التجربة المجانية مفعلة بالفعل.")}
-                  </div>
-                ) : null}
-              </PricingCard>
+        {/* CONNECTOR 3 */}
+        <div style={{ textAlign: "center", padding: "48px 0", position: "relative" }}>
+          <div style={{ width: "1px", height: "48px", background: "linear-gradient(180deg, transparent, rgba(255,255,255,0.08), transparent)", margin: "0 auto 20px" }} />
+          <p style={{ fontSize: "0.8rem", color: "#6E6E78", fontWeight: 300, fontStyle: "italic", maxWidth: "360px", margin: "0 auto", lineHeight: 1.8, opacity: 0.7 }}>
+            {t.connector3}
+          </p>
+        </div>
 
-              <PricingCard
-                title={translate(language, "Upgrade to Calm", "Passer à Calm", "الترقية إلى Calm")}
-                label={translate(language, "Upgrade Your Day", "Améliorez votre journée", "طوّر يومك")}
-                subtitle={translate(language, "per month", "par mois", "شهريًا")}
-                footer={translate(language, "No questions asked. Full refund within 30 days.", "Sans questions. Remboursement complet sous 30 jours.", "بدون أسئلة. استرداد كامل خلال 30 يومًا.")}
-                accent="luxury"
-                cta={() => handleSubscribe("monthly")}
-                ctaLabel={translate(language, "Upgrade to Calm", "Passer à Calm", "الترقية إلى Calm")}
-                ctaClassName="mt-8 block w-full rounded-full border border-[rgba(255,255,255,0.08)] bg-transparent px-4 py-4 text-[0.9rem] font-medium text-[#A0A0A8] transition-all hover:border-[rgba(91,192,222,0.3)] hover:bg-[rgba(91,192,222,0.04)] hover:text-[#E8E8E8]"
-                badge={
-                  <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(212,168,83,0.12)] bg-[rgba(212,168,83,0.08)] px-4 py-2 text-[0.75rem] font-medium text-[#D4A853]">
-                    {translate(language, "Best Value", "Meilleur rapport", "الأفضل قيمة")}
-                  </div>
-                }
-              >
-                <div className="flex items-end justify-center gap-0.5 tracking-[-0.03em] text-[#E8E8E8]">
-                  <span className="text-[3rem] font-light leading-none">€{PRICING.monthlyEUR}</span>
-                  <span className="pb-1 text-[1.1rem] font-normal text-[#6E6E78]">.99</span>
-                </div>
-                <div className="mt-2 text-[0.85rem] text-[#6E6E78]">{translate(language, "per month", "par mois", "شهريًا")}</div>
-                <div className="mt-8 text-left">
-                  {pricingFeatures.map((feature) => (
-                    <div key={feature} className="flex items-center gap-3 border-b border-[rgba(255,255,255,0.04)] py-3 text-[0.9rem] text-[#A0A0A8] last:border-b-0">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(91,192,222,0.08)] text-[0.7rem] text-[#5BC0DE]">✓</span>
-                      <span>{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </PricingCard>
+        {/* SOLUTION */}
+        <section style={{ padding: "80px 0 40px", textAlign: "center" }}>
+          <div style={{ maxWidth: "640px", margin: "0 auto", padding: "0 32px" }}>
+            <div style={{ fontSize: "0.7rem", letterSpacing: "0.25em", textTransform: "uppercase", color: "#5BC0DE", marginBottom: "36px", opacity: 0.5 }}>
+              {t.solutionWhisper}
+            </div>
+            <h2 style={{ fontSize: "clamp(1.5rem, 4vw, 2.2rem)", fontWeight: 400, lineHeight: 1.25, letterSpacing: "-0.02em", marginBottom: "24px" }}>
+              {t.solutionH2}
+            </h2>
+            <div style={{ fontSize: "clamp(1rem, 2vw, 1.1rem)", color: "#A0A0A8", lineHeight: 1.9, fontWeight: 300, maxWidth: "420px", margin: "0 auto 48px" }}>
+              {t.solutionSub}
+            </div>
 
-              <PricingCard
-                title={translate(language, "Unlimited Peace of Mind", "Sérénité illimitée", "راحة بال غير محدودة")}
-                label={translate(language, "A Calmer Year", "Une année plus calme", "عام أكثر هدوءًا")}
-                subtitle={translate(language, "One commitment. A full year of calm.", "Un engagement. Une année de calme.", "التزام واحد. عام كامل من الهدوء.")}
-                footer={translate(language, "No questions asked. Full refund within 30 days.", "Sans questions. Remboursement complet sous 30 jours.", "بدون أسئلة. استرداد كامل خلال 30 يومًا.")}
-                accent="amber"
-                cta={() => handleSubscribe("yearly")}
-                ctaLabel={translate(language, "Commit to Calm", "S'engager vers le calme", "الالتزام بالهدوء")}
-                ctaClassName="mt-8 block w-full rounded-full border border-[rgba(212,168,83,0.15)] bg-[rgba(212,168,83,0.08)] px-4 py-4 text-[0.9rem] font-medium text-[#D4A853] transition-all hover:border-[rgba(212,168,83,0.25)] hover:bg-[rgba(212,168,83,0.1)] hover:text-[#E8C070]"
-                badge={
-                  <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(212,168,83,0.12)] bg-[rgba(212,168,83,0.08)] px-4 py-2 text-[0.75rem] font-medium text-[#D4A853]">
-                    🔥 {translate(language, "Most Popular", "Le plus populaire", "الأكثر شيوعًا")}
-                  </div>
-                }
-              >
-                <div className="flex items-end justify-center gap-0.5 tracking-[-0.03em] text-[#E8E8E8]">
-                  <span className="text-[3rem] font-light leading-none">€79</span>
-                </div>
-                <div className="mt-2 text-[0.85rem] text-[#6E6E78]">{translate(language, "per year", "par an", "سنويًا")}</div>
-                <div className="mt-2 text-[0.8rem] italic font-light text-[#D4A853]/70">
-                  {translate(language, "Billed yearly — a calmer commitment", "Facturé chaque année — un engagement plus calme", "يُفوتر سنويًا — التزام أكثر هدوءًا")}
-                </div>
-                <div className="mt-8 text-left">
-                  {yearlyFeatures.map((feature, index) => (
-                    <div key={feature} className="flex items-center gap-3 border-b border-[rgba(255,255,255,0.04)] py-3 text-[0.9rem] text-[#A0A0A8] last:border-b-0">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(212,168,83,0.08)] text-[0.7rem] text-[#D4A853]">✓</span>
-                      <span className={index === 2 ? "text-[#D4A853]" : ""}>{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </PricingCard>
-
-              <div className="md:col-span-3 mx-auto mt-6 max-w-[600px] rounded-[16px] border border-[rgba(255,255,255,0.04)] bg-[#161618] px-5 py-5 text-center">
-                <p className="mb-2 text-[0.85rem] leading-6 text-[#A0A0A8]">
-                  {translate(language, "After your 7-day trial, continue Free with 10 captures/month.", "Après votre essai de 7 jours, continuez gratuitement avec 10 captures/mois.", "بعد تجربتك لمدة 7 أيام، يمكنك المتابعة مجانًا مع 10 عمليات التقاط شهريًا.")} <strong className="font-medium text-[#E8E8E8]">{translate(language, "No credit card required.", "Aucune carte requise.", "لا حاجة لبطاقة ائتمان.")}</strong> {translate(language, "Upgrade anytime.", "Mettez à niveau à tout moment.", "يمكنك الترقية في أي وقت.")}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: "12px",
+              maxWidth: "580px",
+              margin: "0 auto",
+            }}>
+              <div style={{
+                background: "#161618",
+                border: "1px solid rgba(255,255,255,0.04)",
+                borderRadius: "24px",
+                padding: "36px 28px",
+                textAlign: "left",
+                transition: "all 0.8s ease",
+              }}>
+                <h3 style={{ fontSize: "0.95rem", fontWeight: 500, color: "#E8E8E8", marginBottom: "10px", letterSpacing: "-0.01em" }}>
+                  {t.relief1Title}
+                </h3>
+                <p style={{ fontSize: "0.85rem", color: "#6E6E78", lineHeight: 1.6, margin: 0 }}>
+                  {t.relief1Desc}
                 </p>
-                <p className="text-[0.75rem] text-[#6E6E78]">
-                  {translate(language, "Billing is handled securely through Stripe.", "La facturation est gérée en toute sécurité par Stripe.", "تتم إدارة الفوترة بأمان عبر Stripe.")}
+              </div>
+
+              <div style={{
+                background: "#161618",
+                border: "1px solid rgba(255,255,255,0.04)",
+                borderRadius: "24px",
+                padding: "36px 28px",
+                textAlign: "left",
+                transition: "all 0.8s ease",
+              }}>
+                <h3 style={{ fontSize: "0.95rem", fontWeight: 500, color: "#E8E8E8", marginBottom: "10px", letterSpacing: "-0.01em" }}>
+                  {t.relief2Title}
+                </h3>
+                <p style={{ fontSize: "0.85rem", color: "#6E6E78", lineHeight: 1.6, margin: 0 }}>
+                  {t.relief2Desc}
+                </p>
+              </div>
+
+              <div style={{
+                background: "#161618",
+                border: "1px solid rgba(255,255,255,0.04)",
+                borderRadius: "24px",
+                padding: "36px 28px",
+                textAlign: "left",
+                transition: "all 0.8s ease",
+              }}>
+                <h3 style={{ fontSize: "0.95rem", fontWeight: 500, color: "#E8E8E8", marginBottom: "10px", letterSpacing: "-0.01em" }}>
+                  {t.relief3Title}
+                </h3>
+                <p style={{ fontSize: "0.85rem", color: "#6E6E78", lineHeight: 1.6, margin: 0 }}>
+                  {t.relief3Desc}
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="relative z-10 py-20 text-center sm:py-24">
-          <div className="mx-auto max-w-[640px] px-5 sm:px-8">
-            <h2 className="text-[clamp(1.7rem,5vw,2.6rem)] font-normal leading-[1.2] tracking-[-0.03em] text-[#E8E8E8]">
-              {translate(language, <>Let your day<br />take care of <em className="font-light italic text-[#5BC0DE]">itself</em>.</> as any, <>Laissez votre journée<br />prendre soin d'<em className="font-light italic text-[#5BC0DE]">elle-même</em>.</> as any, <>دع يومك<br />يعتني بـ<em className="font-light italic text-[#5BC0DE]">نفسه</em>.</> as any)}
+        {/* CONNECTOR 4 */}
+        <div style={{ textAlign: "center", padding: "48px 0", position: "relative" }}>
+          <div style={{ width: "1px", height: "48px", background: "linear-gradient(180deg, transparent, rgba(255,255,255,0.08), transparent)", margin: "0 auto 20px" }} />
+          <p style={{ fontSize: "0.8rem", color: "#6E6E78", fontWeight: 300, fontStyle: "italic", maxWidth: "360px", margin: "0 auto", lineHeight: 1.8, opacity: 0.7 }}>
+            {t.connector4}
+          </p>
+        </div>
+
+        {/* EXPERIENCE */}
+        <section id="experience" style={{ padding: "80px 0 40px", textAlign: "center" }}>
+          <div style={{ maxWidth: "640px", margin: "0 auto", padding: "0 32px" }}>
+            <div style={{ fontSize: "0.7rem", letterSpacing: "0.25em", textTransform: "uppercase", color: "#6E6E78", marginBottom: "36px", opacity: 0.5 }}>
+              {t.expWhisper}
+            </div>
+            <h2 style={{ fontSize: "clamp(1.5rem, 4vw, 2.2rem)", fontWeight: 400, lineHeight: 1.25, letterSpacing: "-0.02em", marginBottom: "48px" }}>
+              {t.expH2}
             </h2>
-            <button
-              onClick={handleTrial}
-              className="mt-9 inline-flex items-center gap-2 rounded-full border border-[rgba(91,192,222,0.15)] bg-[rgba(91,192,222,0.08)] px-10 py-4 text-[1rem] font-medium text-[#5BC0DE] transition-all hover:border-[rgba(91,192,222,0.3)] hover:bg-[rgba(91,192,222,0.1)] hover:text-[#7DD3F0]"
-            >
-              {translate(language, "Start 7 Days Free", "Commencer 7 jours gratuits", "ابدأ 7 أيام مجانًا")}
-              <span>→</span>
-            </button>
-            <p className="mt-4 text-[0.8rem] text-[#6E6E78]">30 captures. No card. No strings.</p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 0, maxWidth: "500px", margin: "0 auto" }}>
+              <div style={{ padding: "28px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", textAlign: "left" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "20px", marginBottom: "10px" }}>
+                  <span style={{ fontSize: "0.65rem", color: "#6E6E78", letterSpacing: "0.15em", fontWeight: 500, minWidth: "28px" }}>01</span>
+                  <h3 style={{ fontSize: "1.05rem", fontWeight: 500, color: "#E8E8E8", letterSpacing: "-0.01em" }}>
+                    {t.exp1Title}
+                  </h3>
+                </div>
+                <p style={{ fontSize: "0.9rem", color: "#A0A0A8", lineHeight: 1.7, paddingLeft: "48px", fontWeight: 300 }}>
+                  {t.exp1Desc}
+                </p>
+              </div>
+
+              <div style={{ padding: "28px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", textAlign: "left" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "20px", marginBottom: "10px" }}>
+                  <span style={{ fontSize: "0.65rem", color: "#6E6E78", letterSpacing: "0.15em", fontWeight: 500, minWidth: "28px" }}>02</span>
+                  <h3 style={{ fontSize: "1.05rem", fontWeight: 500, color: "#E8E8E8", letterSpacing: "-0.01em" }}>
+                    {t.exp2Title}
+                  </h3>
+                </div>
+                <p style={{ fontSize: "0.9rem", color: "#A0A0A8", lineHeight: 1.7, paddingLeft: "48px", fontWeight: 300 }}>
+                  {t.exp2Desc}
+                </p>
+              </div>
+
+              <div style={{ padding: "28px 0", textAlign: "left" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "20px", marginBottom: "10px" }}>
+                  <span style={{ fontSize: "0.65rem", color: "#6E6E78", letterSpacing: "0.15em", fontWeight: 500, minWidth: "28px" }}>03</span>
+                  <h3 style={{ fontSize: "1.05rem", fontWeight: 500, color: "#E8E8E8", letterSpacing: "-0.01em" }}>
+                    {t.exp3Title}
+                  </h3>
+                </div>
+                <p style={{ fontSize: "0.9rem", color: "#A0A0A8", lineHeight: 1.7, paddingLeft: "48px", fontWeight: 300 }}>
+                  {t.exp3Desc}
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
-        <footer className="border-t border-[rgba(255,255,255,0.04)] py-12 text-center">
-          <div className="mx-auto max-w-[640px] px-5 sm:px-8">
-            <BrandLogo as="span" className="mb-3 text-[1rem] font-medium tracking-[-0.01em] text-[#E8E8E8] opacity-25" />
-            <p className="text-[0.75rem] text-[#6E6E78]">Let your day take care of itself.</p>
+        {/* BREATH */}
+        <section style={{ padding: "80px 0", textAlign: "center" }}>
+          <div style={{ maxWidth: "640px", margin: "0 auto", padding: "0 32px" }}>
+            <h2 style={{ fontSize: "clamp(1.4rem, 3.5vw, 1.9rem)", fontWeight: 400, lineHeight: 1.3, letterSpacing: "-0.02em", marginBottom: "20px", color: "#A0A0A8" }}>
+              {t.breathH2}
+            </h2>
+            <p style={{ fontSize: "0.95rem", color: "#6E6E78", fontWeight: 300, letterSpacing: "0.02em" }}>
+              {t.breathP}
+            </p>
+          </div>
+        </section>
+
+        {/* CONNECTOR 5 */}
+        <div style={{ textAlign: "center", padding: "48px 0", position: "relative" }}>
+          <div style={{ width: "1px", height: "48px", background: "linear-gradient(180deg, transparent, rgba(255,255,255,0.08), transparent)", margin: "0 auto 20px" }} />
+          <p style={{ fontSize: "0.8rem", color: "#6E6E78", fontWeight: 300, fontStyle: "italic", maxWidth: "360px", margin: "0 auto", lineHeight: 1.8, opacity: 0.7 }}>
+            {t.connector5}
+          </p>
+        </div>
+
+        {/* PREMIUM */}
+        <section style={{ padding: "80px 0 40px" }}>
+          <div style={{ maxWidth: "640px", margin: "0 auto", padding: "0 32px" }}>
+            <div style={{
+              background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.005))",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: "32px",
+              padding: "64px 40px",
+              textAlign: "center",
+              position: "relative",
+              overflow: "hidden",
+            }}>
+              <div style={{ fontSize: "1.6rem", marginBottom: "28px", opacity: 0.35 }}>◆</div>
+              <h2 style={{ fontSize: "clamp(1.4rem, 3.5vw, 1.9rem)", fontWeight: 400, lineHeight: 1.3, letterSpacing: "-0.02em", marginBottom: "20px" }}>
+                {t.premiumH2}
+              </h2>
+              <p style={{ fontSize: "0.95rem", color: "#A0A0A8", lineHeight: 1.8, maxWidth: "400px", margin: "0 auto", fontWeight: 300 }}>
+                {t.premiumP}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* CONNECTOR 6 */}
+        <div style={{ textAlign: "center", padding: "48px 0", position: "relative" }}>
+          <div style={{ width: "1px", height: "48px", background: "linear-gradient(180deg, transparent, rgba(255,255,255,0.08), transparent)", margin: "0 auto 20px" }} />
+          <p style={{ fontSize: "0.8rem", color: "#6E6E78", fontWeight: 300, fontStyle: "italic", maxWidth: "360px", margin: "0 auto", lineHeight: 1.8, opacity: 0.7 }}>
+            {t.connector6}
+          </p>
+        </div>
+
+        {/* PRICING */}
+        <section id="pricing" style={{ padding: "80px 0 60px", textAlign: "center" }}>
+          <div style={{ maxWidth: "900px", margin: "0 auto", padding: "0 32px" }}>
+            <div style={{ fontSize: "0.7rem", letterSpacing: "0.25em", textTransform: "uppercase", color: "#6E6E78", marginBottom: "36px", opacity: 0.5 }}>
+              {t.pricingWhisper}
+            </div>
+            <h2 style={{ fontSize: "clamp(1.5rem, 4vw, 2.2rem)", fontWeight: 400, lineHeight: 1.25, letterSpacing: "-0.02em", marginBottom: "48px" }}>
+              {t.pricingH2}
+            </h2>
+            <p style={{ fontSize: "0.95rem", color: "#A0A0A8", textAlign: "center", maxWidth: "360px", margin: "0 auto 40px", fontWeight: 300, lineHeight: 1.7 }}>
+              {t.pricingSub}
+            </p>
+
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gap: "16px",
+              maxWidth: "900px",
+              margin: "0 auto",
+            }}>
+              {/* TRIAL CARD */}
+              <div style={{
+                background: "linear-gradient(180deg, rgba(91,192,222,0.08), rgba(91,192,222,0.02))",
+                border: "1px solid rgba(91,192,222,0.1)",
+                borderRadius: "32px",
+                padding: "44px 32px",
+                textAlign: "center",
+                position: "relative",
+                overflow: "hidden",
+              }}>
+                <div style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: "2px",
+                  background: "linear-gradient(90deg, transparent, #5BC0DE, transparent)",
+                  opacity: 0.3,
+                }} />
+                <div style={{ fontSize: "0.65rem", letterSpacing: "0.3em", textTransform: "uppercase", color: "#5BC0DE", marginBottom: "20px", fontWeight: 500, opacity: 0.8 }}>
+                  {t.trialLabel}
+                </div>
+                <div style={{ fontSize: "1.5rem", fontWeight: 400, color: "#E8E8E8", marginBottom: "8px", letterSpacing: "-0.02em" }}>
+                  {t.trialTitle}
+                </div>
+                <div style={{ fontSize: "0.9rem", color: "#A0A0A8", marginBottom: "32px", fontWeight: 300 }}>
+                  {t.trialSubtitle}
+                </div>
+
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, 1fr)",
+                  gap: "12px",
+                  marginBottom: "32px",
+                  textAlign: "left",
+                }}>
+                  <div style={{
+                    background: "rgba(91,192,222,0.04)",
+                    border: "1px solid rgba(91,192,222,0.06)",
+                    borderRadius: "16px",
+                    padding: "16px",
+                  }}>
+                    <div style={{ fontSize: "1.4rem", fontWeight: 300, color: "#5BC0DE", lineHeight: 1, marginBottom: "6px" }}>
+                      {t.trialLimitNum1}
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "#6E6E78" }}>
+                      {t.trialLimitLabel1}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: "rgba(91,192,222,0.04)",
+                    border: "1px solid rgba(91,192,222,0.06)",
+                    borderRadius: "16px",
+                    padding: "16px",
+                  }}>
+                    <div style={{ fontSize: "1.4rem", fontWeight: 300, color: "#5BC0DE", lineHeight: 1, marginBottom: "6px" }}>
+                      {t.trialLimitNum2}
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "#6E6E78" }}>
+                      {t.trialLimitLabel2}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: "rgba(91,192,222,0.04)",
+                    border: "1px solid rgba(91,192,222,0.06)",
+                    borderRadius: "16px",
+                    padding: "16px",
+                  }}>
+                    <div style={{ fontSize: "1.4rem", fontWeight: 300, color: "#5BC0DE", lineHeight: 1, marginBottom: "6px" }}>
+                      {t.trialLimitNum3}
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "#6E6E78" }}>
+                      {t.trialLimitLabel3}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: "rgba(91,192,222,0.04)",
+                    border: "1px solid rgba(91,192,222,0.06)",
+                    borderRadius: "16px",
+                    padding: "16px",
+                  }}>
+                    <div style={{ fontSize: "1.4rem", fontWeight: 300, color: "#5BC0DE", lineHeight: 1, marginBottom: "6px" }}>
+                      {t.trialLimitNum4}
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "#6E6E78" }}>
+                      {t.trialLimitLabel4}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleTrial}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    background: "rgba(91, 192, 222, 0.08)",
+                    border: "1px solid rgba(91,192,222,0.15)",
+                    color: "#5BC0DE",
+                    padding: "16px",
+                    borderRadius: "100px",
+                    fontSize: "0.9rem",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    letterSpacing: "0.02em",
+                    transition: "all 0.6s ease",
+                  }}
+                >
+                  {t.trialCta}
+                </button>
+                <p style={{ marginTop: "16px", fontSize: "0.75rem", color: "#6E6E78" }}>
+                  {t.trialNote}
+                </p>
+              </div>
+
+              {/* PRO CARD WITH TOGGLE */}
+              <div style={{
+                background: "#18181A",
+                border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: "32px",
+                padding: "44px 32px",
+                textAlign: "center",
+                position: "relative",
+                overflow: "hidden",
+              }}>
+                <div style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: "2px",
+                  background: "linear-gradient(90deg, transparent, #D4A853, #5BC0DE, transparent)",
+                  opacity: 0.3,
+                }} />
+
+                <div style={{ fontSize: "0.65rem", letterSpacing: "0.3em", textTransform: "uppercase", color: "#D4A853", marginBottom: "24px", fontWeight: 500, opacity: 0.7 }}>
+                  {t.proLabel}
+                </div>
+
+                {/* Toggle */}
+                <div style={{
+                  display: "inline-flex",
+                  background: "#161618",
+                  border: "1px solid rgba(255,255,255,0.04)",
+                  borderRadius: "100px",
+                  padding: "4px",
+                  marginBottom: "32px",
+                }}>
+                  <button
+                    onClick={() => setBillingCycle("monthly")}
+                    style={{
+                      background: billingCycle === "monthly" ? "#18181A" : "transparent",
+                      border: billingCycle === "monthly" ? "1px solid rgba(255,255,255,0.08)" : "none",
+                      color: billingCycle === "monthly" ? "#A0A0A8" : "#6E6E78",
+                      padding: "10px 24px",
+                      borderRadius: "100px",
+                      fontSize: "0.85rem",
+                      fontFamily: "inherit",
+                      cursor: "pointer",
+                      transition: "all 0.4s ease",
+                      fontWeight: 400,
+                    }}
+                  >
+                    {t.monthlyText}
+                  </button>
+                  <button
+                    onClick={() => setBillingCycle("yearly")}
+                    style={{
+                      background: billingCycle === "yearly" ? "#18181A" : "transparent",
+                      border: billingCycle === "yearly" ? "1px solid rgba(255,255,255,0.08)" : "none",
+                      color: billingCycle === "yearly" ? "#A0A0A8" : "#6E6E78",
+                      padding: "10px 24px",
+                      borderRadius: "100px",
+                      fontSize: "0.85rem",
+                      fontFamily: "inherit",
+                      cursor: "pointer",
+                      transition: "all 0.4s ease",
+                      fontWeight: 400,
+                    }}
+                  >
+                    {t.yearlyText} <span style={{ fontSize: "0.7rem", opacity: 0.7, marginLeft: "4px" }}>{t.yearlySavings}</span>
+                  </button>
+                </div>
+
+                {/* Price Display */}
+                <div style={{ fontSize: "3rem", fontWeight: 300, color: "#E8E8E8", lineHeight: 1, marginBottom: "8px", letterSpacing: "-0.03em" }}>
+                  {billingCycle === "monthly" ? t.monthlyAmount : t.yearlyAmount}
+                  <span style={{ fontSize: "1.1rem", color: "#6E6E78", fontWeight: 400 }}>
+                    {billingCycle === "monthly" ? t.monthlyAmountSpan : ""}
+                  </span>
+                </div>
+                <div style={{ fontSize: "0.85rem", color: "#6E6E78", marginBottom: "8px" }}>
+                  {billingCycle === "monthly" ? t.monthlyPeriod : t.yearlyPeriod}
+                </div>
+                {billingCycle === "yearly" && (
+                  <div style={{ fontSize: "0.8rem", color: "#D4A853", opacity: 0.7, marginBottom: "32px", fontStyle: "italic", fontWeight: 300 }}>
+                    {t.yearlySavingsText}
+                  </div>
+                )}
+                {billingCycle === "monthly" && <div style={{ height: "36px" }} />}
+
+                {/* Features */}
+                <div style={{ textAlign: "left", marginBottom: "32px", borderTop: "1px solid rgba(255,255,255,0.04)", paddingTop: "24px" }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "14px",
+                    padding: "14px 0",
+                    borderBottom: "1px solid rgba(255,255,255,0.04)",
+                    fontSize: "0.9rem",
+                    color: "#A0A0A8",
+                  }}>
+                    <div style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      background: "rgba(91,192,222,0.08)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      color: "#5BC0DE",
+                      fontSize: "0.7rem",
+                    }}>✓</div>
+                    {t.feature1}
+                  </div>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "14px",
+                    padding: "14px 0",
+                    borderBottom: "1px solid rgba(255,255,255,0.04)",
+                    fontSize: "0.9rem",
+                    color: "#A0A0A8",
+                  }}>
+                    <div style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      background: "rgba(91,192,222,0.08)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      color: "#5BC0DE",
+                      fontSize: "0.7rem",
+                    }}>✓</div>
+                    {t.feature2}
+                  </div>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "14px",
+                    padding: "14px 0",
+                    borderBottom: "1px solid rgba(255,255,255,0.04)",
+                    fontSize: "0.9rem",
+                    color: "#A0A0A8",
+                  }}>
+                    <div style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      background: "rgba(91,192,222,0.08)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      color: "#5BC0DE",
+                      fontSize: "0.7rem",
+                    }}>✓</div>
+                    {t.feature3}
+                  </div>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "14px",
+                    padding: "14px 0",
+                    fontSize: "0.9rem",
+                    color: "#A0A0A8",
+                  }}>
+                    <div style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      background: "rgba(91,192,222,0.08)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      color: "#5BC0DE",
+                      fontSize: "0.7rem",
+                    }}>✓</div>
+                    {t.feature4}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleSubscribe(billingCycle)}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    color: "#A0A0A8",
+                    padding: "16px",
+                    borderRadius: "100px",
+                    fontSize: "0.9rem",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    letterSpacing: "0.02em",
+                    transition: "all 0.6s ease",
+                  }}
+                >
+                  {billingCycle === "monthly" ? t.proCtaMonthly : t.proCtaYearly}
+                </button>
+                <div style={{ marginTop: "20px", fontSize: "0.75rem", color: "#6E6E78" }}>
+                  {t.proGuarantee}
+                </div>
+              </div>
+
+              {/* FREE TIER NOTE */}
+              <div style={{
+                gridColumn: "1 / -1",
+                maxWidth: "600px",
+                margin: "24px auto 0",
+                padding: "20px",
+                background: "#161618",
+                border: "1px solid rgba(255,255,255,0.04)",
+                borderRadius: "16px",
+                textAlign: "center",
+              }}>
+                <p style={{ fontSize: "0.85rem", color: "#A0A0A8", lineHeight: 1.6, marginBottom: "8px" }}>
+                  {t.freeTierPart1}
+                </p>
+                <p style={{ fontSize: "0.75rem", color: "#6E6E78" }}>
+                  {t.freeTierPart2}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* FINAL CTA */}
+        <section style={{ padding: "120px 0", textAlign: "center", position: "relative" }}>
+          <div style={{ maxWidth: "640px", margin: "0 auto", padding: "0 32px" }}>
+            <h2 style={{ fontSize: "clamp(1.7rem, 5vw, 2.6rem)", fontWeight: 400, lineHeight: 1.2, letterSpacing: "-0.03em", marginBottom: "36px" }}>
+              {t.ctaFinalH2}
+            </h2>
+            <button
+              onClick={handleTrial}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "12px",
+                background: "rgba(91, 192, 222, 0.08)",
+                border: "1px solid rgba(91,192,222,0.15)",
+                color: "#5BC0DE",
+                padding: "16px 40px",
+                borderRadius: "100px",
+                fontSize: "1rem",
+                textDecoration: "none",
+                transition: "all 0.6s ease",
+                fontWeight: 500,
+                marginBottom: "16px",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              {t.ctaFinalBtn}
+              <span>→</span>
+            </button>
+            <p style={{ fontSize: "0.8rem", color: "#6E6E78" }}>
+              {t.ctaFinalNote}
+            </p>
+          </div>
+        </section>
+
+        {/* FOOTER */}
+        <footer style={{ padding: "48px 0", borderTop: "1px solid rgba(255,255,255,0.04)", textAlign: "center" }}>
+          <div style={{ maxWidth: "640px", margin: "0 auto", padding: "0 32px" }}>
+            <div style={{ fontSize: "1rem", marginBottom: "12px", opacity: 0.25, fontWeight: 500, letterSpacing: "-0.01em" }}>
+              IQXO
+            </div>
+            <p style={{ fontSize: "0.75rem", color: "#6E6E78" }}>
+              {t.footerTagline}
+            </p>
           </div>
         </footer>
       </main>
-
-      <div className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] lg:hidden">
-        <div className="mx-auto flex w-full max-w-[420px] gap-3">
-          <button
-            onClick={() => navigateToPath("/login")}
-            className="flex-1 rounded-full border border-[rgba(255,255,255,0.06)] bg-[rgba(22,22,24,0.92)] px-5 py-4 text-[0.9rem] font-medium text-[#A0A0A8] shadow-[0_-8px_32px_rgba(0,0,0,0.22)] backdrop-blur-xl transition-all hover:border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.03)] hover:text-[#E8E8E8]"
-          >
-            Skip
-          </button>
-          <button
-            onClick={handleTrial}
-            className="flex-[1.3] rounded-full border border-[rgba(91,192,222,0.15)] bg-[rgba(12,12,14,0.92)] px-5 py-4 text-[0.9rem] font-medium text-[#5BC0DE] shadow-[0_-8px_32px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-all hover:border-[rgba(91,192,222,0.3)] hover:bg-[rgba(91,192,222,0.1)] hover:text-[#7DD3F0]"
-          >
-            {translate(language, "Start 7 Days Free", "Commencer 7 jours gratuits", "ابدأ 7 أيام مجانًا")}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

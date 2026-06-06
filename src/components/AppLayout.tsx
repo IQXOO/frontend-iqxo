@@ -6,11 +6,13 @@ import { useApp } from "../lib/store";
 import { navigateToPath } from "../lib/navigation";
 import { CommandPalette } from "../components/dashboard/command-palette";
 import { exportEventsToPDF } from "../lib/export-pdf";
+import { EventEditorProvider, useEventEditor } from "../lib/event-editor-context";
 
-export default function AppLayout() {
+function AppLayoutContent() {
   const { events, signOut, toggleTheme, user } = useApp();
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
+  const { openEventDetail, openAddEvent } = useEventEditor();
 
   // Map pathname to BottomNav active tab (simple)
   const path = location.pathname;
@@ -21,10 +23,6 @@ export default function AppLayout() {
     : "home";
 
   const openCommandPalette = () => setCommandOpen(true);
-
-  const dispatchWindowEvent = <T,>(name: string, detail?: T) => {
-    window.dispatchEvent(new CustomEvent(name, { detail }));
-  };
 
   return (
     <div className="min-h-screen max-w-md mx-auto bg-background text-foreground relative">
@@ -47,7 +45,7 @@ export default function AppLayout() {
         onAddEvent={() => {
           setCommandOpen(false);
           navigateToPath("/home");
-          window.setTimeout(() => dispatchWindowEvent("iqxo-open-add-event"), 0);
+          window.setTimeout(() => openAddEvent(), 0);
         }}
         onToggleDarkMode={() => {
           toggleTheme();
@@ -61,9 +59,17 @@ export default function AppLayout() {
         onEventSelect={(event) => {
           setCommandOpen(false);
           navigateToPath("/home");
-          window.setTimeout(() => dispatchWindowEvent("iqxo-open-event-detail", event), 0);
+          window.setTimeout(() => openEventDetail(event), 0);
         }}
       />
     </div>
+  );
+}
+
+export default function AppLayout() {
+  return (
+    <EventEditorProvider>
+      <AppLayoutContent />
+    </EventEditorProvider>
   );
 }

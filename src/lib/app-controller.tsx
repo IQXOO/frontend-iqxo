@@ -8,10 +8,6 @@ export default function AppController() {
   const navigate = useNavigate();
   const location = useLocation();
   const prevUserRef = useRef<string | null | undefined>(undefined);
-  const [introDismissed, setIntroDismissed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("iqxo_intro_dismissed") === "1";
-  });
 
   const shouldAutoOpenPricing = shouldAutoOpenBillingRoute(planResolved, planStatus, trialEndsAt);
 
@@ -49,10 +45,11 @@ export default function AppController() {
 
   // Show onboarding immediate if not done
   useEffect(() => {
-    if (!onboardingDone && !introDismissed) {
+    const isDismissed = typeof window !== "undefined" && localStorage.getItem("iqxo_intro_dismissed") === "1";
+    if (!onboardingDone && !isDismissed) {
       navigate("/onboarding");
     }
-  }, [onboardingDone, introDismissed, navigate]);
+  }, [onboardingDone, location.pathname, navigate]);
 
   // Prevent logged-in users from seeing /login
   useEffect(() => {
@@ -60,6 +57,13 @@ export default function AppController() {
       navigate("/home", { replace: true });
     }
   }, [user, location.pathname, navigate]);
+
+  // Prevent logged-in users from seeing /onboarding if they already completed it
+  useEffect(() => {
+    if (user && onboardingDone && location.pathname === "/onboarding") {
+      navigate("/home", { replace: true });
+    }
+  }, [user, onboardingDone, location.pathname, navigate]);
 
   // If not authenticated and not on a public path, redirect to /login
   useEffect(() => {

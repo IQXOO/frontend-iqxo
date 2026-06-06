@@ -3,6 +3,7 @@
 import { motion } from "framer-motion"
 import { Compass, CalendarDays, TrendingUp } from "lucide-react"
 import { useApp } from "@/lib/store"
+import { toLocalDateStr, parseLocalDate } from "@/lib/store"
 import type { IQXOEvent } from "@/lib/types"
 
 interface FutureExplorerViewProps {
@@ -13,22 +14,22 @@ export function FutureExplorerView({ onEventClick }: FutureExplorerViewProps) {
   const { events, t, language } = useApp()
   const isRTL = language === "ar"
 
-  // Get events beyond tomorrow
-  const today = new Date()
-  today.setDate(today.getDate() + 2)
-  const todayStr = today.toISOString().split("T")[0]
+  // Events starting from day-after-tomorrow (LOCAL timezone)
+  const dayAfterTomorrow = new Date()
+  dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2)
+  const dayAfterTomorrowStr = toLocalDateStr(dayAfterTomorrow)
 
   const futureEvents = events
-    .filter((e) => new Date(e.date) >= new Date(todayStr))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .filter((e) => e.date >= dayAfterTomorrowStr)
+    .sort((a, b) => a.date.localeCompare(b.date))
 
-  // Group by week
+  // Group by week (week = Monday-based, keyed by week-start LOCAL date)
   const groupedByWeek: Record<string, IQXOEvent[]> = {}
   futureEvents.forEach((event) => {
-    const date = new Date(event.date)
+    const date = parseLocalDate(event.date)
     const weekStart = new Date(date)
     weekStart.setDate(date.getDate() - date.getDay())
-    const weekKey = weekStart.toISOString().split("T")[0]
+    const weekKey = toLocalDateStr(weekStart)
     if (!groupedByWeek[weekKey]) groupedByWeek[weekKey] = []
     groupedByWeek[weekKey].push(event)
   })
