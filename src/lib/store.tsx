@@ -1287,7 +1287,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setOnboardingDone = useCallback(
     async (done: boolean) => {
-      if (!user) return;
+      if (!user) {
+        setOnboardingDoneState(done);
+        return;
+      }
       const previous = !!user.user_metadata?.onboarding_done;
       if (previous === done) {
         setOnboardingDoneState(done);

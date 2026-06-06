@@ -164,11 +164,10 @@ function AppShell() {
 
 function RootRedirect() {
   const { user } = useApp();
-  const isDismissed = typeof window !== "undefined" && localStorage.getItem("iqxo_intro_dismissed") === "1";
   if (user) {
     return <Navigate to="/home" replace />;
   }
-  return <Navigate to={isDismissed ? "/pricing" : "/onboarding"} replace />;
+  return <Navigate to="/onboarding" replace />;
 }
 
 function App() {
