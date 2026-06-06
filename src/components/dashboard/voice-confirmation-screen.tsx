@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { Check, X, Pencil, Calendar, Clock, MapPin, Phone, FileText } from "lucide-react"
 import { motion } from "framer-motion"
 import { useApp } from "../../lib/store"

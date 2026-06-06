@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { Bell, AlertCircle, Calendar, CheckCircle, Trash2, X } from "lucide-react"
+import { Bell, AlertCircle, Calendar, CheckCircle, X } from "lucide-react"
 import { useApp } from "@/lib/store"
 import { toLocalDateStr, parseLocalDate } from "@/lib/store"
 import { useState, useEffect } from "react"

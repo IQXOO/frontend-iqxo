@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, MapPin, Clock, AlertTriangle } from "lucide-react"
+import { MapPin, Clock, AlertTriangle } from "lucide-react"
 import { useApp } from "@/lib/store"
 
 interface ContextualAlertProps {

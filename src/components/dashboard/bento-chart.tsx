@@ -1,7 +1,6 @@
 "use client"
 
 import { useApp } from "@/lib/store"
-import type { IQXOEvent } from "@/lib/types"
 
 export function BentoChart() {
   const { events, t } = useApp()

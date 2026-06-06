@@ -3,9 +3,6 @@
 import { useState, useEffect } from "react";
 import { useApp } from "../lib/store";
 import { useToast } from "../hooks/use-toast";
-import { supabase } from "../lib/supabase";
-import { BrandLogo } from "../components/brand-logo";
-import { devError, devLog, getFriendlyErrorMessage } from "../lib/logger";
 import { navigateToPath } from "../lib/navigation";
 
 const PRICING = {

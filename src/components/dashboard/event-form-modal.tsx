@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import {
-  X, ImagePlus, Image as ImageIcon,
-  FilePlus, FileCheck, AlertTriangle,
+  X, ImagePlus, FileCheck, AlertTriangle,
 } from "lucide-react";
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle,

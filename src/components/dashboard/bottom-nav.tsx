@@ -15,7 +15,6 @@ import {
   Check,
   Home,
   Smartphone,
-  ArrowLeft,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";

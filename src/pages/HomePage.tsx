@@ -8,7 +8,7 @@ import { UrgentCards } from "../components/dashboard/attention-cards";
 import { EventList } from "../components/dashboard/event-list";
 import { BottomNav, type NavTab } from "../components/dashboard/bottom-nav";
 import { useApp, computePriority } from "../lib/store";
-import { parseVoiceInput, type ParsedEvent } from "../lib/parse-voice-input";
+import { type ParsedEvent } from "../lib/parse-voice-input";
 import { useEventNotifications } from "../hooks/use-event-notifications";
 import type { IQXOEvent } from "../lib/types";
 import { useVoiceInput } from "../hooks/use-voice-input";

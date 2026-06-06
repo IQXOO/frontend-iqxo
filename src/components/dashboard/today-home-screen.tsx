@@ -1,8 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { Coffee, Phone, MapPin, Calendar } from "lucide-react"
+import { useMemo } from "react"
+import { motion } from "framer-motion"
+import { Coffee, Phone, MapPin } from "lucide-react"
 import { useApp } from "@/lib/store"
 import { TomorrowChainFAB } from "@/components/dashboard/tomorrow-chain-modal"
 import type { IQXOEvent } from "@/lib/types"

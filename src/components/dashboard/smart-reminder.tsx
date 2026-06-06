@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Clock, Check, X } from "lucide-react"
+import { Clock, Check } from "lucide-react"
 import { useApp } from "@/lib/store"
 
 interface SmartReminderProps {

@@ -3,7 +3,7 @@
 import { motion } from "framer-motion"
 import { Archive, RotateCcw, X } from "lucide-react"
 import { useApp } from "@/lib/store"
-import { toLocalDateStr, parseLocalDate } from "@/lib/store"
+import { toLocalDateStr } from "@/lib/store"
 import type { IQXOEvent } from "@/lib/types"
 
 interface ArchiveVaultProps {

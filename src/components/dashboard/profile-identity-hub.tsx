@@ -2,14 +2,13 @@
 
 import { Suspense, useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Sparkles, Clock, Archive, CalendarCheck, TrendingUp, Heart, Download, Shield, Zap } from "lucide-react"
+import { Sparkles, Clock, Archive, CalendarCheck, TrendingUp, Heart, Download, Shield } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useApp } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
 import { SmartActionsCard } from "./smart-actions-card"
 import { exportEventsToPDF } from "@/lib/export-pdf"
-import { formatUsageDisplay, getUsagePercentage, isLimitExceeded, isNearLimit } from "@/lib/usage-utils"
 import { lazyNamed } from "@/lib/lazy"
 
 const BentoChart = lazyNamed(() => import("./bento-chart"), "BentoChart")

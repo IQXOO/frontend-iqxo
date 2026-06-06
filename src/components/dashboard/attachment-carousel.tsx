@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronLeft, ChevronRight, X, File, Image } from "lucide-react"
+import { ChevronLeft, ChevronRight, X, File } from "lucide-react"
 
 interface AttachmentCarouselProps {
   attachments: Array<{ id: string; url: string; type: "image" | "pdf"; name: string }>

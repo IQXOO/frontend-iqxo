@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense } from "react"
-import { Moon, Sun, Languages, Settings } from "lucide-react"
+import { Moon, Sun, Languages } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { useApp } from "../../lib/store"
 import { motion } from "framer-motion"

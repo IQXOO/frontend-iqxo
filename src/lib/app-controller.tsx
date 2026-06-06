@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useApp } from "../lib/store";
-import { shouldAutoOpenBillingRoute, shouldShowBillingPopup } from "../lib/billing-utils";
+import { shouldAutoOpenBillingRoute } from "../lib/billing-utils";
 
 export default function AppController() {
   const { user, authLoading, planStatus, planResolved, trialEndsAt, onboardingDone, setOnboardingDone } = useApp();

@@ -15,10 +15,8 @@ import {
   ChevronDown,
   ChevronUp,
   CalendarPlus,
-  Sparkles,
   Trash2,
   Plus,
-  Edit3,
 } from "lucide-react";
 import { useApp } from "../../lib/store";
 import { supabase } from "../../lib/supabase";

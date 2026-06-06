@@ -3,10 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useApp } from "../lib/store";
 import {
-  transcribeAudio,
-  startAudioRecording,
   isAudioSupported,
-  getSupportedMimeType,
 } from "../lib/openai-voice";
 import { ParsedEvent } from "../lib/parse-voice-input";
 import { devError, devLog, devWarn, fetchWithDiagnostics, getFriendlyErrorMessage, readResponseText } from "../lib/logger";

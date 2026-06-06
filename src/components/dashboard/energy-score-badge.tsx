@@ -1,6 +1,6 @@
 "use client"
 
-import { Zap, TrendingUp, TrendingDown, AlertCircle } from "lucide-react"
+import { TrendingUp, TrendingDown, AlertCircle } from "lucide-react"
 import { useApp } from "@/lib/store"
 
 interface EnergyScoreBadgeProps {
