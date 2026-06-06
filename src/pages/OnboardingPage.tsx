@@ -14,12 +14,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
   const navigate = useNavigate();
   const { setLanguage, setOnboardingDone } = useApp();
 
-  const hasInitialized = useRef(false);
-
   useEffect(() => {
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
-
     const browserLang = (
       navigator.language ||
       (navigator as any).userLanguage ||
@@ -35,7 +30,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
 
     const timer = window.setTimeout(() => {
       navigate("/pricing", { replace: true });
-    }, 2500);
+    }, 3300);
 
     return () => window.clearTimeout(timer);
   }, [navigate, onDone, setLanguage, setOnboardingDone]);
