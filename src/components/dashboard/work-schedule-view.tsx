@@ -217,13 +217,15 @@ export function WorkScheduleView() {
     let lastY = typeof window !== "undefined" ? window.scrollY : 0;
     const onScroll = () => {
       const y = window.scrollY;
-      if (y > lastY + 8) setFabVisible(false);
+      if (y > lastY + 8) {
+        if (!showNamePrompt) setFabVisible(false);
+      }
       else if (y < lastY - 8) setFabVisible(true);
       lastY = y;
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [showNamePrompt]);
 
   // ── Derived: rows for the active label only ────────────────────────────────
   const schedule = allRows.filter((r) => r.schedule_label === activeLabel);
@@ -766,7 +768,7 @@ export function WorkScheduleView() {
       {/* ── Floating Upload FAB — shows/hides on scroll like Home page ─────────── */}
       <motion.div
         className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+72px)] z-40 pointer-events-none"
-        animate={fabVisible ? { y: 0, opacity: 1 } : { y: 56, opacity: 0 }}
+        animate={(fabVisible || showNamePrompt || uploadState === "analyzing") ? { y: 0, opacity: 1 } : { y: 56, opacity: 0 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className="mx-auto flex w-full max-w-screen-sm justify-end overflow-visible px-5 pointer-events-auto">
