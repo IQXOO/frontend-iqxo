@@ -1,28 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Mail,
-  Lock,
-  User,
-  Eye,
-  EyeOff,
-  Sparkles,
-  AlertCircle,
-  Send,
-  CheckCircle2,
-} from "lucide-react";
 import { useApp } from "../lib/store";
-import { BrandLogo } from "../components/brand-logo";
 import { supabase } from "../lib/supabase";
 import { buildAppUrl } from "../lib/auth-urls";
-import {
-  devError,
-  devLog,
-  getFriendlyErrorMessage,
-  withAsyncDiagnostics,
-} from "../lib/logger";
+import { devError, devLog, getFriendlyErrorMessage, withAsyncDiagnostics } from "../lib/logger";
 import { useToast } from "../hooks/use-toast";
 import { navigateToPath } from "../lib/navigation";
 
@@ -32,13 +14,14 @@ export default function LoginPage() {
   const { signIn, signUp, language, user } = useApp();
   const { toast } = useToast();
   const isRTL = language === "ar";
-  const [mode, setMode] = useState<Mode>("signin");
+  const [mode, setMode] = useState<Mode>("signup"); // default to signup to match template
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
@@ -47,89 +30,109 @@ export default function LoginPage() {
   const [signupNotice, setSignupNotice] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const L = {
+  const i18n = {
     en: {
-      signin: "Sign In",
-      signup: "Create Account",
-      email: "Email",
-      password: "Password",
-      fullName: "Full Name",
+      title: 'Create your <em>calm</em> space',
+      title_signin: 'Sign in to your <em>calm</em> space',
+      subtitle: 'Start free. No card required.',
+      subtitle_signin: 'Welcome back.',
+      google: 'Continue with Google',
+      apple: 'Continue with Apple',
+      microsoft: 'Continue with Microsoft',
+      divider: 'or',
+      passwordPlaceholder: 'Password',
+      emailPlaceholder: 'Email',
+      fullNamePlaceholder: 'Full Name',
+      submit: 'Create account',
+      submit_signin: 'Sign in',
+      member: 'Already a member?',
       noAccount: "Don't have an account?",
-      hasAccount: "Already have an account?",
-      signupLink: "Sign Up",
-      signinLink: "Sign In",
-      checkEmail: "Account created! Check your email to confirm, then sign in.",
-      tagline: "Your intelligent event companion",
+      login: 'Log in',
+      signup: 'Sign up',
+      terms: 'By continuing, you agree to the',
+      and: 'and the',
+      footer: "Your mind doesn't need to hold everything.",
       forgotPassword: "Forgot password?",
       forgotTitle: "Reset your password",
       forgotSubtitle: "We'll send a secure link to your email address.",
-      forgotEmailLabel: "Email address",
       forgotEmailPlaceholder: "you@example.com",
       forgotSend: "Send reset link",
       forgotSending: "Sending...",
       forgotSuccessTitle: "Password reset email sent",
-      forgotSuccessBody:
-        "If that email is registered, check your inbox and spam folder for the reset link.",
+      forgotSuccessBody: "If that email is registered, check your inbox and spam folder for the reset link.",
       forgotRetry: "Send another link",
       forgotCancel: "Back to sign in",
-      orContinueWith: "Or continue with",
-      continueWithGoogle: "Continue with Google",
+      checkEmail: "Account created! Check your email to confirm, then sign in.",
     },
     fr: {
-      signin: "Se connecter",
-      signup: "Créer un compte",
-      email: "E-mail",
-      password: "Mot de passe",
-      fullName: "Nom complet",
+      title: 'Créez votre espace de <em>calme</em>',
+      title_signin: 'Connectez-vous à votre espace de <em>calme</em>',
+      subtitle: 'Commencez gratuitement. Aucune carte requise.',
+      subtitle_signin: 'Bon retour.',
+      google: 'Continuer avec Google',
+      apple: 'Continuer avec Apple',
+      microsoft: 'Continuer avec Microsoft',
+      divider: 'ou',
+      passwordPlaceholder: 'Mot de passe',
+      emailPlaceholder: 'E-mail',
+      fullNamePlaceholder: 'Nom complet',
+      submit: 'Créer un compte',
+      submit_signin: 'Se connecter',
+      member: 'Déjà membre ?',
       noAccount: "Pas de compte ?",
-      hasAccount: "Déjà un compte ?",
-      signupLink: "S'inscrire",
-      signinLink: "Se connecter",
-      checkEmail: "Compte créé ! Vérifiez votre e-mail, puis connectez-vous.",
-      tagline: "Votre assistant événementiel intelligent",
+      login: 'Se connecter',
+      signup: "S'inscrire",
+      terms: 'En continuant, vous acceptez les',
+      and: 'et la',
+      footer: "Votre esprit n'a pas besoin de tout retenir.",
       forgotPassword: "Mot de passe oublié ?",
       forgotTitle: "Réinitialiser le mot de passe",
       forgotSubtitle: "Nous enverrons un lien sécurisé à ton adresse e-mail.",
-      forgotEmailLabel: "Adresse e-mail",
       forgotEmailPlaceholder: "vous@exemple.com",
       forgotSend: "Envoyer le lien",
       forgotSending: "Envoi...",
       forgotSuccessTitle: "E-mail de réinitialisation envoyé",
-      forgotSuccessBody:
-        "Si cet e-mail existe, vérifie ta boîte de réception et les spams.",
+      forgotSuccessBody: "Si cet e-mail existe, vérifie ta boîte de réception et les spams.",
       forgotRetry: "Envoyer un autre lien",
       forgotCancel: "Retour à la connexion",
-      orContinueWith: "Ou continuer avec",
-      continueWithGoogle: "Continuer avec Google",
+      checkEmail: "Compte créé ! Vérifiez votre e-mail, puis connectez-vous.",
     },
     ar: {
-      signin: "تسجيل الدخول",
-      signup: "إنشاء حساب",
-      email: "البريد الإلكتروني",
-      password: "كلمة المرور",
-      fullName: "الاسم الكامل",
-      noAccount: "ليس لديك حساب؟",
-      hasAccount: "لديك حساب بالفعل؟",
-      signupLink: "إنشاء حساب",
-      signinLink: "تسجيل الدخول",
-      checkEmail: "تم إنشاء الحساب! تحقق من بريدك الإلكتروني، ثم سجّل الدخول.",
-      tagline: "رفيقك الذكي للأحداث",
-      forgotPassword: "هل نسيت كلمة المرور؟",
-      forgotTitle: "إعادة تعيين كلمة المرور",
-      forgotSubtitle: "سنرسل رابطًا آمنًا إلى بريدك الإلكتروني.",
-      forgotEmailLabel: "البريد الإلكتروني",
-      forgotEmailPlaceholder: "you@example.com",
-      forgotSend: "إرسال رابط إعادة التعيين",
-      forgotSending: "جارٍ الإرسال...",
-      forgotSuccessTitle: "تم إرسال بريد إعادة التعيين",
-      forgotSuccessBody:
-        "إذا كان هذا البريد مسجلًا، فتحقق من صندوق الوارد والرسائل غير المرغوب فيها.",
-      forgotRetry: "إرسال رابط آخر",
-      forgotCancel: "العودة لتسجيل الدخول",
-      orContinueWith: "أو تابع عبر",
-      continueWithGoogle: "المتابعة عبر Google",
-    },
-  }[language];
+      title: 'أنشئ مساحتك <em>الهادئة</em>',
+      title_signin: 'سجل دخولك إلى مساحتك <em>الهادئة</em>',
+      subtitle: 'ابدأ مجاناً. لا نطلب بطاقة ائتمانية.',
+      subtitle_signin: 'مرحباً بعودتك.',
+      google: 'المتابعة مع Google',
+      apple: 'المتابعة مع Apple',
+      microsoft: 'المتابعة مع Microsoft',
+      divider: 'أو',
+      passwordPlaceholder: 'كلمة المرور',
+      emailPlaceholder: 'البريد الإلكتروني',
+      fullNamePlaceholder: 'الاسم الكامل',
+      submit: 'إنشاء حساب',
+      submit_signin: 'تسجيل الدخول',
+      member: 'مشترك بالفعل؟',
+      noAccount: 'ليس لديك حساب؟',
+      login: 'سجل دخولك',
+      signup: 'إنشاء حساب',
+      terms: 'بالمتابعة، أنت توافق على',
+      and: 'و',
+      footer: 'عقلك لا يحتاج إلى الاحتفاظ بكل شيء.',
+      forgotPassword: 'هل نسيت كلمة المرور؟',
+      forgotTitle: 'إعادة تعيين كلمة المرور',
+      forgotSubtitle: 'سنرسل رابطًا آمنًا إلى بريدك الإلكتروني.',
+      forgotEmailPlaceholder: 'you@example.com',
+      forgotSend: 'إرسال رابط إعادة التعيين',
+      forgotSending: 'جارٍ الإرسال...',
+      forgotSuccessTitle: 'تم إرسال بريد إعادة التعيين',
+      forgotSuccessBody: 'إذا كان هذا البريد مسجلًا، فتحقق من صندوق الوارد والرسائل غير المرغوب فيها.',
+      forgotRetry: 'إرسال رابط آخر',
+      forgotCancel: 'العودة لتسجيل الدخول',
+      checkEmail: 'تم إنشاء الحساب! تحقق من بريدك الإلكتروني، ثم سجّل الدخول.',
+    }
+  };
+
+  const t = i18n[language === "ar" ? "ar" : language === "fr" ? "fr" : "en"];
 
   useEffect(() => {
     if (user) {
@@ -157,15 +160,13 @@ export default function LoginPage() {
       setForgotError(null);
       setForgotSuccess(false);
     }
-  }, [forgotOpen]);
+  }, [forgotOpen, email]);
 
   const validateForm = (): string | null => {
     if (!email.trim()) return "Email is required.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       return "Please enter a valid email address.";
     if (password.length < 8) return "Password must be at least 8 characters.";
-    if (mode === "signup" && /^.{8,}$/.test(password) === false)
-      return "Password must be at least 8 characters.";
     return null;
   };
 
@@ -177,12 +178,7 @@ export default function LoginPage() {
     if (validationError) {
       setError(validationError);
       toast({
-        title:
-          language === "fr"
-            ? "Formulaire incomplet"
-            : language === "ar"
-              ? "النموذج غير مكتمل"
-              : "Please check the form",
+        title: language === "fr" ? "Formulaire incomplet" : language === "ar" ? "النموذج غير مكتمل" : "Please check the form",
         description: validationError,
         variant: "destructive",
       });
@@ -192,10 +188,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      devLog(
-        "Auth",
-        mode === "signin" ? "Login form submitted" : "Signup form submitted",
-      );
+      devLog("Auth", mode === "signin" ? "Login form submitted" : "Signup form submitted");
 
       if (mode === "signin") {
         const { error: err } = await signIn(email, password);
@@ -205,13 +198,12 @@ export default function LoginPage() {
             : getFriendlyErrorMessage(err, err);
           setError(message);
           toast({
-            title:
-              mode === "signin"
-                ? "Couldn't sign in"
-                : "Couldn't create account",
+            title: "Couldn't sign in",
             description: message,
             variant: "destructive",
           });
+        } else {
+          sessionStorage.setItem("iqxo_just_signed_in", "1");
         }
       } else {
         const { error: err } = await signUp(email, password, fullName);
@@ -223,11 +215,11 @@ export default function LoginPage() {
             description: message,
             variant: "destructive",
           });
-        }
-        if (!err) {
+        } else {
+          sessionStorage.setItem("iqxo_just_signed_in", "1");
           setSignupNotice(true);
           toast({
-            title: L.checkEmail,
+            title: t.checkEmail,
             description: undefined,
           });
         }
@@ -237,8 +229,7 @@ export default function LoginPage() {
       const message = getFriendlyErrorMessage(error, "Authentication failed");
       setError(message);
       toast({
-        title:
-          mode === "signin" ? "Couldn't sign in" : "Couldn't create account",
+        title: mode === "signin" ? "Couldn't sign in" : "Couldn't create account",
         description: message,
         variant: "destructive",
       });
@@ -267,10 +258,7 @@ export default function LoginPage() {
         },
       });
       if (oauthError) {
-        const message = getFriendlyErrorMessage(
-          oauthError.message,
-          oauthError.message,
-        );
+        const message = getFriendlyErrorMessage(oauthError.message, oauthError.message);
         setError(message);
         toast({
           title: "Couldn't sign in with Google",
@@ -290,6 +278,14 @@ export default function LoginPage() {
     } finally {
       setGoogleLoading(false);
     }
+  };
+
+  const handleUnsupportedOAuth = (provider: string) => {
+    toast({
+      title: `${provider} Login`,
+      description: `${provider} authentication configuration is not active on this environment. Please sign in with Google or Email instead.`,
+      variant: "destructive",
+    });
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -314,10 +310,9 @@ export default function LoginPage() {
         "Auth",
         "reset-password-request",
         async () => {
-          const { error: resetError } =
-            await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
-              redirectTo: buildAppUrl("/reset-password"),
-            });
+          const { error: resetError } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+            redirectTo: buildAppUrl("/reset-password"),
+          });
 
           if (resetError) {
             throw resetError;
@@ -330,9 +325,7 @@ export default function LoginPage() {
             emailDomain: forgotEmail.split("@")[1] ?? "",
           },
           onError: (message, resetError) => {
-            const friendlyMessage =
-              getFriendlyErrorMessage(resetError, message) ||
-              "We couldn't send the reset email right now. Please try again.";
+            const friendlyMessage = getFriendlyErrorMessage(resetError, message) || "We couldn't send the reset email right now. Please try again.";
             setForgotError(friendlyMessage);
             toast({
               title: "Couldn't send reset email",
@@ -340,16 +333,14 @@ export default function LoginPage() {
               variant: "destructive",
             });
           },
-        },
+        }
       );
 
-      devLog("Auth", "Password reset email requested", {
-        emailDomain: forgotEmail.split("@")[1] ?? "",
-      });
+      devLog("Auth", "Password reset email requested");
       setForgotSuccess(true);
       toast({
-        title: L.forgotTitle,
-        description: L.forgotSuccessBody,
+        title: t.forgotTitle,
+        description: t.forgotSuccessBody,
       });
     } catch (resetError) {
       devError("Auth", "Password reset email request failed", resetError);
@@ -359,307 +350,503 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      className={`min-h-screen bg-background flex flex-col items-center justify-center px-5 ${
-        isRTL ? "dir-rtl" : ""
-      }`}
-    >
-      <div className="pointer-events-none fixed -top-32 left-1/2 -translate-x-1/2 h-[400px] w-[400px] rounded-full opacity-20 blur-[120px] bg-primary" />
+    <div className={`login-body ${isRTL ? "dir-rtl" : ""}`}>
+      <style>{`
+        :root {
+            --bg: #0C0C0E;
+            --bg-elevated: #121214;
+            --bg-card: #161618;
+            --bg-input: #1A1A1C;
+            --text: #E8E8E8;
+            --text-soft: #A0A0A8;
+            --text-muted: #6E6E78;
+            --text-faded: #4A4A52;
+            --cyan: #5BC0DE;
+            --cyan-soft: rgba(91, 192, 222, 0.08);
+            --cyan-glow: rgba(91, 192, 222, 0.15);
+            --cyan-bright: #7DD3F0;
+            --amber: #D4A853;
+            --amber-soft: rgba(212, 168, 83, 0.08);
+            --error: #E85D5D;
+            --error-soft: rgba(232, 93, 93, 0.08);
+            --border: rgba(255,255,255,0.04);
+            --border-hover: rgba(255,255,255,0.08);
+            --border-focus: rgba(91,192,222,0.25);
+            --radius-sm: 16px;
+            --radius-md: 24px;
+            --radius-lg: 32px;
+            --ease: cubic-bezier(0.22, 1, 0.36, 1);
+        }
 
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm"
-      >
-        <div className="text-center mb-8">
-          <motion.div
-            className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 ring-1 ring-primary/20"
-            whileHover={{ scale: 1.05 }}
-          >
-            <Sparkles className="w-7 h-7 text-primary" strokeWidth={1.5} />
-          </motion.div>
-          <BrandLogo className="text-3xl font-bold mb-2" />
-          <p className="text-sm text-muted-foreground">{L.tagline}</p>
-        </div>
+        .login-body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
 
-        <AnimatePresence mode="wait">
+        .ambient {
+            position: fixed;
+            pointer-events: none;
+            z-index: 0;
+            filter: blur(120px);
+            opacity: 0.2;
+        }
+        .ambient-1 {
+            width: 500px; height: 500px;
+            background: var(--cyan-soft);
+            border-radius: 50%;
+            top: -10%; left: -10%;
+            animation: drift 20s ease-in-out infinite;
+        }
+        .ambient-2 {
+            width: 400px; height: 400px;
+            background: var(--amber-soft);
+            border-radius: 50%;
+            bottom: -5%; right: -10%;
+            animation: drift 25s ease-in-out infinite reverse;
+        }
+        @keyframes drift {
+            0%, 100% { transform: translate(0,0) scale(1); }
+            33% { transform: translate(30px,-20px) scale(1.05); }
+            66% { transform: translate(-15px,15px) scale(0.95); }
+        }
+
+        .login-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 420px;
+            padding: 0 24px;
+        }
+
+        .login-card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005));
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: var(--radius-lg);
+            padding: 48px 32px;
+            position: relative;
+            overflow: hidden;
+            animation: cardEnter 0.8s var(--ease) forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        @keyframes cardEnter {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 30%; right: 30%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+            opacity: 0.3;
+        }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 32px;
+            font-size: 1.4rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            color: var(--text);
+            opacity: 0.6;
+        }
+        .login-logo span { color: var(--cyan); }
+
+        .login-title {
+            font-size: 1.5rem;
+            font-weight: 400;
+            line-height: 1.3;
+            letter-spacing: -0.02em;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .login-title em {
+            font-style: italic;
+            color: var(--cyan);
+            font-weight: 300;
+        }
+
+        .login-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-soft);
+            text-align: center;
+            line-height: 1.6;
+            font-weight: 300;
+            margin-bottom: 32px;
+        }
+
+        /* Social Login */
+        .social-btn {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 14px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 0.95rem;
+            cursor: pointer;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 10px;
+            transition: all 0.4s var(--ease);
+        }
+        .social-btn:hover {
+            border-color: var(--border-hover);
+            background: rgba(255,255,255,0.02);
+        }
+        .social-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 24px 0;
+        }
+        .divider-line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-hover), transparent);
+        }
+        .divider-text {
+            font-size: 0.75rem;
+            color: var(--text-faded);
+            white-space: nowrap;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-input {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            font-size: 0.95rem;
+            color: var(--text);
+            font-family: inherit;
+            outline: none;
+            transition: all 0.4s var(--ease);
+        }
+        .form-input::placeholder { color: var(--text-faded); }
+        .form-input:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px var(--cyan-glow);
+        }
+
+        /* Password field with toggle */
+        .password-wrapper {
+            position: relative;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        /* Submit */
+        .submit-btn {
+            width: 100%;
+            background: var(--cyan-soft);
+            border: 1px solid rgba(91,192,222,0.15);
+            color: var(--cyan);
+            padding: 16px;
+            border-radius: 100px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+            letter-spacing: 0.02em;
+            transition: all 0.6s var(--ease);
+            margin-top: 8px;
+        }
+        .submit-btn:hover:not(:disabled) {
+            background: rgba(91,192,222,0.1);
+            border-color: rgba(91,192,222,0.3);
+            color: var(--cyan-bright);
+        }
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Links */
+        .link-row {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .link-row button {
+            background: none;
+            border: none;
+            font-size: 0.85rem;
+            font-family: inherit;
+            color: var(--cyan);
+            text-decoration: none;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 6px;
+        }
+        .link-row button:hover { opacity: 1; }
+
+        /* Terms */
+        .terms {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            opacity: 0.5;
+        }
+        .terms a {
+            color: var(--text-soft);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+        }
+        .footer-logo {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text);
+            opacity: 0.15;
+            margin-bottom: 4px;
+        }
+        .footer-logo span { color: var(--cyan); }
+        .footer-text {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            opacity: 0.3;
+        }
+
+        .notice-box {
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .notice-error {
+            background: var(--error-soft);
+            color: var(--error);
+            border-color: rgba(232, 93, 93, 0.15);
+        }
+        .notice-success {
+            background: var(--cyan-soft);
+            color: var(--cyan);
+            border-color: rgba(91, 192, 222, 0.15);
+        }
+
+        @media (max-width: 480px) {
+            .login-card { padding: 36px 20px; }
+            .login-title { font-size: 1.3rem; }
+        }
+      `}</style>
+
+      <div className="ambient ambient-1"></div>
+      <div className="ambient ambient-2"></div>
+
+      <div className="login-container">
+        <div className="login-card">
+          <div className="login-logo">IQ<span>X</span>O</div>
+
           {!forgotOpen ? (
-            <motion.form
-              key="auth-form"
-              onSubmit={handleSubmit}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-4"
-            >
-              {/* ── Sign In / Sign Up Tabs ── */}
-              <div className="inline-flex gap-2 w-full mb-6 p-1 bg-secondary/30 rounded-xl">
-                <motion.button
-                  type="button"
-                  onClick={() => setMode("signin")}
-                  className={`flex-1 py-2.5 rounded-lg font-medium transition-all ${
-                    mode === "signin"
-                      ? "bg-primary/20 text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {L.signin}
-                </motion.button>
-                <motion.button
-                  type="button"
-                  onClick={() => setMode("signup")}
-                  className={`flex-1 py-2.5 rounded-lg font-medium transition-all ${
-                    mode === "signup"
-                      ? "bg-primary/20 text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {L.signup}
-                </motion.button>
-              </div>
+            <>
+              {mode === "signup" ? (
+                <>
+                  <h1 className="login-title" dangerouslySetInnerHTML={{ __html: t.title }} />
+                  <p className="login-subtitle">{t.subtitle}</p>
+                </>
+              ) : (
+                <>
+                  <h1 className="login-title" dangerouslySetInnerHTML={{ __html: t.title_signin }} />
+                  <p className="login-subtitle">{t.subtitle_signin}</p>
+                </>
+              )}
 
-              {/* ── Google Button (top) ── */}
-              <motion.button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={googleLoading || loading}
-                whileTap={{ scale: 0.98 }}
-                whileHover={{ scale: 1.01 }}
-                className="w-full flex items-center justify-center gap-3 py-3 rounded-xl border border-white/10 bg-secondary/40 hover:bg-secondary/70 text-foreground font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {googleLoading ? (
-                  <div className="w-5 h-5 border-2 border-muted-foreground/30 border-t-foreground rounded-full animate-spin" />
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                  </svg>
-                )}
-                <span>{L.continueWithGoogle}</span>
-              </motion.button>
-
-              {/* ── Divider ── */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-white/10" />
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {L.orContinueWith}
-                </span>
-                <div className="flex-1 h-px bg-white/10" />
-              </div>
-
-              {/* ── Error / Success notices ── */}
               {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3"
-                >
-                  <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-destructive">{error}</p>
-                </motion.div>
+                <div className="notice-box notice-error">{error}</div>
               )}
 
               {signupNotice && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-start gap-3"
-                >
-                  <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-primary">{L.checkEmail}</p>
-                </motion.div>
+                <div className="notice-box notice-success">{t.checkEmail}</div>
               )}
 
-              {/* ── Full Name (signup only) ── */}
-              {mode === "signup" && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                >
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder={L.fullName}
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary/50 border border-white/10 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary focus:bg-secondary transition-all"
-                    />
-                  </div>
-                </motion.div>
-              )}
-
-              {/* ── Email ── */}
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
-                <input
-                  type="email"
-                  placeholder={L.email}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary/50 border border-white/10 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary focus:bg-secondary transition-all"
-                  disabled={loading}
-                />
-              </div>
-
-              {/* ── Password ── */}
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
-                <input
-                  type={showPass ? "text" : "password"}
-                  placeholder={L.password}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-10 py-3 rounded-xl bg-secondary/50 border border-white/10 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary focus:bg-secondary transition-all"
-                  disabled={loading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-
-              {/* ── Submit ── */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  </div>
-                ) : mode === "signin" ? (
-                  L.signin
+              {/* Social Login */}
+              <button className="social-btn" onClick={handleGoogleSignIn} disabled={googleLoading || loading}>
+                {googleLoading ? (
+                  <div className="w-5 h-5 border-2 border-cyan/30 border-t-cyan rounded-full animate-spin" />
                 ) : (
-                  L.signup
+                  <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                 )}
+                <span>{t.google}</span>
               </button>
 
-              {/* ── Forgot password (signin only) ── */}
-              {mode === "signin" && (
-                <button
-                  type="button"
-                  onClick={() => setForgotOpen(true)}
-                  className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
-                >
-                  {L.forgotPassword}
+              <div className="divider">
+                <div className="divider-line"></div>
+                <span className="divider-text">{t.divider}</span>
+                <div className="divider-line"></div>
+              </div>
+
+              {/* Email Form */}
+              <form onSubmit={handleSubmit}>
+                {mode === "signup" && (
+                  <div className="form-group">
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder={t.fullNamePlaceholder}
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      disabled={loading}
+                      required
+                    />
+                  </div>
+                )}
+                <div className="form-group">
+                  <input
+                    type="email"
+                    className="form-input"
+                    placeholder={t.emailPlaceholder}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={loading}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <div className="password-wrapper">
+                    <input
+                      type={showPass ? "text" : "password"}
+                      className="form-input"
+                      placeholder={t.passwordPlaceholder}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={loading}
+                      required
+                    />
+                    <button type="button" className="password-toggle" onClick={() => setShowPass(!showPass)}>
+                      {showPass ? "🔒" : "👁"}
+                    </button>
+                  </div>
+                </div>
+                <button type="submit" className="submit-btn" disabled={loading}>
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-cyan/30 border-t-cyan rounded-full animate-spin mx-auto" />
+                  ) : mode === "signup" ? (
+                    t.submit
+                  ) : (
+                    t.submit_signin
+                  )}
                 </button>
+              </form>
+
+              {mode === "signin" && (
+                <div style={{ textAlign: "center", marginTop: "16px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setForgotOpen(true)}
+                    style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "0.85rem", cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    {t.forgotPassword}
+                  </button>
+                </div>
               )}
 
-              {/* ── Account switch ── */}
-              <div className="text-center text-sm pt-1">
-                <span className="text-muted-foreground">
-                  {mode === "signin" ? L.noAccount : L.hasAccount}{" "}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-                  className="text-primary hover:underline font-medium"
-                >
-                  {mode === "signin" ? L.signupLink : L.signinLink}
+              <div className="link-row">
+                <span>{mode === "signup" ? t.member : t.noAccount}</span>
+                <button type="button" onClick={() => setMode(mode === "signup" ? "signin" : "signup")}>
+                  {mode === "signup" ? t.login : t.signup}
                 </button>
               </div>
-            </motion.form>
+
+              <div className="terms">
+                <span>{t.terms} </span>
+                <a href="/terms">Terms & Conditions</a> <span> {t.and} </span>
+                <a href="/privacy">Privacy Policy</a>.
+              </div>
+            </>
           ) : (
-            <motion.form
-              key="forgot-form"
-              onSubmit={handleForgotPassword}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-4"
-            >
-              <h2 className="text-lg font-semibold text-foreground mb-2">
-                {L.forgotTitle}
-              </h2>
-              <p className="text-sm text-muted-foreground mb-4">
-                {L.forgotSubtitle}
-              </p>
+            <>
+              <h1 className="login-title">{t.forgotTitle}</h1>
+              <p className="login-subtitle">{t.forgotSubtitle}</p>
 
               {forgotError && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3"
-                >
-                  <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-destructive">{forgotError}</p>
-                </motion.div>
+                <div className="notice-box notice-error">{forgotError}</div>
               )}
 
               {forgotSuccess && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-start gap-3"
-                >
-                  <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-primary">
-                      {L.forgotSuccessTitle}
-                    </p>
-                    <p className="text-sm text-primary/80 mt-1">
-                      {L.forgotSuccessBody}
-                    </p>
-                  </div>
-                </motion.div>
+                <div className="notice-box notice-success">{t.forgotSuccessBody}</div>
               )}
 
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
-                <input
-                  type="email"
-                  placeholder={L.forgotEmailPlaceholder}
-                  value={forgotEmail}
-                  onChange={(e) => setForgotEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary/50 border border-white/10 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary focus:bg-secondary transition-all"
-                  disabled={forgotLoading || forgotSuccess}
-                />
+              <form onSubmit={handleForgotPassword}>
+                <div className="form-group">
+                  <input
+                    type="email"
+                    className="form-input"
+                    placeholder={t.forgotEmailPlaceholder}
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    disabled={forgotLoading || forgotSuccess}
+                    required
+                  />
+                </div>
+
+                <button type="submit" className="submit-btn" disabled={forgotLoading || forgotSuccess}>
+                  {forgotLoading ? (
+                    <div className="w-5 h-5 border-2 border-cyan/30 border-t-cyan rounded-full animate-spin mx-auto" />
+                  ) : (
+                    t.forgotSend
+                  )}
+                </button>
+              </form>
+
+              <div className="link-row">
+                <button type="button" onClick={() => setForgotOpen(false)}>
+                  {t.forgotCancel}
+                </button>
               </div>
-
-              <button
-                type="submit"
-                disabled={forgotLoading || forgotSuccess}
-                className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {forgotLoading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                    {L.forgotSending}
-                  </>
-                ) : forgotSuccess ? (
-                  <>
-                    <CheckCircle2 className="w-5 h-5" />
-                    {L.forgotSuccessTitle}
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    {L.forgotSend}
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setForgotOpen(false)}
-                className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {L.forgotCancel}
-              </button>
-            </motion.form>
+            </>
           )}
-        </AnimatePresence>
-      </motion.div>
+        </div>
+
+        <div className="footer">
+          <div className="footer-logo">IQ<span>X</span>O</div>
+          <p className="footer-text">{t.footer}</p>
+        </div>
+      </div>
     </div>
   );
 }
+

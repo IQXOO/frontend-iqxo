@@ -8,6 +8,7 @@ import { UrgentCards } from "../components/dashboard/attention-cards";
 import { EventList } from "../components/dashboard/event-list";
 import { BottomNav, type NavTab } from "../components/dashboard/bottom-nav";
 import { useApp, computePriority } from "../lib/store";
+import { shouldAutoOpenBillingRoute } from "../lib/billing-utils";
 import { type ParsedEvent } from "../lib/parse-voice-input";
 import { useEventNotifications } from "../hooks/use-event-notifications";
 import type { IQXOEvent } from "../lib/types";
@@ -35,7 +36,8 @@ function LazyModalFallback() {
 }
 
 export default function Page() {
-  const { events, deleteEvent, t, theme } = useApp();
+  const { events, deleteEvent, t, theme, planStatus, planResolved, trialEndsAt } = useApp();
+  const shouldBlockAI = shouldAutoOpenBillingRoute(planResolved, planStatus, trialEndsAt);
 
   // Initialize browser notifications
   useEventNotifications(events);
@@ -333,7 +335,13 @@ export default function Page() {
               transition={{ type: "spring", stiffness: 280, damping: 26 }}
             >
               <motion.button
-                onClick={() => setVoiceModalOpen(true)}
+                onClick={() => {
+                  if (shouldBlockAI) {
+                    window.dispatchEvent(new CustomEvent("trigger-paywall"));
+                  } else {
+                    setVoiceModalOpen(true);
+                  }
+                }}
                 aria-label="Start voice input"
                 className={`flex h-14 w-14 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-blue-400/40 transition-all duration-200 ${
                   isDarkTheme
@@ -370,9 +378,13 @@ export default function Page() {
         active={activeTab}
         onTabChange={setActiveTab}
         onUploadClick={({ autoOpenPicker = true, file = null } = {}) => {
-          setUploadAutoOpenPicker(autoOpenPicker);
-          setPendingUploadFile(file);
-          setUploadOpen(true);
+          if (shouldBlockAI) {
+            window.dispatchEvent(new CustomEvent("trigger-paywall"));
+          } else {
+            setUploadAutoOpenPicker(autoOpenPicker);
+            setPendingUploadFile(file);
+            setUploadOpen(true);
+          }
         }}
         onManualAdd={handleManualAdd}
         composerOpen={composerOpen}

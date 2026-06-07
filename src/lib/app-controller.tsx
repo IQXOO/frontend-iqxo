@@ -11,6 +11,8 @@ export default function AppController() {
 
   const shouldAutoOpenPricing = shouldAutoOpenBillingRoute(planResolved, planStatus, trialEndsAt);
 
+  // Auto pricing redirect disabled in favor of premium inline bottom sheet paywall
+  /*
   useEffect(() => {
     const prevUserId = prevUserRef.current;
 
@@ -30,6 +32,7 @@ export default function AppController() {
     const t = setTimeout(() => navigate("/pricing"), 400);
     return () => clearTimeout(t);
   }, [user, planResolved, shouldAutoOpenPricing, location.pathname, navigate]);
+  */
 
   useEffect(() => {
     if (!user || !shouldAutoOpenPricing || planStatus !== "free_trial" || !trialEndsAt || location.pathname === "/pricing") return;

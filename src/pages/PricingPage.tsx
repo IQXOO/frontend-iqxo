@@ -266,6 +266,11 @@ export default function PricingPage() {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.5; transform: scale(0.8); }
         }
+        @media (max-width: 768px) {
+          .nav-link {
+            display: none !important;
+          }
+        }
       `}</style>
 
       {/* Nav */}
@@ -288,10 +293,10 @@ export default function PricingPage() {
           IQ<span style={{ color: "#5BC0DE" }}>X</span>O
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
-          <a href="#experience" style={{ fontSize: "0.8rem", color: "#6E6E78", textDecoration: "none", transition: "color 0.6s ease" }}>
+          <a href="#experience" className="nav-link" style={{ fontSize: "0.8rem", color: "#6E6E78", textDecoration: "none", transition: "color 0.6s ease" }}>
             {t.experience}
           </a>
-          <a href="#pricing" style={{ fontSize: "0.8rem", color: "#6E6E78", textDecoration: "none", transition: "color 0.6s ease" }}>
+          <a href="#pricing" className="nav-link" style={{ fontSize: "0.8rem", color: "#6E6E78", textDecoration: "none", transition: "color 0.6s ease" }}>
             {t.pricing}
           </a>
           <div style={{

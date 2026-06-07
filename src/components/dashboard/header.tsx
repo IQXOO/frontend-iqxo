@@ -23,7 +23,11 @@ export function DashboardHeader({
   onSearchClick,
   activeTab = "home"
 }: DashboardHeaderProps) {
-  const { theme, toggleTheme, language, toggleLanguage, t } = useApp()
+  const { user, theme, toggleTheme, language, toggleLanguage, t } = useApp()
+
+  const firstName = user?.user_metadata?.full_name?.split(" ")[0] || 
+    user?.email?.split("@")[0] || 
+    "User"
 
   return (
     <header className="flex items-center justify-between px-5 pt-4 pb-2">
@@ -89,11 +93,11 @@ export function DashboardHeader({
         >
           <Avatar className="h-9 w-9 ring-2 ring-primary/30 ring-offset-2 ring-offset-background cursor-pointer transition-all group-hover:ring-primary/60">
             <AvatarImage
-              src={`https://api.dicebear.com/9.x/notionists/svg?seed=User`}
+              src={user?.user_metadata?.avatar_url || `https://api.dicebear.com/9.x/notionists/svg?seed=${firstName}`}
               alt="User avatar"
             />
             <AvatarFallback className="bg-secondary text-secondary-foreground text-xs">
-              U
+              {firstName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <span className="absolute inset-0 rounded-full bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity" />
