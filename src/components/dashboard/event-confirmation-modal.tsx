@@ -123,7 +123,7 @@ export function EventConfirmationModal({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-end justify-center bg-background/60 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/60 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={(e) => {
         // Only close if clicking the backdrop itself, not the modal content
         if (e.target === e.currentTarget) {
@@ -147,7 +147,7 @@ export function EventConfirmationModal({
         </div>
       )}
       
-      <div className="w-full max-w-md glass rounded-t-3xl p-5 animate-in slide-in-from-bottom duration-300 max-h-[85vh] overflow-y-auto" style={{ paddingBottom: "120px" }}>
+      <div className="w-full max-w-md glass rounded-3xl p-5 animate-in zoom-in-95 duration-200 max-h-[80vh] overflow-y-auto" style={{ paddingBottom: "24px" }}>
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-semibold text-foreground">

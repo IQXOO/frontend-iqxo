@@ -225,7 +225,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
   };
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
+    <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
       <DrawerContent className="bg-background border-border h-[85vh] md:h-[60vh] max-h-[85vh] md:max-h-[60vh]">
         <DrawerHeader>
           <DrawerTitle className="text-foreground">{editEvent ? t("editEvent") : t("addEvent")}</DrawerTitle>
