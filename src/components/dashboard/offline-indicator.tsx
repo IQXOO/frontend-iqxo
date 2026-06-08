@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Wifi, WifiOff } from "lucide-react"
+import { WifiOff } from "lucide-react"
 
 interface OfflineIndicatorProps {
   language: "en" | "fr" | "ar"

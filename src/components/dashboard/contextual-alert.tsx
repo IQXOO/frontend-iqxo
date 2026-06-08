@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, MapPin, Clock, AlertTriangle } from "lucide-react"
+import { MapPin, Clock, AlertTriangle } from "lucide-react"
 import { useApp } from "@/lib/store"
 
 interface ContextualAlertProps {
@@ -11,7 +11,7 @@ interface ContextualAlertProps {
 }
 
 export function ContextualAlert({ alertType, message, actionLabel, onAction }: ContextualAlertProps) {
-  const { language, t } = useApp()
+  const { language } = useApp()
 
   const alertConfig = {
     location: { icon: MapPin, color: "from-blue-500 to-cyan-500", bg: "bg-blue-500/10", border: "border-blue-500/30" },

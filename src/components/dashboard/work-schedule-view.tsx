@@ -15,10 +15,8 @@ import {
   ChevronDown,
   ChevronUp,
   CalendarPlus,
-  Sparkles,
   Trash2,
   Plus,
-  Edit3,
 } from "lucide-react";
 import { useApp } from "../../lib/store";
 import { supabase } from "../../lib/supabase";
@@ -143,7 +141,7 @@ export function WorkScheduleView() {
   const isRTL = language === "ar";
 
   const displayName: string =
-    (user as any)?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
+    user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
 
   const [scheduleNameOverride, setScheduleNameOverride] = useState("");
   const searchName = scheduleNameOverride.trim() || displayName;
@@ -219,13 +217,15 @@ export function WorkScheduleView() {
     let lastY = typeof window !== "undefined" ? window.scrollY : 0;
     const onScroll = () => {
       const y = window.scrollY;
-      if (y > lastY + 8) setFabVisible(false);
+      if (y > lastY + 8) {
+        if (!showNamePrompt) setFabVisible(false);
+      }
       else if (y < lastY - 8) setFabVisible(true);
       lastY = y;
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [showNamePrompt]);
 
   // ── Derived: rows for the active label only ────────────────────────────────
   const schedule = allRows.filter((r) => r.schedule_label === activeLabel);
@@ -688,7 +688,7 @@ export function WorkScheduleView() {
         "Analyze schedule image",
         async () => {
           const backendUrl =
-            (import.meta as any).env?.VITE_BACKEND_API ||
+            import.meta.env.VITE_BACKEND_API ||
             "http://localhost:4040";
           const formData = new FormData();
           formData.append("image", file);
@@ -768,7 +768,7 @@ export function WorkScheduleView() {
       {/* ── Floating Upload FAB — shows/hides on scroll like Home page ─────────── */}
       <motion.div
         className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+72px)] z-40 pointer-events-none"
-        animate={fabVisible ? { y: 0, opacity: 1 } : { y: 56, opacity: 0 }}
+        animate={(fabVisible || showNamePrompt || uploadState === "analyzing") ? { y: 0, opacity: 1 } : { y: 56, opacity: 0 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className="mx-auto flex w-full max-w-screen-sm justify-end overflow-visible px-5 pointer-events-auto">
@@ -1399,7 +1399,7 @@ export function WorkScheduleView() {
                                 </div>
 
                                 <div className="space-y-3 pt-1">
-                                  {shiftsForDay.map((day, shiftIndex) => (
+                                  {shiftsForDay.map((day) => (
                                     <div key={day.id} className="space-y-1.5">
                                       <div
                                         className={`flex items-center gap-2 p-2 rounded-xl bg-background border border-border/70 ${isRTL ? "flex-row-reverse" : ""}`}

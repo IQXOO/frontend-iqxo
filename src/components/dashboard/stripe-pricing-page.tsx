@@ -32,7 +32,7 @@ interface StripePricingPageProps {
   trialEndsAt?: Date | null;
 }
 
-const PRICING = {
+const _PRICING = {
   monthlyEUR: 9.99,
   yearlyEUR: 79,
   yearlyPerMonth: (79 / 12).toFixed(2),
@@ -40,8 +40,8 @@ const PRICING = {
 };
 
 const PAYMENT_LINKS: Record<BillingCycle, string> = {
-  monthly: (import.meta as any).env?.VITE_STRIPE_MONTHLY_LINK,
-  yearly: (import.meta as any).env?.VITE_STRIPE_YEARLY_LINK || "",
+  monthly: import.meta.env?.VITE_STRIPE_MONTHLY_LINK,
+  yearly: import.meta.env?.VITE_STRIPE_YEARLY_LINK || "",
 };
 
 function useTranslate(language: string) {
@@ -49,7 +49,7 @@ function useTranslate(language: string) {
     language === "ar" ? ar : language === "fr" ? fr : en;
 }
 
-function CardBrandLikeBullet() {
+function _CardBrandLikeBullet() {
   return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/[0.06] text-[10px] text-white/60">✓</span>;
 }
 
@@ -60,14 +60,14 @@ export function StripePricingPage({
   planStatus,
   trialEndsAt,
 }: StripePricingPageProps) {
-  const { language, setPlanStatus, user, totalUsage } = useApp();
+  const { language, setPlanStatus, user, totalUsage: _totalUsage } = useApp();
   const { toast } = useToast();
   const isRTL = language === "ar";
   const t = useTranslate(language);
 
   const trialActive = planStatus === "free_trial" && trialEndsAt && trialEndsAt > new Date();
 
-  const features = useMemo(
+  const _features = useMemo(
     () => [
       { icon: Mic, en: "Voice → Event", fr: "Voix → Événement", ar: "صوت ← حدث" },
       { icon: ImageIcon, en: "Image / PDF extraction", fr: "Extraction Image / PDF", ar: "استخراج صورة / PDF" },
@@ -185,12 +185,13 @@ export function StripePricingPage({
         ),
       });
       onClose?.();
-    } catch (err: any) {
+    } catch (err) {
       devError("Billing", "Free trial activation failed", err);
+      const errMessage = err instanceof Error ? err.message : String(err);
       toast({
         title: t("Couldn't start free trial", "Impossible de démarrer l'essai", "تعذّر بدء التجربة المجانية"),
         description: getFriendlyErrorMessage(
-          err,
+          errMessage,
           t("Something went wrong. Please try again.", "Une erreur est survenue.", "حدث خطأ. حاول مرة أخرى."),
         ),
         variant: "destructive",
@@ -485,11 +486,6 @@ export function StripePricingPage({
                 </span>
               </div>
 
-              <AnimatePresence>
-                {false && (
-                  <motion.div />
-                )}
-              </AnimatePresence>
             </div>
           </div>
         </motion.div>

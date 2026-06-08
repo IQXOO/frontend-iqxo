@@ -17,7 +17,7 @@ interface QuickAttachProps {
   compact?: boolean
 }
 
-export function QuickAttach({ eventId, onAttach, compact = false }: QuickAttachProps) {
+export function QuickAttach({ eventId: _eventId, onAttach, compact = false }: QuickAttachProps) {
   const { language, t } = useApp()
   const [attachments, setAttachments] = useState<AttachedMedia[]>([])
   const [isExpanded, setIsExpanded] = useState(false)

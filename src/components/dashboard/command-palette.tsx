@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { Search, Lightbulb, Plus, Palette, Download, LogOut } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useApp } from "@/lib/store"
@@ -25,7 +25,7 @@ export function CommandPalette({
   isOpen: isOpenProp,
   onOpenChange,
 }: CommandPaletteProps) {
-  const { events, t } = useApp()
+  const { events } = useApp()
   const [openLocal, setOpenLocal] = useState(false)
   const isControlled = typeof isOpenProp === "boolean"
   const open = isControlled ? isOpenProp! : openLocal

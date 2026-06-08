@@ -1,21 +1,20 @@
 "use client"
 
-import { Suspense, useState, useEffect } from "react"
+import { Suspense, useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
-import { Sparkles, Clock, Archive, CalendarCheck, TrendingUp, Heart, Download, Shield, Zap } from "lucide-react"
+import { Sparkles, Clock, Archive, CalendarCheck, TrendingUp, Heart, Download, Shield, Camera } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useApp } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
 import { SmartActionsCard } from "./smart-actions-card"
 import { exportEventsToPDF } from "@/lib/export-pdf"
-import { formatUsageDisplay, getUsagePercentage, isLimitExceeded, isNearLimit } from "@/lib/usage-utils"
 import { lazyNamed } from "@/lib/lazy"
 
 const BentoChart = lazyNamed(() => import("./bento-chart"), "BentoChart")
 
 export function ProfileIdentityHub() {
-  const { user, events, language, planStatus, trialEndsAt, totalUsage } = useApp()
+  const { user, events, language, planStatus, trialEndsAt, totalUsage: _totalUsage } = useApp()
   const isRTL = language === "ar"
 
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] || 
@@ -26,11 +25,15 @@ export function ProfileIdentityHub() {
   const { toast } = useToast()
   const [profileFullName, setProfileFullName] = useState<string | null>(user?.user_metadata?.full_name ?? null)
   const [profileEmail, setProfileEmail] = useState<string | null>(user?.email ?? null)
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(user?.user_metadata?.avatar_url ?? null)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [_loadError, _setLoadError] = useState<string | null>(null)
 
-  // Load profile row from `profiles` table if exists (full_name, email)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Load profile row from `profiles` table if exists (full_name, email, avatar_url)
   useEffect(() => {
     let mounted = true
     async function loadProfile() {
@@ -38,8 +41,8 @@ export function ProfileIdentityHub() {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("full_name,email")
-          .eq("id", user.id)
+          .select("full_name,email,avatar_url")
+          .eq("user_id", user.id)
           .maybeSingle();
 
         if (error && error.code !== "PGRST116") {
@@ -51,10 +54,12 @@ export function ProfileIdentityHub() {
         if (data) {
           setProfileFullName(data.full_name ?? user.user_metadata?.full_name ?? null)
           setProfileEmail(data.email ?? user.email ?? null)
+          setProfileAvatarUrl(data.avatar_url ?? user.user_metadata?.avatar_url ?? null)
         } else {
           // fallback to session
           setProfileFullName(user.user_metadata?.full_name ?? null)
           setProfileEmail(user.email ?? null)
+          setProfileAvatarUrl(user.user_metadata?.avatar_url ?? null)
         }
       } catch (err) {
         console.error("Failed to load profile row", err)
@@ -67,6 +72,89 @@ export function ProfileIdentityHub() {
       mounted = false
     }
   }, [user])
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: language === "ar" ? "ملف غير صالح" : "Invalid file type",
+        description: language === "ar" ? "يرجى اختيار صورة صالحة." : "Please select a valid image file.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setUploading(true)
+    try {
+      const fileExt = file.name.split(".").pop()
+      const filePath = `${user.id}/avatar_${Date.now()}.${fileExt}`
+
+      // 1. Storage Upload
+      console.log("Starting Storage upload... Path:", filePath)
+      const { error: uploadError } = await supabase.storage
+        .from("avatar")
+        .upload(filePath, file, { cacheControl: "3600", upsert: true })
+
+      if (uploadError) {
+        console.error("Storage upload error details:", uploadError)
+        throw new Error(`Storage upload failed: ${uploadError.message}`)
+      }
+      console.log("Storage upload successful.")
+
+      // 2. Get Public URL
+      console.log("Getting public URL for path:", filePath)
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatar")
+        .getPublicUrl(filePath)
+      console.log("Public URL obtained successfully:", publicUrl)
+
+      // 3. Update Auth Metadata
+      console.log("Updating auth user metadata with avatar_url:", publicUrl)
+      const { error: authError } = await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl }
+      })
+      if (authError) {
+        console.error("Auth update error details:", authError)
+        throw new Error(`Auth update failed: ${authError.message}`)
+      }
+      console.log("Auth user metadata updated successfully.")
+
+      // 4. Update Profiles Row
+      console.log("Updating profiles row in database... user_id:", user.id)
+      const { error: profileError } = await supabase.from("profiles").upsert(
+        {
+          user_id: user.id,
+          avatar_url: publicUrl,
+          full_name: profileFullName,
+          email: profileEmail
+        },
+        { onConflict: "user_id" }
+      )
+      if (profileError) {
+        console.error("Profile upsert error details:", profileError)
+        throw new Error(`Profiles database update failed: ${profileError.message}`)
+      }
+      console.log("Profiles database row updated successfully.")
+
+      setProfileAvatarUrl(publicUrl)
+      toast({
+        title: language === "ar" ? "تم تحديث الصورة الشخصية" : "Avatar updated",
+        description: language === "ar" ? "تم حفظ صورتك الشخصية بنجاح." : "Your profile picture has been updated.",
+        variant: "default"
+      })
+    } catch (err) {
+      console.error("Failed to upload avatar", err)
+      toast({
+        title: language === "ar" ? "فشل الرفع" : "Upload failed",
+        description: err instanceof Error ? err.message : (language === "ar" ? "عذراً حدث خطأ ما." : "Could not upload your avatar."),
+        variant: "destructive"
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
 
   // Calculate life stats
   const totalEvents = events.length
@@ -157,16 +245,35 @@ export function ProfileIdentityHub() {
             <motion.div
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 300 }}
+              className="relative group cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
             >
-              <Avatar className="h-18 w-18 ring-2 ring-primary/30 ring-offset-2 ring-offset-background">
+              <Avatar className="h-18 w-18 ring-2 ring-primary/30 ring-offset-2 ring-offset-background relative overflow-hidden">
+                {uploading ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+                    <div className="h-5 w-5 border-2 border-primary border-t-transparent animate-spin rounded-full" />
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                    <Camera className="w-5 h-5 text-white" />
+                  </div>
+                )}
                 <AvatarImage
-                  src={`https://api.dicebear.com/9.x/notionists/svg?seed=${firstName}`}
+                  src={profileAvatarUrl || `https://api.dicebear.com/9.x/notionists/svg?seed=${firstName}`}
                   alt={firstName}
                 />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500/30 to-purple-500/30 text-white text-xl font-bold">
                   {firstName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleAvatarUpload}
+                accept="image/*"
+                className="hidden"
+                aria-label="Upload avatar"
+              />
             </motion.div>
 
             <div className="flex-1">
@@ -199,19 +306,27 @@ export function ProfileIdentityHub() {
                           try {
                             const nextFullName = (profileFullName ?? "").trim() || null
                             const upsert = {
-                              id: user.id,
+                              user_id: user.id,
                               full_name: nextFullName,
                               email: profileEmail ?? user.email,
+                              avatar_url: profileAvatarUrl,
                             }
+                            console.log("Updating auth name metadata...")
                             const { error: authError } = await supabase.auth.updateUser({
                               data: { full_name: nextFullName ?? "" },
                             })
                             if (authError) throw authError
+                            console.log("Auth name updated successfully.")
 
-                            const { error: profileError } = await supabase.from("profiles").upsert(upsert)
+                            console.log("Upserting profile row in database... user_id:", user.id)
+                            const { error: profileError } = await supabase
+                              .from("profiles")
+                              .upsert(upsert, { onConflict: "user_id" })
                             if (profileError) {
                               console.warn("Profile row sync skipped", profileError)
+                              throw profileError
                             }
+                            console.log("Profile row upserted successfully.")
 
                             toast({ title: "Profile updated", description: "Your name was saved.", variant: "default" })
                             setEditing(false)

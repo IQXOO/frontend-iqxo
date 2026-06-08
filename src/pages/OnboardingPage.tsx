@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../lib/store";
 
@@ -17,7 +17,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
   useEffect(() => {
     const browserLang = (
       navigator.language ||
-      (navigator as any).userLanguage ||
+      (navigator as Navigator & { userLanguage?: string }).userLanguage ||
       ""
     ).toLowerCase();
     const lang = browserLang.startsWith("fr") ? "fr" : "en";

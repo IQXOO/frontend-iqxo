@@ -8,7 +8,7 @@ interface WeatherHintProps {
   date: string
 }
 
-export function WeatherHint({ location, date }: WeatherHintProps) {
+export function WeatherHint({ location, date: _date }: WeatherHintProps) {
   const [weather, setWeather] = useState<{ icon: string; temp: number; condition: string } | null>(null)
 
   useEffect(() => {

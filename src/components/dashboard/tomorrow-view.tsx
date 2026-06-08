@@ -11,16 +11,20 @@ interface TomorrowViewProps {
 }
 
 export function TomorrowView({ onEventClick }: TomorrowViewProps) {
-  const { events, t, language } = useApp()
-  const isRTL = language === "ar"
+  const { events, language } = useApp()
 
   // Get tomorrow's date in LOCAL timezone (avoids UTC-shift bugs)
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
   const tomorrowDateStr = toLocalDateStr(tomorrow)
 
-  // Filter events for tomorrow
-  const tomorrowEvents = events.filter((e) => e.date === tomorrowDateStr)
+  // Filter events for tomorrow (exclude work schedule events)
+  const tomorrowEvents = events.filter(
+    (e) =>
+      e.date === tomorrowDateStr &&
+      e.source !== "work_schedule" &&
+      e.source !== "work_schedule_virtual"
+  )
 
   if (tomorrowEvents.length === 0) {
     return (

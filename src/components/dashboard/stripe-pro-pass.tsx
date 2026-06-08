@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { Crown, Sparkles, Shield, Zap, Infinity, Check, CreditCard, Lock, X } from "lucide-react"
+import { Crown, Sparkles, Shield, Zap, Infinity as InfinityIcon, Check, CreditCard, Lock, X } from "lucide-react"
 import { useApp } from "@/lib/store"
 import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
@@ -23,7 +23,7 @@ export function StripeProPass({ open = true, onClose }: StripeProPassProps) {
 
   const features = [
     {
-      icon: Infinity,
+      icon: InfinityIcon,
       label: language === "ar" ? "حفظ غير محدود" : "Unlimited Saves",
       description: language === "ar" ? "احفظ كل لحظة" : "Capture every moment",
     },

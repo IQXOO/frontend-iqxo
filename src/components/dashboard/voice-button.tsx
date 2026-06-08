@@ -113,7 +113,7 @@ export function VoiceButton({
       setTimeout(() => {
         setShowDone(false);
         onCloseRef.current?.();
-      }, 1200);
+      }, 100);
     }, 50);
   }, [isListening, isProcessing, transcript, eventData]);
 
@@ -177,7 +177,7 @@ export function VoiceButton({
             className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            exit={{ opacity: 0, transition: { duration: 0 } }}
             onClick={handleClose}
           />
 
@@ -186,7 +186,7 @@ export function VoiceButton({
             className="fixed inset-x-0 bottom-0 z-[90] flex flex-col items-center pb-16 pt-6 px-6"
             initial={{ y: 120 }}
             animate={{ y: 0 }}
-            exit={{ y: 120 }}
+            exit={{ y: 120, opacity: 0, transition: { duration: 0 } }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
             dir={isRTL ? "rtl" : "ltr"}
           >

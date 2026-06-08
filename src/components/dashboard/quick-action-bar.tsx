@@ -50,7 +50,7 @@ export function QuickActionBar({ event, language }: QuickActionBarProps) {
       color: "text-purple-500",
     },
   ].filter(Boolean) as Array<{
-    icon: any
+    icon: React.ComponentType<{ className?: string }>
     label: string
     onClick: () => void
     color: string

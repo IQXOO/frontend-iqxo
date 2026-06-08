@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useApp } from "@/lib/store";
+import { navigateToPath } from "@/lib/navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import {
   devError,
@@ -353,7 +354,6 @@ export default function ResetPasswordPage() {
 
       window.setTimeout(() => {
         // Use navigateToPath so routing is consistent with React Router
-        const { navigateToPath } = require("../lib/navigation");
         navigateToPath("/", { replace: true });
       }, 1600);
     } catch (updateError) {
@@ -402,11 +402,9 @@ export default function ResetPasswordPage() {
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button className="flex-1" onClick={() => {
-              const { navigateToPath } = require("../lib/navigation");
               navigateToPath("/?forgot=1");
             }}>{copy.requestNewLink}</Button>
             <Button variant="outline" className="flex-1" onClick={() => {
-              const { navigateToPath } = require("../lib/navigation");
               navigateToPath("/");
             }}>{copy.backToSignIn}</Button>
           </div>
@@ -425,7 +423,6 @@ export default function ResetPasswordPage() {
             <p className="text-sm text-muted-foreground">{copy.successBody}</p>
           </div>
           <Button className="w-full" onClick={() => {
-            const { navigateToPath } = require("../lib/navigation");
             navigateToPath("/", { replace: true });
           }}>{copy.successButton}</Button>
         </div>
@@ -520,7 +517,6 @@ export default function ResetPasswordPage() {
             variant="outline"
             className="h-12 rounded-xl"
             onClick={() => {
-              const { navigateToPath } = require("../lib/navigation");
               navigateToPath("/");
             }}
             disabled={loading}

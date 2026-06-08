@@ -3,19 +3,16 @@
 import { useState, useEffect } from "react";
 import { useApp } from "../lib/store";
 import { useToast } from "../hooks/use-toast";
-import { supabase } from "../lib/supabase";
-import { BrandLogo } from "../components/brand-logo";
-import { devError, devLog, getFriendlyErrorMessage } from "../lib/logger";
 import { navigateToPath } from "../lib/navigation";
 
-const PRICING = {
+const _PRICING = {
   monthlyEUR: 9.99,
   yearlyEUR: 79,
 };
 
-const PAYMENT_LINKS = {
-  monthly: (import.meta as any).env?.VITE_STRIPE_MONTHLY_LINK,
-  yearly: (import.meta as any).env?.VITE_STRIPE_YEARLY_LINK || "",
+const _PAYMENT_LINKS = {
+  monthly: import.meta.env?.VITE_STRIPE_MONTHLY_LINK,
+  yearly: import.meta.env?.VITE_STRIPE_YEARLY_LINK || "",
 };
 
 type BillingCycle = "monthly" | "yearly";
@@ -192,14 +189,14 @@ const translations = {
 };
 
 export default function PricingPage() {
-  const { user, planStatus, trialEndsAt, setPlanStatus } = useApp();
-  const { toast } = useToast();
+  const { user: _user, planStatus: _planStatus, trialEndsAt: _trialEndsAt, setPlanStatus: _setPlanStatus } = useApp();
+  const { toast: _toast } = useToast();
   const [scrolled, setScrolled] = useState(false);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [pageLang, setPageLang] = useState<"en" | "fr">("en");
-  const [trialError, setTrialError] = useState<string | null>(null);
+  const [_trialError, _setTrialError] = useState<string | null>(null);
 
-  const trialActive = planStatus === "free_trial" && trialEndsAt && trialEndsAt > new Date();
+  const _trialActive = _planStatus === "free_trial" && _trialEndsAt && _trialEndsAt > new Date();
   const t = translations[pageLang];
 
   useEffect(() => {
@@ -221,7 +218,7 @@ export default function PricingPage() {
     localStorage.setItem("iqxo-pricing-lang", lang);
   };
 
-  const handleSubscribe = (cycle: BillingCycle) => {
+  const handleSubscribe = (_cycle: BillingCycle) => {
     navigateToPath("/login");
   };
 
@@ -269,6 +266,11 @@ export default function PricingPage() {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.5; transform: scale(0.8); }
         }
+        @media (max-width: 768px) {
+          .nav-link {
+            display: none !important;
+          }
+        }
       `}</style>
 
       {/* Nav */}
@@ -291,10 +293,10 @@ export default function PricingPage() {
           IQ<span style={{ color: "#5BC0DE" }}>X</span>O
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
-          <a href="#experience" style={{ fontSize: "0.8rem", color: "#6E6E78", textDecoration: "none", transition: "color 0.6s ease" }}>
+          <a href="#experience" className="nav-link" style={{ fontSize: "0.8rem", color: "#6E6E78", textDecoration: "none", transition: "color 0.6s ease" }}>
             {t.experience}
           </a>
-          <a href="#pricing" style={{ fontSize: "0.8rem", color: "#6E6E78", textDecoration: "none", transition: "color 0.6s ease" }}>
+          <a href="#pricing" className="nav-link" style={{ fontSize: "0.8rem", color: "#6E6E78", textDecoration: "none", transition: "color 0.6s ease" }}>
             {t.pricing}
           </a>
           <div style={{

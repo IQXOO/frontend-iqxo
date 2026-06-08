@@ -1,16 +1,18 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useApp } from "../lib/store";
-import { shouldAutoOpenBillingRoute, shouldShowBillingPopup } from "../lib/billing-utils";
+import { shouldAutoOpenBillingRoute } from "../lib/billing-utils";
 
 export default function AppController() {
-  const { user, authLoading, planStatus, planResolved, trialEndsAt, onboardingDone, setOnboardingDone } = useApp();
+  const { user, authLoading, planStatus, planResolved, trialEndsAt, onboardingDone, setOnboardingDone: _setOnboardingDone } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
-  const prevUserRef = useRef<string | null | undefined>(undefined);
+  const _prevUserRef = useRef<string | null | undefined>(undefined);
 
   const shouldAutoOpenPricing = shouldAutoOpenBillingRoute(planResolved, planStatus, trialEndsAt);
 
+  // Auto pricing redirect disabled in favor of premium inline bottom sheet paywall
+  /*
   useEffect(() => {
     const prevUserId = prevUserRef.current;
 
@@ -30,6 +32,7 @@ export default function AppController() {
     const t = setTimeout(() => navigate("/pricing"), 400);
     return () => clearTimeout(t);
   }, [user, planResolved, shouldAutoOpenPricing, location.pathname, navigate]);
+  */
 
   useEffect(() => {
     if (!user || !shouldAutoOpenPricing || planStatus !== "free_trial" || !trialEndsAt || location.pathname === "/pricing") return;

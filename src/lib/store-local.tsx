@@ -72,7 +72,7 @@ const AppContext = createContext<AppContextValue | null>(null);
 const STORAGE_EVENTS = "iqxo_events";
 const STORAGE_THEME = "iqxo_theme";
 const STORAGE_LANGUAGE = "iqxo_language";
-const STORAGE_USER = "iqxo_user";
+const _STORAGE_USER = "iqxo_user";
 
 // Mock translations
 const translations: Record<Language, Record<string, string>> = {
@@ -149,7 +149,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [events, setEvents] = useState<IQXOEvent[]>([]);
   const [theme, setTheme] = useState<Theme>("dark");
   const [language, setLanguage] = useState<Language>("en");
-  const [loading, setLoading] = useState(false);
+  const [loading, _setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   // Load data from localStorage on mount
@@ -308,7 +308,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setEvents(prev => prev.filter(e => e.id !== id));
   }, []);
 
-  const signOut = useCallback(async () => {
+  const _signOut = useCallback(async () => {
     setEvents([]);
     localStorage.removeItem(STORAGE_EVENTS);
   }, []);
