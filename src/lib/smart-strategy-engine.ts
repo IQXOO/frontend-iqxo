@@ -89,7 +89,7 @@ export function getSpeechRecognitionLanguage(language: string): string {
 
 export function isSpeechRecognitionSupported(): boolean {
   if (typeof window === "undefined") return false
-  const SpeechRecognition = window.webkitSpeechRecognition || (window as any).SpeechRecognition
+  const SpeechRecognition = window.webkitSpeechRecognition || (window as unknown as Record<string, unknown>).SpeechRecognition
   return !!SpeechRecognition
 }
 

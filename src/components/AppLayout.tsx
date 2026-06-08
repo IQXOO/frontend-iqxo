@@ -135,8 +135,8 @@ function AppLayoutContent() {
   const dt = drawerI18n[language === "ar" ? "ar" : language === "fr" ? "fr" : "en"];
 
   const handlePaywallSubscribe = (cycle: "monthly" | "yearly") => {
-    const monthlyLink = (import.meta as any).env?.VITE_STRIPE_MONTHLY_LINK;
-    const yearlyLink = (import.meta as any).env?.VITE_STRIPE_YEARLY_LINK || "";
+    const monthlyLink = import.meta.env?.VITE_STRIPE_MONTHLY_LINK;
+    const yearlyLink = import.meta.env?.VITE_STRIPE_YEARLY_LINK || "";
     const base = cycle === "yearly" ? yearlyLink : monthlyLink;
 
     if (!base) {
@@ -154,14 +154,14 @@ function AppLayoutContent() {
         onProfileClick={() => navigateToPath("/profile")}
         onSettingsClick={() => navigateToPath("/profile")}
         onSearchClick={openCommandPalette}
-        activeTab={active as any}
+        activeTab={active as string}
       />
 
       <main className="pb-28">
         <Outlet />
       </main>
 
-      <BottomNav active={active as any} />
+      <BottomNav active={active as string} />
 
       {/* Premium Paywall Bottom Sheet Overlay */}
       {shouldShowPaywall && paywallOpen && (

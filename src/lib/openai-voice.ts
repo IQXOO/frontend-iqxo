@@ -18,7 +18,7 @@ async function getAuthHeader(): Promise<Record<string, string>> {
     const { data } = await supabase.auth.getSession()
     const token = data?.session?.access_token
     if (token) return { Authorization: `Bearer ${token}` }
-  } catch (e) {
+  } catch {
     devWarn('Voice', 'Could not read auth session for request header')
   }
   return {}
@@ -99,7 +99,7 @@ export async function transcribeAudio(
  * - Backend MUST NOT trust client-sent userId
  * - Frontend will attach Authorization header when available
  */
-export async function parseEventFromText(text: string) {
+export async function parseEventFromText(_text: string) {
   devWarn('Voice', 'parseEventFromText called but POST /parse-text is not implemented')
   // PLACEHOLDER: Backend endpoint not yet implemented
   // Throwing error to prevent silent failures if this code path is activated

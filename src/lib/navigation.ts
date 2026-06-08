@@ -9,7 +9,7 @@ export function navigateToPath(pathname: string, options?: { replace?: boolean }
     try {
       routerNavigate(pathname, options);
       return;
-    } catch (e) {
+    } catch {
       // fallthrough to history fallback
     }
   }

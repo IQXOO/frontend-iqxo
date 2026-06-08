@@ -4,10 +4,10 @@ import { useApp } from "../lib/store";
 import { shouldAutoOpenBillingRoute } from "../lib/billing-utils";
 
 export default function AppController() {
-  const { user, authLoading, planStatus, planResolved, trialEndsAt, onboardingDone, setOnboardingDone } = useApp();
+  const { user, authLoading, planStatus, planResolved, trialEndsAt, onboardingDone, setOnboardingDone: _setOnboardingDone } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
-  const prevUserRef = useRef<string | null | undefined>(undefined);
+  const _prevUserRef = useRef<string | null | undefined>(undefined);
 
   const shouldAutoOpenPricing = shouldAutoOpenBillingRoute(planResolved, planStatus, trialEndsAt);
 

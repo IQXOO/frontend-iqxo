@@ -22,10 +22,10 @@ const EventConfirmationModal = lazyNamed(() => import("../components/dashboard/e
 const SettingsView = lazyNamed(() => import("../components/dashboard/settings-view"), "SettingsView");
 const HistoryView = lazyNamed(() => import("../components/dashboard/history-view"), "HistoryView");
 const TomorrowChainModal = lazyNamed(() => import("../components/dashboard/tomorrow-chain-modal"), "TomorrowChainModal");
-const TomorrowView = lazyNamed(() => import("../components/dashboard/tomorrow-view"), "TomorrowView");
-const FutureExplorerView = lazyNamed(() => import("../components/dashboard/future-explorer-view"), "FutureExplorerView");
-const ArchiveVault = lazyNamed(() => import("../components/dashboard/archive-vault"), "ArchiveVault");
-const WorkScheduleView = lazyNamed(() => import("../components/dashboard/work-schedule-view"), "WorkScheduleView");
+const _TomorrowView = lazyNamed(() => import("../components/dashboard/tomorrow-view"), "TomorrowView");
+const _FutureExplorerView = lazyNamed(() => import("../components/dashboard/future-explorer-view"), "FutureExplorerView");
+const _ArchiveVault = lazyNamed(() => import("../components/dashboard/archive-vault"), "ArchiveVault");
+const _WorkScheduleView = lazyNamed(() => import("../components/dashboard/work-schedule-view"), "WorkScheduleView");
 
 function LazySectionFallback() {
   return <div className="h-40 rounded-[24px] border border-white/5 bg-white/5 animate-pulse" />;
@@ -36,7 +36,7 @@ function LazyModalFallback() {
 }
 
 export default function Page() {
-  const { events, deleteEvent, t, theme, planStatus, planResolved, trialEndsAt } = useApp();
+  const { events, t, theme, planStatus, planResolved, trialEndsAt } = useApp();
   const shouldBlockAI = shouldAutoOpenBillingRoute(planResolved, planStatus, trialEndsAt);
 
   // Initialize browser notifications
@@ -45,16 +45,16 @@ export default function Page() {
   const [activeTab, setActiveTab] = useState<NavTab>("home");
   // legacy in-page navigation removed; Home shows today's dashboard content
   const [showSettings, setShowSettings] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, _setSearchQuery] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadAutoOpenPicker, setUploadAutoOpenPicker] = useState(true);
   const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmData, setConfirmData] = useState<ParsedEvent | null>(null);
-  const [confirmSource, setConfirmSource] = useState<"voice" | "photo">(
+  const [confirmData, _setConfirmData] = useState<ParsedEvent | null>(null);
+  const [confirmSource, _setConfirmSource] = useState<"voice" | "photo">(
     "voice",
   );
-  const [confirmImageUrl, setConfirmImageUrl] = useState<string | undefined>(
+  const [confirmImageUrl, _setConfirmImageUrl] = useState<string | undefined>(
     undefined,
   );
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
@@ -67,7 +67,7 @@ export default function Page() {
     (theme === "system" &&
       typeof document !== "undefined" &&
       document.documentElement.classList.contains("dark"));
-  const { isListening } = useVoiceInput();
+  const { isListening: _isListening } = useVoiceInput();
   const { openEventDetail, openEventForm } = useEventEditor();
 
   // Filter events by search and exclude work schedule events
@@ -132,6 +132,7 @@ export default function Page() {
   }, [openEventForm]);
 
   const handleVoiceResult = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (data: any) => {
       const parsed: ParsedEvent =
         typeof data === "string"

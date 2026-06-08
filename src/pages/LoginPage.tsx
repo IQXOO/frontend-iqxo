@@ -280,7 +280,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleUnsupportedOAuth = (provider: string) => {
+  const _handleUnsupportedOAuth = (provider: string) => {
     toast({
       title: `${provider} Login`,
       description: `${provider} authentication configuration is not active on this environment. Please sign in with Google or Email instead.`,

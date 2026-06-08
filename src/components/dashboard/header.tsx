@@ -23,7 +23,7 @@ export function DashboardHeader({
   onSearchClick,
   activeTab = "home"
 }: DashboardHeaderProps) {
-  const { user, theme, toggleTheme, language, toggleLanguage, t } = useApp()
+  const { user, theme, toggleTheme, language, toggleLanguage } = useApp()
 
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] || 
     user?.email?.split("@")[0] || 

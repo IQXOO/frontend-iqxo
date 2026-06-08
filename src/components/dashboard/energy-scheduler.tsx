@@ -8,9 +8,9 @@ interface EnergySchedulerProps {
   language: "en" | "fr" | "ar"
 }
 
-export function EnergyScheduler({ eventType, suggestedTime, language }: EnergySchedulerProps) {
+export function EnergyScheduler({ eventType, suggestedTime: _suggestedTime, language }: EnergySchedulerProps) {
   const getEnergyTip = (type: string, lang: string) => {
-    const tips: Record<string, Record<string, { text: string; icon: any; color: string }>> = {
+    const tips: Record<string, Record<string, { text: string; icon: React.ComponentType<{ className?: string }>; color: string }>> = {
       "doctor": {
         "en": { text: "Morning visit = clearer thinking", icon: Lightbulb, color: "text-blue-400" },
         "fr": { text: "Visite le matin = plus clair", icon: Lightbulb, color: "text-blue-400" },

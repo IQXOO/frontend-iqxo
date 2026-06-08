@@ -124,11 +124,6 @@ export function parseVoiceInput(text: string): ParsedEvent {
   
   // ---- Location extraction ----
   
-  // "au 12 rue ...", "at the ...", "chez ...", "à ..."
-  const locationPatterns = [
-    /\b(?:au|à|chez|at|at the|in)\s+(.+?)(?:\s+(?:à|at|demain|tomorrow|aujourd'hui|today|\d{1,2}[h:])|$)/i,
-  ]
-  
   // More specific location patterns
   const locMatch = text.match(/\b(?:au|à|chez)\s+(\d+\s+(?:rue|avenue|boulevard|place|chemin).+?)(?:\s+(?:à|demain|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)|\.|,|$)/i)
   if (locMatch) {

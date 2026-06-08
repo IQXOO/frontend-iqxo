@@ -3,7 +3,7 @@
 import { useApp } from "@/lib/store"
 
 export function BentoChart() {
-  const { events, t } = useApp()
+  const { events } = useApp()
 
   // Calculate statistics for the current week
   const now = new Date()

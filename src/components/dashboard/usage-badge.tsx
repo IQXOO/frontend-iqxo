@@ -26,9 +26,9 @@ export function UsageBadge({ showWarning = true, compact = false }: UsageBadgePr
 
   const percentage = getUsagePercentage(totalUsage);
   const isExceeded = isLimitExceeded(totalUsage);
-  const isNear = isNearLimit(totalUsage);
+  const _isNear = isNearLimit(totalUsage);
   const statusColor = getUsageStatusColor(totalUsage);
-  const statusText = getUsageStatusText(totalUsage, language as any);
+  const statusText = getUsageStatusText(totalUsage, language);
   const displayText = formatUsageDisplay(totalUsage);
 
   const colorClasses = {

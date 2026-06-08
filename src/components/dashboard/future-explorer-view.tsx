@@ -11,7 +11,7 @@ interface FutureExplorerViewProps {
 }
 
 export function FutureExplorerView({ onEventClick }: FutureExplorerViewProps) {
-  const { events, t, language } = useApp()
+  const { events, language } = useApp()
   const isRTL = language === "ar"
 
   // Events starting from day-after-tomorrow (LOCAL timezone)

@@ -1208,7 +1208,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // import navigateToPath lazily to avoid circular imports
         const { navigateToPath } = await import("./navigation");
         navigateToPath("/login", { replace: true });
-      } catch (e) {
+      } catch {
         // ignore navigation errors
       }
     } catch (error) {
@@ -1256,7 +1256,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUsageLoading(true);
     try {
       const backendUrl =
-        (import.meta as any).env?.VITE_BACKEND_API || "http://localhost:4040";
+        import.meta.env?.VITE_BACKEND_API || "http://localhost:4040";
       const headers: Record<string, string> = {};
       const token = sessionRef.current?.access_token;
       if (token) headers["Authorization"] = `Bearer ${token}`;

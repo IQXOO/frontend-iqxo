@@ -14,7 +14,7 @@ import { lazyNamed } from "@/lib/lazy"
 const BentoChart = lazyNamed(() => import("./bento-chart"), "BentoChart")
 
 export function ProfileIdentityHub() {
-  const { user, events, language, planStatus, trialEndsAt, totalUsage } = useApp()
+  const { user, events, language, planStatus, trialEndsAt, totalUsage: _totalUsage } = useApp()
   const isRTL = language === "ar"
 
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] || 
@@ -29,7 +29,7 @@ export function ProfileIdentityHub() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const [_loadError, _setLoadError] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 

@@ -15,7 +15,7 @@ interface SettingsViewProps {
 }
 
 export function SettingsView({ onClose }: SettingsViewProps) {
-  const { user, language, t, signOut, planStatus, planResolved } = useApp();
+  const { user: _user, language, t, signOut, planStatus, planResolved } = useApp();
   const [activeTab, setActiveTab] = useState<SettingsTab>("settings");
   const [isPending, setIsPending] = useState(false);
   const isRTL = language === "ar";

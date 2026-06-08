@@ -12,8 +12,12 @@ import { useToast } from "../hooks/use-toast";
 // Type declarations for Web Speech API (for interim results)
 declare global {
   interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
+    SpeechRecognition: {
+      new (): SpeechRecognition;
+    };
+    webkitSpeechRecognition: {
+      new (): SpeechRecognition;
+    };
   }
 }
 
@@ -115,7 +119,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
   const streamRef = useRef<MediaStream | null>(null);
 
   // Convert WebM to WAV format
-  const convertWebMToWav = async (webmBlob: Blob): Promise<Blob> => {
+  const _convertWebMToWav = async (webmBlob: Blob): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = async () => {

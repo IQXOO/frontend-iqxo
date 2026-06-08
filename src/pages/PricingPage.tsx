@@ -5,14 +5,14 @@ import { useApp } from "../lib/store";
 import { useToast } from "../hooks/use-toast";
 import { navigateToPath } from "../lib/navigation";
 
-const PRICING = {
+const _PRICING = {
   monthlyEUR: 9.99,
   yearlyEUR: 79,
 };
 
-const PAYMENT_LINKS = {
-  monthly: (import.meta as any).env?.VITE_STRIPE_MONTHLY_LINK,
-  yearly: (import.meta as any).env?.VITE_STRIPE_YEARLY_LINK || "",
+const _PAYMENT_LINKS = {
+  monthly: import.meta.env?.VITE_STRIPE_MONTHLY_LINK,
+  yearly: import.meta.env?.VITE_STRIPE_YEARLY_LINK || "",
 };
 
 type BillingCycle = "monthly" | "yearly";
@@ -189,14 +189,14 @@ const translations = {
 };
 
 export default function PricingPage() {
-  const { user, planStatus, trialEndsAt, setPlanStatus } = useApp();
-  const { toast } = useToast();
+  const { user: _user, planStatus: _planStatus, trialEndsAt: _trialEndsAt, setPlanStatus: _setPlanStatus } = useApp();
+  const { toast: _toast } = useToast();
   const [scrolled, setScrolled] = useState(false);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [pageLang, setPageLang] = useState<"en" | "fr">("en");
-  const [trialError, setTrialError] = useState<string | null>(null);
+  const [_trialError, _setTrialError] = useState<string | null>(null);
 
-  const trialActive = planStatus === "free_trial" && trialEndsAt && trialEndsAt > new Date();
+  const _trialActive = _planStatus === "free_trial" && _trialEndsAt && _trialEndsAt > new Date();
   const t = translations[pageLang];
 
   useEffect(() => {
@@ -218,7 +218,7 @@ export default function PricingPage() {
     localStorage.setItem("iqxo-pricing-lang", lang);
   };
 
-  const handleSubscribe = (cycle: BillingCycle) => {
+  const handleSubscribe = (_cycle: BillingCycle) => {
     navigateToPath("/login");
   };
 

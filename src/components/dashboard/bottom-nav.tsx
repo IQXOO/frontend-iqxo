@@ -697,15 +697,15 @@ interface BottomNavProps {
 }
 
 export function BottomNav({
-  active,
-  onTabChange,
+  active: _active,
+  onTabChange: _onTabChange,
   onUploadClick,
   onManualAdd,
   composerOpen,
   onComposerOpenChange,
   onImportEvents,
 }: BottomNavProps) {
-  const { language, addEvent, user } = useApp();
+  const { language, addEvent, user: _user } = useApp();
   const isRTL = language === "ar";
   const [internalMenuOpen, setInternalMenuOpen] = useState(false);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
@@ -759,6 +759,7 @@ export function BottomNav({
   // Request events from the native app's calendar bridge
   const handleSyncPhoneCalendar = () => {
     // Check if running inside the IQXO native WebView
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (!(window as any).ReactNativeWebView) {
       setNativeCalError(
         language === 'ar'
@@ -778,6 +779,7 @@ export function BottomNav({
     // Listen for the native app's response (one-time)
     const onReady = () => {
       window.removeEventListener('nativeCalendarReady', onReady);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = (window as any).__nativeCalendarResult;
       if (!result || result.error) {
         const errMsg = result?.error === 'permission_denied'
@@ -788,6 +790,7 @@ export function BottomNav({
         return;
       }
       // Map native events into ParsedCalEvent shape
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mapped: ParsedCalEvent[] = (result.events || []).map((e: any, i: number) => ({
         uid: `native-${i}-${e.title}`,
         title: e.title || '',
@@ -805,6 +808,7 @@ export function BottomNav({
     };
 
     window.addEventListener('nativeCalendarReady', onReady);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestCalendarEvents' }));
   };
 

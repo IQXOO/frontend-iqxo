@@ -110,7 +110,7 @@ export function EventDetailModal({
 
   if (!event) return null
 
-  const priority     = computePriority(event.date)
+  const _priority     = computePriority(event.date)
   const localDate    = parseLocalDate(event.date)
   const dateStr      = format(localDate, "EEEE, MMMM d, yyyy")
   const isEventToday    = isToday(localDate)
@@ -399,11 +399,12 @@ export function EventDetailModal({
                         ? "L'événement a été supprimé avec succès."
                         : "The event has been successfully deleted.",
                   })
-                } catch (err: any) {
+                } catch (err) {
                   console.error("Failed to delete event:", err)
+                  const errMessage = err instanceof Error ? err.message : String(err)
                   toast({
                     title: language === "ar" ? "فشل الحذف" : "Delete failed",
-                    description: err?.message || (language === "ar" ? "حدث خطأ غير متوقع." : "An unexpected error occurred."),
+                    description: errMessage || (language === "ar" ? "حدث خطأ غير متوقع." : "An unexpected error occurred."),
                     variant: "destructive",
                   })
                 }

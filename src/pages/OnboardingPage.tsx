@@ -17,7 +17,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
   useEffect(() => {
     const browserLang = (
       navigator.language ||
-      (navigator as any).userLanguage ||
+      (navigator as Navigator & { userLanguage?: string }).userLanguage ||
       ""
     ).toLowerCase();
     const lang = browserLang.startsWith("fr") ? "fr" : "en";

@@ -25,7 +25,7 @@ export function CommandPalette({
   isOpen: isOpenProp,
   onOpenChange,
 }: CommandPaletteProps) {
-  const { events, t } = useApp()
+  const { events } = useApp()
   const [openLocal, setOpenLocal] = useState(false)
   const isControlled = typeof isOpenProp === "boolean"
   const open = isControlled ? isOpenProp! : openLocal

@@ -11,8 +11,7 @@ interface ArchiveVaultProps {
 }
 
 export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
-  const { events, deleteEvent, addEvent, t, language } = useApp()
-  const isRTL = language === "ar"
+  const { events, deleteEvent, addEvent, language } = useApp()
 
   // Get past events (using LOCAL today, exclude virtual schedule events)
   const today = new Date()

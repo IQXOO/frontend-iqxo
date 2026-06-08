@@ -32,7 +32,7 @@ function RouteFallback() {
   );
 }
 
-function AppShell() {
+function _AppShell() {
   const {
     user,
     authLoading,
@@ -53,7 +53,7 @@ function AppShell() {
     typeof window !== "undefined" ? window.location.pathname : "/",
   );
 
-  const canShowBillingPopup = shouldShowBillingPopup(planResolved, planStatus);
+  const _canShowBillingPopup = shouldShowBillingPopup(planResolved, planStatus);
   const shouldAutoOpenPricing = shouldAutoOpenBillingRoute(
     planResolved,
     planStatus,
@@ -152,7 +152,7 @@ function AppShell() {
   // ── Auth routing ──────────────────────────────────────────────────────────────
   // ── Auth routing (central guard) ──────────────────────────────────────────────
   // Public routes that do not require authentication
-  const publicPaths = new Set<string>([
+  const _publicPaths = new Set<string>([
     "/pricing",
     "/reset-password",
     "/index.html",

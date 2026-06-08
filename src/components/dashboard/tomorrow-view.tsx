@@ -11,8 +11,7 @@ interface TomorrowViewProps {
 }
 
 export function TomorrowView({ onEventClick }: TomorrowViewProps) {
-  const { events, t, language } = useApp()
-  const isRTL = language === "ar"
+  const { events, language } = useApp()
 
   // Get tomorrow's date in LOCAL timezone (avoids UTC-shift bugs)
   const tomorrow = new Date()

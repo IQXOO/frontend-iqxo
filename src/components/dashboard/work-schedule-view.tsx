@@ -141,7 +141,7 @@ export function WorkScheduleView() {
   const isRTL = language === "ar";
 
   const displayName: string =
-    (user as any)?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
+    user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
 
   const [scheduleNameOverride, setScheduleNameOverride] = useState("");
   const searchName = scheduleNameOverride.trim() || displayName;
@@ -688,7 +688,7 @@ export function WorkScheduleView() {
         "Analyze schedule image",
         async () => {
           const backendUrl =
-            (import.meta as any).env?.VITE_BACKEND_API ||
+            import.meta.env.VITE_BACKEND_API ||
             "http://localhost:4040";
           const formData = new FormData();
           formData.append("image", file);
@@ -1399,7 +1399,7 @@ export function WorkScheduleView() {
                                 </div>
 
                                 <div className="space-y-3 pt-1">
-                                  {shiftsForDay.map((day, shiftIndex) => (
+                                  {shiftsForDay.map((day) => (
                                     <div key={day.id} className="space-y-1.5">
                                       <div
                                         className={`flex items-center gap-2 p-2 rounded-xl bg-background border border-border/70 ${isRTL ? "flex-row-reverse" : ""}`}

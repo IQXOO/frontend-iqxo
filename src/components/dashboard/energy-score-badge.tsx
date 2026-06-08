@@ -28,6 +28,7 @@ export function EnergyScoreBadge({ timeOfDay = "afternoon" }: EnergyScoreBadgePr
           </div>
           <div className="flex-1">
             <p className="text-xs text-muted-foreground font-medium">{t("energyScore")}</p>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <p className="text-lg font-bold text-foreground">{t(current.label as any)}</p>
           </div>
           <div className="text-2xl font-bold text-foreground">{current.level}%</div>

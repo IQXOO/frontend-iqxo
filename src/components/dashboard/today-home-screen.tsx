@@ -51,7 +51,7 @@ const URGENCY_STYLES: Record<UrgencyLevel, { bar: string; badge: string; badgeTe
   },
 }
 
-export function TodayHomeScreen({ onEventClick, onFabClick }: TodayHomeScreenProps) {
+export function TodayHomeScreen({ onEventClick, onFabClick: _onFabClick }: TodayHomeScreenProps) {
   const { events, language } = useApp()
 
   const todayEvents = useMemo(() =>
