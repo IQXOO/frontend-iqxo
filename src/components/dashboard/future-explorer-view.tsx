@@ -20,7 +20,12 @@ export function FutureExplorerView({ onEventClick }: FutureExplorerViewProps) {
   const dayAfterTomorrowStr = toLocalDateStr(dayAfterTomorrow)
 
   const futureEvents = events
-    .filter((e) => e.date >= dayAfterTomorrowStr)
+    .filter(
+      (e) =>
+        e.date >= dayAfterTomorrowStr &&
+        e.source !== "work_schedule" &&
+        e.source !== "work_schedule_virtual"
+    )
     .sort((a, b) => a.date.localeCompare(b.date))
 
   // Group by week (week = Monday-based, keyed by week-start LOCAL date)

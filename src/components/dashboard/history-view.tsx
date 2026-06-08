@@ -16,7 +16,12 @@ export function HistoryView({ onEventClick }: HistoryViewProps) {
   const pastEvents = useMemo(
     () =>
       events
-        .filter((e) => computePriority(e.date) === "past")
+        .filter(
+          (e) =>
+            computePriority(e.date) === "past" &&
+            e.source !== "work_schedule" &&
+            e.source !== "work_schedule_virtual"
+        )
         .sort(
           (a, b) =>
             new Date(`${b.date}T${b.time || "00:00"}`).getTime() -

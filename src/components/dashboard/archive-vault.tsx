@@ -20,7 +20,12 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
   const todayStr = toLocalDateStr(today)
 
   const pastEvents = events
-    .filter((e) => e.date < todayStr && e.source !== "work_schedule_virtual")
+    .filter(
+      (e) =>
+        e.date < todayStr &&
+        e.source !== "work_schedule_virtual" &&
+        e.source !== "work_schedule"
+    )
     .sort((a, b) => b.date.localeCompare(a.date))
 
   const handleRestore = async (event: IQXOEvent) => {

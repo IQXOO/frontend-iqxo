@@ -70,11 +70,14 @@ export default function Page() {
   const { isListening } = useVoiceInput();
   const { openEventDetail, openEventForm } = useEventEditor();
 
-  // Filter events by search
+  // Filter events by search and exclude work schedule events
   const filteredEvents = useMemo(() => {
-    if (!searchQuery.trim()) return events;
+    const base = events.filter(
+      (e) => e.source !== "work_schedule" && e.source !== "work_schedule_virtual"
+    );
+    if (!searchQuery.trim()) return base;
     const q = searchQuery.toLowerCase();
-    return events.filter(
+    return base.filter(
       (e) =>
         e.title.toLowerCase().includes(q) ||
         e.notes?.toLowerCase().includes(q) ||

@@ -5,9 +5,9 @@ import {
   X, ImagePlus, FileCheck, AlertTriangle,
 } from "lucide-react";
 import {
-  Drawer, DrawerContent, DrawerHeader, DrawerTitle,
-  DrawerDescription, DrawerFooter,
-} from "../ui/drawer";
+  Dialog, DialogContent, DialogTitle,
+  DialogDescription,
+} from "../ui/dialog";
 import { useApp } from "../../lib/store";
 import { supabase } from "../../lib/supabase";
 import { devError, devLog, devWarn, getFriendlyErrorMessage } from "../../lib/logger";
@@ -225,20 +225,54 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
   };
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
-      <DrawerContent className="bg-background border-border h-[85vh] md:h-[60vh] max-h-[85vh] md:max-h-[60vh]">
-        <DrawerHeader>
-          <DrawerTitle className="text-foreground">{editEvent ? t("editEvent") : t("addEvent")}</DrawerTitle>
-          <DrawerDescription className="sr-only">{editEvent ? t("editEvent") : t("addEvent")}</DrawerDescription>
-        </DrawerHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="fixed inset-0 z-50 w-full h-full max-h-screen bg-[#0C0C0E] border-none flex flex-col p-0 gap-0 translate-x-0 translate-y-0 top-0 left-0 max-w-none rounded-none sm:max-w-[430px] sm:h-[90vh] sm:max-h-[850px] sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:border sm:border-white/5 sm:shadow-2xl overflow-hidden outline-none"
+        showCloseButton={false}
+      >
+        <DialogTitle className="sr-only">{editEvent ? t("editEvent") : t("addEvent")}</DialogTitle>
+        <DialogDescription className="sr-only">{editEvent ? t("editEvent") : t("addEvent")}</DialogDescription>
 
-        <div className="px-4 overflow-y-auto flex-1 flex flex-col gap-4 min-h-0 pb-4">
+        {/* ── STICKY HEADER ── */}
+        <div className="flex justify-between items-center px-5 py-4 border-b border-white/[0.04] bg-[#0C0C0E]/90 backdrop-blur-xl sticky top-0 z-50 shrink-0">
+          <div className="text-xl font-bold tracking-tight">
+            <span className="text-white">IQ</span>
+            <span className="text-[#5BC0DE]">X</span>
+            <span className="text-white">O</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="w-10 h-10 rounded-full bg-white/[0.03] border border-white/[0.04] flex items-center justify-center text-white/70 hover:bg-white/[0.06] hover:border-white/[0.08] hover:text-white transition-all text-base select-none"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* ── SCROLLABLE BODY ── */}
+        <div className="px-5 py-6 overflow-y-auto flex-1 flex flex-col gap-5 min-h-0 pb-10">
+
+          {/* ── Form Header ── */}
+          <div>
+            <h2 className="text-2xl font-semibold text-[#E8E8E8]">
+              {editEvent 
+                ? (language === "ar" ? "تعديل الحدث" : "Edit Event")
+                : (language === "ar" ? "إضافة حدث جديد" : "Let's add this")
+              }
+            </h2>
+            <p className="text-sm text-[#A0A0A8] mt-1">
+              {editEvent
+                ? (language === "ar" ? "قم بتعديل تفاصيل الحدث الخاص بك أدناه" : "Modify the details of your event below")
+                : (language === "ar" ? "يرجى ملء تفاصيل حدثك الجديد أدناه" : "Fill in the details for your new event")
+              }
+            </p>
+          </div>
 
           {/* ── Attachments — single button ─────────────────────────────── */}
           <div className="space-y-2">
             {/* Preview when photo attached */}
             {imagePreview && (
-              <div className="relative rounded-2xl overflow-hidden">
+              <div className="relative rounded-[20px] overflow-hidden border border-white/[0.04]">
                 <img src={imagePreview} alt="Event" className="w-full h-36 object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                 <button type="button" onClick={() => { setImagePreview(null); setImageFile(null); }}
@@ -297,30 +331,30 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
           </div>
 
           {/* ── Title ─────────────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">{t("eventTitle")}</label>
+          <div className="flex flex-col">
+            <label className="text-[10px] font-bold text-[#A0A0A8] uppercase tracking-wider mb-2 block">{t("eventTitle")}</label>
             <input type="text" value={title} onChange={e => setTitle(e.target.value)}
               placeholder={t("eventTitlePlaceholder")}
-              className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all" />
+              className="w-full px-4 py-3.5 rounded-[20px] border border-white/[0.04] bg-[#161618] text-[#E8E8E8] text-sm placeholder-[#6E6E78] outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15" />
           </div>
 
           {/* ── Date + Time ───────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">{t("eventDate")}</label>
+            <div className="flex flex-col">
+              <label className="text-[10px] font-bold text-[#A0A0A8] uppercase tracking-wider mb-2 block">{t("eventDate")}</label>
               <input type="date" value={date} onChange={e => handleDateChange(e.target.value)}
-                className={`rounded-xl bg-input px-4 py-3 text-sm text-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
+                className={`w-full px-4 py-3.5 rounded-[20px] border border-white/[0.04] bg-[#161618] text-[#E8E8E8] text-sm outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">{t("eventTime")}</label>
+            <div className="flex flex-col">
+              <label className="text-[10px] font-bold text-[#A0A0A8] uppercase tracking-wider mb-2 block">{t("eventTime")}</label>
               <input type="time" value={time} onChange={e => handleTimeChange(e.target.value)}
-                className={`rounded-xl bg-input px-4 py-3 text-sm text-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
+                className={`w-full px-4 py-3.5 rounded-[20px] border border-white/[0.04] bg-[#161618] text-[#E8E8E8] text-sm outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
             </div>
           </div>
 
           {/* ── TASK 3: Conflict warning ───────────────────────────────────── */}
           {conflictTitle && (
-            <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+            <div className="flex items-start gap-2 p-3 rounded-[20px] bg-amber-500/10 border border-amber-500/30">
               <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-400 leading-relaxed">
                 {language === "ar" ? "⚠️ تعارض مع:" : language === "fr" ? "⚠️ Conflit avec :" : "⚠️ Conflict with:"}{" "}
@@ -331,60 +365,58 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
 
           {/* ── Phone + Email ─────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">{t("eventPhone")}</label>
+            <div className="flex flex-col">
+              <label className="text-[10px] font-bold text-[#A0A0A8] uppercase tracking-wider mb-2 block">{t("eventPhone")}</label>
               <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                 placeholder={t("eventPhonePlaceholder")}
-                className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all" />
+                className="w-full px-4 py-3.5 rounded-[20px] border border-white/[0.04] bg-[#161618] text-[#E8E8E8] text-sm placeholder-[#6E6E78] outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15" />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
+            <div className="flex flex-col">
+              <label className="text-[10px] font-bold text-[#A0A0A8] uppercase tracking-wider mb-2 block">
                 {language === "ar" ? "البريد الإلكتروني" : language === "fr" ? "E-mail" : "Email"}
               </label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="email@..."
-                className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all" />
+                className="w-full px-4 py-3.5 rounded-[20px] border border-white/[0.04] bg-[#161618] text-[#E8E8E8] text-sm placeholder-[#6E6E78] outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15" />
             </div>
           </div>
 
           {/* ── Location ──────────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">{t("eventLocation")}</label>
+          <div className="flex flex-col">
+            <label className="text-[10px] font-bold text-[#A0A0A8] uppercase tracking-wider mb-2 block">{t("eventLocation")}</label>
             <input type="text" value={location} onChange={e => setLocation(e.target.value)}
               placeholder={t("eventLocationPlaceholder")}
-              className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all" />
+              className="w-full px-4 py-3.5 rounded-[20px] border border-white/[0.04] bg-[#161618] text-[#E8E8E8] text-sm placeholder-[#6E6E78] outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15" />
           </div>
 
           {/* ── Notes ─────────────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">{t("eventNotes")}</label>
+          <div className="flex flex-col">
+            <label className="text-[10px] font-bold text-[#A0A0A8] uppercase tracking-wider mb-2 block">{t("eventNotes")}</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)}
               placeholder={t("eventNotesPlaceholder")} rows={3}
-              className="rounded-xl bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-2 focus:ring-primary/50 transition-all resize-none" />
+              className="w-full px-4 py-3.5 rounded-[20px] border border-white/[0.04] bg-[#161618] text-[#E8E8E8] text-sm placeholder-[#6E6E78] outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 resize-none" />
           </div>
 
           {/* ── Error ─────────────────────────────────────────────────────── */}
           {uploadError && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 border border-destructive/20">
+            <div className="flex items-center gap-2 p-3 rounded-[20px] bg-destructive/10 border border-destructive/20">
               <X className="h-4 w-4 text-destructive shrink-0" />
               <p className="text-xs text-destructive">{uploadError}</p>
             </div>
           )}
         </div>
 
-        <DrawerFooter className="flex-row gap-3 border-t border-border px-4 py-4 shrink-0">
-          <button onClick={() => onOpenChange(false)}
-            className="flex-1 rounded-xl bg-secondary py-3 text-sm font-semibold text-secondary-foreground transition-all hover:bg-secondary/80 active:scale-[0.98]">
-            {t("cancel")}
-          </button>
-          {/* TASK 3: disabled when conflict active */}
-          <button onClick={handleSave}
+        {/* ── STICKY FOOTER SAVE BUTTON ── */}
+        <div className="border-t border-white/[0.04] px-5 py-4 shrink-0 bg-[#0C0C0E]">
+          <button
+            onClick={handleSave}
             disabled={!isValid || isUploading || !!conflictTitle}
-            className="flex-1 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed">
-            {isUploading ? lbl.uploading : t("save")}
+            className="w-full py-4 rounded-[20px] font-semibold text-black transition-all duration-300 bg-gradient-to-r from-[#5BC0DE] to-[#4AA8C4] hover:shadow-[0_8px_24px_rgba(91,192,222,0.25)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+          >
+            {isUploading ? lbl.uploading : (language === "ar" ? "حفظ الحدث" : "Save Event")}
           </button>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

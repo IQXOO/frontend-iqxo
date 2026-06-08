@@ -19,8 +19,13 @@ export function TomorrowView({ onEventClick }: TomorrowViewProps) {
   tomorrow.setDate(tomorrow.getDate() + 1)
   const tomorrowDateStr = toLocalDateStr(tomorrow)
 
-  // Filter events for tomorrow
-  const tomorrowEvents = events.filter((e) => e.date === tomorrowDateStr)
+  // Filter events for tomorrow (exclude work schedule events)
+  const tomorrowEvents = events.filter(
+    (e) =>
+      e.date === tomorrowDateStr &&
+      e.source !== "work_schedule" &&
+      e.source !== "work_schedule_virtual"
+  )
 
   if (tomorrowEvents.length === 0) {
     return (

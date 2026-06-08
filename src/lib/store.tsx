@@ -1463,7 +1463,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const getEventsByPriority = useCallback(
     (priority: Priority) =>
-      events.filter((e) => computePriority(e.date) === priority),
+      events.filter(
+        (e) =>
+          computePriority(e.date) === priority &&
+          e.source !== "work_schedule" &&
+          e.source !== "work_schedule_virtual"
+      ),
     [events],
   );
 
