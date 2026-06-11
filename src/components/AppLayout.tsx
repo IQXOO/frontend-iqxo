@@ -4,10 +4,14 @@ import { DashboardHeader } from "../components/dashboard/header";
 import { BottomNav } from "../components/dashboard/bottom-nav";
 import { useApp } from "../lib/store";
 import { navigateToPath } from "../lib/navigation";
-import { CommandPalette } from "../components/dashboard/command-palette";
-import { exportEventsToPDF } from "../lib/export-pdf";
 import { EventEditorProvider, useEventEditor } from "../lib/event-editor-context";
 import { shouldAutoOpenBillingRoute } from "../lib/billing-utils";
+
+const CommandPalette = React.lazy(() =>
+  import("../components/dashboard/command-palette").then((module) => ({
+    default: module.CommandPalette,
+  }))
+);
 
 function AppLayoutContent() {
   const { events, signOut, toggleTheme, user, planStatus, planResolved, trialEndsAt, language } = useApp();
@@ -269,29 +273,34 @@ function AppLayoutContent() {
         </div>
       )}
 
-      <CommandPalette
-        isOpen={commandOpen}
-        onOpenChange={setCommandOpen}
-        onAddEvent={() => {
-          setCommandOpen(false);
-          navigateToPath("/home");
-          window.setTimeout(() => openAddEvent(), 0);
-        }}
-        onToggleDarkMode={() => {
-          toggleTheme();
-        }}
-        onExportPDF={() => {
-          exportEventsToPDF(events, user?.email || "user@example.com");
-        }}
-        onLogout={async () => {
-          await signOut();
-        }}
-        onEventSelect={(event) => {
-          setCommandOpen(false);
-          navigateToPath("/home");
-          window.setTimeout(() => openEventDetail(event), 0);
-        }}
-      />
+      {commandOpen && (
+        <React.Suspense fallback={null}>
+          <CommandPalette
+            isOpen={commandOpen}
+            onOpenChange={setCommandOpen}
+            onAddEvent={() => {
+              setCommandOpen(false);
+              navigateToPath("/home");
+              window.setTimeout(() => openAddEvent(), 0);
+            }}
+            onToggleDarkMode={() => {
+              toggleTheme();
+            }}
+            onExportPDF={async () => {
+              const { exportEventsToPDF } = await import("../lib/export-pdf");
+              exportEventsToPDF(events, user?.email || "user@example.com");
+            }}
+            onLogout={async () => {
+              await signOut();
+            }}
+            onEventSelect={(event) => {
+              setCommandOpen(false);
+              navigateToPath("/home");
+              window.setTimeout(() => openEventDetail(event), 0);
+            }}
+          />
+        </React.Suspense>
+      )}
     </div>
   );
 }

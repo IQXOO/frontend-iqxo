@@ -8,7 +8,6 @@ import { useApp } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
 import { SmartActionsCard } from "./smart-actions-card"
-import { exportEventsToPDF } from "@/lib/export-pdf"
 import { lazyNamed } from "@/lib/lazy"
 
 const BentoChart = lazyNamed(() => import("./bento-chart"), "BentoChart")
@@ -522,7 +521,10 @@ export function ProfileIdentityHub() {
           </div>
         </div>
         <motion.button
-          onClick={() => exportEventsToPDF(events, user?.email)}
+          onClick={async () => {
+            const { exportEventsToPDF } = await import("@/lib/export-pdf");
+            exportEventsToPDF(events, user?.email);
+          }}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-emerald-500/20 to-blue-500/20 border border-emerald-500/30 text-emerald-400 text-sm font-medium hover:from-emerald-500/30 hover:to-blue-500/30 transition-all"
