@@ -227,23 +227,23 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="fixed inset-0 z-50 w-full h-full max-h-screen bg-[#0C0C0E] border-none flex flex-col p-0 gap-0 translate-x-0 translate-y-0 top-0 left-0 max-w-none rounded-none sm:max-w-[430px] sm:h-[90vh] sm:max-h-[850px] sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:border sm:border-white/5 sm:shadow-2xl overflow-hidden outline-none"
+        className="fixed inset-0 z-50 w-full h-full max-h-screen bg-background border-none flex flex-col p-0 gap-0 translate-x-0 translate-y-0 top-0 left-0 max-w-none rounded-none sm:max-w-[430px] sm:h-[90vh] sm:max-h-[850px] sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:border sm:border-border sm:shadow-2xl overflow-hidden outline-none"
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">{editEvent ? t("editEvent") : t("addEvent")}</DialogTitle>
         <DialogDescription className="sr-only">{editEvent ? t("editEvent") : t("addEvent")}</DialogDescription>
 
         {/* ── STICKY HEADER ── */}
-        <div className="flex justify-between items-center px-5 py-4 border-b border-white/[0.04] bg-[#0C0C0E]/90 backdrop-blur-xl sticky top-0 z-50 shrink-0">
+        <div className="flex justify-between items-center px-5 py-4 border-b border-border bg-background/90 backdrop-blur-xl sticky top-0 z-50 shrink-0">
           <div className="text-xl font-bold tracking-tight">
-            <span className="text-white">IQ</span>
+            <span className="text-foreground">IQ</span>
             <span className="text-[#5BC0DE]">X</span>
-            <span className="text-white">O</span>
+            <span className="text-foreground">O</span>
           </div>
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="w-10 h-10 rounded-full bg-white/[0.03] border border-white/[0.04] flex items-center justify-center text-white/70 hover:bg-white/[0.06] hover:border-white/[0.08] hover:text-white transition-all text-base select-none"
+            className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-all text-base select-none"
           >
             ✕
           </button>
@@ -254,13 +254,13 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
 
           {/* ── Form Header ── */}
           <div>
-            <h2 className="text-2xl font-semibold text-[#E8E8E8]">
+            <h2 className="text-2xl font-semibold text-foreground">
               {editEvent 
                 ? (language === "ar" ? "تعديل الحدث" : "Edit Event")
                 : (language === "ar" ? "إضافة حدث جديد" : "Let's add this")
               }
             </h2>
-            <p className="text-sm text-[#A0A0A8] mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {editEvent
                 ? (language === "ar" ? "قم بتعديل تفاصيل الحدث الخاص بك أدناه" : "Modify the details of your event below")
                 : (language === "ar" ? "يرجى ملء تفاصيل حدثك الجديد أدناه" : "Fill in the details for your new event")
@@ -272,7 +272,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
           <div className="space-y-2">
             {/* Preview when photo attached */}
             {imagePreview && (
-              <div className="relative rounded-[20px] overflow-hidden border border-white/[0.04]">
+              <div className="relative rounded-[20px] overflow-hidden border border-border">
                 <img src={imagePreview} alt="Event" className="w-full h-36 object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                 <button type="button" onClick={() => { setImagePreview(null); setImageFile(null); }}
@@ -332,23 +332,23 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
 
           {/* ── Title ─────────────────────────────────────────────────────── */}
           <div className="flex flex-col">
-            <label className="text-[10px] font-bold text-[#A0A0A8] uppercase tracking-wider mb-2 block">{t("eventTitle")}</label>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{t("eventTitle")}</label>
             <input type="text" value={title} onChange={e => setTitle(e.target.value)}
               placeholder={t("eventTitlePlaceholder")}
-              className="w-full px-4 py-3.5 rounded-[20px] border border-white/[0.04] bg-[#161618] text-[#E8E8E8] text-sm placeholder-[#6E6E78] outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15" />
+              className="w-full px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15" />
           </div>
 
           {/* ── Date + Time ───────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col">
-              <label className="text-[10px] font-bold text-[#A0A0A8] uppercase tracking-wider mb-2 block">{t("eventDate")}</label>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{t("eventDate")}</label>
               <input type="date" value={date} onChange={e => handleDateChange(e.target.value)}
-                className={`w-full px-4 py-3.5 rounded-[20px] border border-white/[0.04] bg-[#161618] text-[#E8E8E8] text-sm outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
+                className={`w-full px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
             </div>
             <div className="flex flex-col">
-              <label className="text-[10px] font-bold text-[#A0A0A8] uppercase tracking-wider mb-2 block">{t("eventTime")}</label>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{t("eventTime")}</label>
               <input type="time" value={time} onChange={e => handleTimeChange(e.target.value)}
-                className={`w-full px-4 py-3.5 rounded-[20px] border border-white/[0.04] bg-[#161618] text-[#E8E8E8] text-sm outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
+                className={`w-full px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
             </div>
           </div>
 
@@ -366,35 +366,35 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
           {/* ── Phone + Email ─────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col">
-              <label className="text-[10px] font-bold text-[#A0A0A8] uppercase tracking-wider mb-2 block">{t("eventPhone")}</label>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{t("eventPhone")}</label>
               <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                 placeholder={t("eventPhonePlaceholder")}
-                className="w-full px-4 py-3.5 rounded-[20px] border border-white/[0.04] bg-[#161618] text-[#E8E8E8] text-sm placeholder-[#6E6E78] outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15" />
+                className="w-full px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15" />
             </div>
             <div className="flex flex-col">
-              <label className="text-[10px] font-bold text-[#A0A0A8] uppercase tracking-wider mb-2 block">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">
                 {language === "ar" ? "البريد الإلكتروني" : language === "fr" ? "E-mail" : "Email"}
               </label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="email@..."
-                className="w-full px-4 py-3.5 rounded-[20px] border border-white/[0.04] bg-[#161618] text-[#E8E8E8] text-sm placeholder-[#6E6E78] outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15" />
+                className="w-full px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15" />
             </div>
           </div>
 
           {/* ── Location ──────────────────────────────────────────────────── */}
           <div className="flex flex-col">
-            <label className="text-[10px] font-bold text-[#A0A0A8] uppercase tracking-wider mb-2 block">{t("eventLocation")}</label>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{t("eventLocation")}</label>
             <input type="text" value={location} onChange={e => setLocation(e.target.value)}
               placeholder={t("eventLocationPlaceholder")}
-              className="w-full px-4 py-3.5 rounded-[20px] border border-white/[0.04] bg-[#161618] text-[#E8E8E8] text-sm placeholder-[#6E6E78] outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15" />
+              className="w-full px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15" />
           </div>
 
           {/* ── Notes ─────────────────────────────────────────────────────── */}
           <div className="flex flex-col">
-            <label className="text-[10px] font-bold text-[#A0A0A8] uppercase tracking-wider mb-2 block">{t("eventNotes")}</label>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{t("eventNotes")}</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)}
               placeholder={t("eventNotesPlaceholder")} rows={3}
-              className="w-full px-4 py-3.5 rounded-[20px] border border-white/[0.04] bg-[#161618] text-[#E8E8E8] text-sm placeholder-[#6E6E78] outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 resize-none" />
+              className="w-full px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 resize-none" />
           </div>
 
           {/* ── Error ─────────────────────────────────────────────────────── */}
@@ -407,7 +407,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
         </div>
 
         {/* ── STICKY FOOTER SAVE BUTTON ── */}
-        <div className="border-t border-white/[0.04] px-5 py-4 shrink-0 bg-[#0C0C0E]">
+        <div className="border-t border-border px-5 py-4 shrink-0 bg-background">
           <button
             onClick={handleSave}
             disabled={!isValid || isUploading || !!conflictTitle}
