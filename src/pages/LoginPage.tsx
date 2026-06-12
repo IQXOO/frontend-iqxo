@@ -62,6 +62,8 @@ export default function LoginPage() {
       forgotSuccessBody: "If that email is registered, check your inbox and spam folder for the reset link.",
       forgotRetry: "Send another link",
       forgotCancel: "Back to sign in",
+      termsLink: 'Terms of Service',
+      privacyLink: 'Privacy Policy',
       checkEmail: "Account created! Check your email to confirm, then sign in.",
     },
     fr: {
@@ -95,6 +97,8 @@ export default function LoginPage() {
       forgotSuccessBody: "Si cet e-mail existe, vérifie ta boîte de réception et les spams.",
       forgotRetry: "Envoyer un autre lien",
       forgotCancel: "Retour à la connexion",
+      termsLink: 'Conditions d\'utilisation',
+      privacyLink: 'Politique de Confidentialité',
       checkEmail: "Compte créé ! Vérifiez votre e-mail, puis connectez-vous.",
     },
     ar: {
@@ -128,6 +132,8 @@ export default function LoginPage() {
       forgotSuccessBody: 'إذا كان هذا البريد مسجلًا، فتحقق من صندوق الوارد والرسائل غير المرغوب فيها.',
       forgotRetry: 'إرسال رابط آخر',
       forgotCancel: 'العودة لتسجيل الدخول',
+      termsLink: 'شروط الخدمة',
+      privacyLink: 'سياسة الخصوصية',
       checkEmail: 'تم إنشاء الحساب! تحقق من بريدك الإلكتروني، ثم سجّل الدخول.',
     }
   };
@@ -793,8 +799,8 @@ export default function LoginPage() {
 
               <div className="terms">
                 <span>{t.terms} </span>
-                <a href="/terms">Terms & Conditions</a> <span> {t.and} </span>
-                <a href="/privacy">Privacy Policy</a>.
+                <a href="/terms">{t.termsLink}</a> <span> {t.and} </span>
+                <a href="/privacy">{t.privacyLink}</a>.
               </div>
             </>
           ) : (

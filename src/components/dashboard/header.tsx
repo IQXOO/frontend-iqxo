@@ -8,6 +8,8 @@ import { motion } from "framer-motion"
 import { BrandLogo } from "../brand-logo"
 import { lazyNamed } from "../../lib/lazy"
 
+import { useProfile } from "../../hooks/use-profile"
+
 const NotificationBell = lazyNamed(() => import("./notification-bell"), "NotificationBell")
 
 interface DashboardHeaderProps {
@@ -24,6 +26,7 @@ export function DashboardHeader({
   activeTab = "home"
 }: DashboardHeaderProps) {
   const { user, theme, toggleTheme, language, toggleLanguage } = useApp()
+  const { avatarUrl } = useProfile()
 
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] || 
     user?.email?.split("@")[0] || 
@@ -31,9 +34,10 @@ export function DashboardHeader({
 
   return (
     <header className="flex items-center justify-between px-5 pt-4 pb-2">
-      <div className="flex flex-col">
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground font-geometric">
-          <BrandLogo className="text-2xl font-bold tracking-tight font-geometric" />
+      {/* Logo container taking up remaining space on the left and centering the logo */}
+      <div className="flex-1 flex justify-center items-center">
+        <h1 className="flex items-center gap-2 text-foreground font-geometric">
+          <BrandLogo className="text-[28.8px] font-bold tracking-tight font-geometric" />
         </h1>
       </div>
       
@@ -93,7 +97,7 @@ export function DashboardHeader({
         >
           <Avatar className="h-9 w-9 ring-2 ring-primary/30 ring-offset-2 ring-offset-background cursor-pointer transition-all group-hover:ring-primary/60">
             <AvatarImage
-              src={user?.user_metadata?.avatar_url || `https://api.dicebear.com/9.x/notionists/svg?seed=${firstName}`}
+              src={avatarUrl || `https://api.dicebear.com/9.x/notionists/svg?seed=${firstName}`}
               alt="User avatar"
             />
             <AvatarFallback className="bg-secondary text-secondary-foreground text-xs">
