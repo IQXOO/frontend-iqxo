@@ -50,6 +50,15 @@ export default tseslint.config(
           ]
         }
       ],
+
+      // ✅ 4) منع أو التحذير من استدعاء Namespace (import * as X)
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector: "ImportNamespaceSpecifier",
+          message: "Namespace imports (import * as X) are discouraged. Use named imports instead to support tree-shaking."
+        }
+      ],
     },
   }
 );

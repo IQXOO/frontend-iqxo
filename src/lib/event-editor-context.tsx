@@ -97,23 +97,27 @@ export function EventEditorProvider({ children }: EventEditorProviderProps) {
   return (
     <EventEditorContext.Provider value={value}>
       {children}
-      <Suspense fallback={null}>
-        <EventFormModal
-          open={formOpen}
-          onOpenChange={handleFormClose}
-          editEvent={editEvent}
-          prefillData={voicePrefill}
-          prefillImageUrl={prefillImageUrl}
-        />
-      </Suspense>
-      <Suspense fallback={null}>
-        <EventDetailModal
-          open={detailOpen}
-          onOpenChange={handleDetailClose}
-          event={selectedEvent}
-          onEdit={handleEditFromDetail}
-        />
-      </Suspense>
+      {formOpen && (
+        <Suspense fallback={null}>
+          <EventFormModal
+            open={formOpen}
+            onOpenChange={handleFormClose}
+            editEvent={editEvent}
+            prefillData={voicePrefill}
+            prefillImageUrl={prefillImageUrl}
+          />
+        </Suspense>
+      )}
+      {detailOpen && selectedEvent && (
+        <Suspense fallback={null}>
+          <EventDetailModal
+            open={detailOpen}
+            onOpenChange={handleDetailClose}
+            event={selectedEvent}
+            onEdit={handleEditFromDetail}
+          />
+        </Suspense>
+      )}
     </EventEditorContext.Provider>
   );
 }

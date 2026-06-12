@@ -294,36 +294,41 @@ export default function Page() {
       </AnimatePresence>
 
       {/* Voice modal (triggered by action hub mic button) */}
-      <Suspense fallback={null}>
-        <VoiceButton
-          externalOpen={voiceModalOpen}
-          onClose={() => setVoiceModalOpen(false)}
-          onTranscript={handleVoiceResult}
-        />
-      </Suspense>
+      {voiceModalOpen && (
+        <Suspense fallback={null}>
+          <VoiceButton
+            externalOpen={voiceModalOpen}
+            onClose={() => setVoiceModalOpen(false)}
+            onTranscript={handleVoiceResult}
+          />
+        </Suspense>
+      )}
 
       {/* Upload modal (triggered by FabHub) */}
-
-      <Suspense fallback={null}>
-        <UploadButton
-          externalOpen={uploadOpen}
-          onExternalOpenChange={setUploadOpen}
-          autoOpenPicker={uploadAutoOpenPicker}
-          incomingFile={pendingUploadFile}
-          onExtractedData={handlePhotoExtracted}
-        />
-      </Suspense>
+      {uploadOpen && (
+        <Suspense fallback={null}>
+          <UploadButton
+            externalOpen={uploadOpen}
+            onExternalOpenChange={setUploadOpen}
+            autoOpenPicker={uploadAutoOpenPicker}
+            incomingFile={pendingUploadFile}
+            onExtractedData={handlePhotoExtracted}
+          />
+        </Suspense>
+      )}
 
       {/* Confirmation modal for voice and photo extracted events */}
-      <Suspense fallback={null}>
-        <EventConfirmationModal
-          open={confirmOpen}
-          onOpenChange={setConfirmOpen}
-          extractedData={confirmData}
-          source={confirmSource}
-          imageUrl={confirmImageUrl}
-        />
-      </Suspense>
+      {confirmOpen && (
+        <Suspense fallback={null}>
+          <EventConfirmationModal
+            open={confirmOpen}
+            onOpenChange={setConfirmOpen}
+            extractedData={confirmData}
+            source={confirmSource}
+            imageUrl={confirmImageUrl}
+          />
+        </Suspense>
+      )}
 
       {isOnHome && (
         <motion.div
@@ -396,12 +401,14 @@ export default function Page() {
       />
 
       {/* Tomorrow's Chain Modal */}
-      <Suspense fallback={null}>
-        <TomorrowChainModal
-          open={tomorrowModalOpen}
-          onClose={() => setTomorrowModalOpen(false)}
-        />
-      </Suspense>
+      {tomorrowModalOpen && (
+        <Suspense fallback={null}>
+          <TomorrowChainModal
+            open={tomorrowModalOpen}
+            onClose={() => setTomorrowModalOpen(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
