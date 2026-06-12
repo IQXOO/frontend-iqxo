@@ -15,6 +15,8 @@ const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
+const TermsPage = lazy(() => import("./pages/TermsPage"));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const TomorrowPage = lazy(() => import("./pages/TomorrowPage"));
 const FuturePage = lazy(() => import("./pages/FuturePage"));
 const SchedulePage = lazy(() => import("./pages/SchedulePage"));
@@ -154,6 +156,8 @@ function _AppShell() {
   // Public routes that do not require authentication
   const _publicPaths = new Set<string>([
     "/pricing",
+    "/terms",
+    "/privacy",
     "/reset-password",
     "/index.html",
   ]);
@@ -198,6 +202,8 @@ function App() {
                 {/* Public routes */}
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/onboarding" element={<OnboardingPage />} />
               </Routes>

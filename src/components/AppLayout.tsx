@@ -150,12 +150,14 @@ function AppLayoutContent() {
 
   return (
     <div className={`min-h-screen max-w-md mx-auto bg-background text-foreground relative ${isRTL ? "dir-rtl" : ""}`}>
-      <DashboardHeader
-        onProfileClick={() => navigateToPath("/profile")}
-        onSettingsClick={() => navigateToPath("/profile")}
-        onSearchClick={openCommandPalette}
-        activeTab={active as string}
-      />
+      {location.pathname !== "/profile" && (
+        <DashboardHeader
+          onProfileClick={() => navigateToPath("/profile")}
+          onSettingsClick={() => navigateToPath("/profile")}
+          onSearchClick={openCommandPalette}
+          activeTab={active as string}
+        />
+      )}
 
       <main className="pb-28">
         <Outlet />

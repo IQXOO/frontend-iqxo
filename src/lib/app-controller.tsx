@@ -70,7 +70,7 @@ export default function AppController() {
 
   // If not authenticated and not on a public path, redirect to /login
   useEffect(() => {
-    const publicPaths = new Set(["/pricing", "/reset-password", "/index.html", "/onboarding"]);
+    const publicPaths = new Set(["/pricing", "/terms", "/privacy", "/reset-password", "/index.html", "/onboarding"]);
     if (!user && !publicPaths.has(location.pathname) && location.pathname !== "/login") {
       navigate("/login", { replace: true });
     }
