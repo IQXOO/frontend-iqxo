@@ -1415,7 +1415,7 @@ export function WorkScheduleView() {
                                               e.target.value,
                                             )
                                           }
-                                          className="flex-1 bg-transparent text-sm text-foreground outline-none [color-scheme:dark]"
+                                          className="flex-1 min-w-0 bg-transparent text-sm text-foreground outline-none [color-scheme:dark]"
                                         />
                                         <span className="text-muted-foreground text-xs">
                                           →
@@ -1430,7 +1430,7 @@ export function WorkScheduleView() {
                                               e.target.value,
                                             )
                                           }
-                                          className="flex-1 bg-transparent text-sm text-foreground outline-none [color-scheme:dark]"
+                                          className="flex-1 min-w-0 bg-transparent text-sm text-foreground outline-none [color-scheme:dark]"
                                         />
                                         <button
                                           onClick={() => removeShift(day.id!)}

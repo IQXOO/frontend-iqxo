@@ -340,15 +340,15 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
 
           {/* ── Date + Time ───────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{t("eventDate")}</label>
               <input type="date" value={date} onChange={e => handleDateChange(e.target.value)}
-                className={`w-full px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
+                className={`w-full min-w-0 px-3 sm:px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{t("eventTime")}</label>
               <input type="time" value={time} onChange={e => handleTimeChange(e.target.value)}
-                className={`w-full px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
+                className={`w-full min-w-0 px-3 sm:px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
             </div>
           </div>
 
@@ -411,7 +411,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
           <button
             onClick={handleSave}
             disabled={!isValid || isUploading || !!conflictTitle}
-            className="w-full py-4 rounded-[20px] font-semibold text-black transition-all duration-300 bg-gradient-to-r from-[#5BC0DE] to-[#4AA8C4] hover:shadow-[0_8px_24px_rgba(91,192,222,0.25)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+            className="w-full py-4 rounded-[20px] font-semibold text-black transition-all duration-300 bg-[#5BC0DE] hover:bg-[#45B8D8] hover:shadow-[0_8px_24px_rgba(91,192,222,0.25)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
           >
             {isUploading ? lbl.uploading : (language === "ar" ? "حفظ الحدث" : "Save Event")}
           </button>
