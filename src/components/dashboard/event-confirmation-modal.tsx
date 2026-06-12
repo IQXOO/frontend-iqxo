@@ -187,7 +187,7 @@ export function EventConfirmationModal({
 
           {/* Date & Time row */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 min-w-0">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                 <Calendar className="h-3 w-3" />
                 {labels.date}
@@ -197,15 +197,15 @@ export function EventConfirmationModal({
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full rounded-xl bg-secondary/60 px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full min-w-0 rounded-xl bg-secondary/60 px-2.5 sm:px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               ) : (
-                <p className="rounded-xl bg-secondary/40 px-3.5 py-2.5 text-sm text-foreground">
+                <p className="rounded-xl bg-secondary/40 px-3.5 py-2.5 text-sm text-foreground truncate">
                   {date || "-"}
                 </p>
               )}
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 min-w-0">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                 <Clock className="h-3 w-3" />
                 {labels.time}
@@ -215,10 +215,10 @@ export function EventConfirmationModal({
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="w-full rounded-xl bg-secondary/60 px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full min-w-0 rounded-xl bg-secondary/60 px-2.5 sm:px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               ) : (
-                <p className="rounded-xl bg-secondary/40 px-3.5 py-2.5 text-sm text-foreground">
+                <p className="rounded-xl bg-secondary/40 px-3.5 py-2.5 text-sm text-foreground truncate">
                   {time || "-"}
                 </p>
               )}
