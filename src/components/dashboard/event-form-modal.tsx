@@ -335,13 +335,17 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col min-w-0">
               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{t("eventDate")}</label>
-              <input type="date" value={date} onChange={e => handleDateChange(e.target.value)}
-                className={`w-full min-w-0 px-3 sm:px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
+              <div className="w-full rounded-[20px] border border-border bg-secondary/40 transition-all duration-300 focus-within:border-[#5BC0DE] focus-within:ring-4 focus-within:ring-[#5BC0DE]/15 overflow-hidden flex items-center">
+                <input type="date" value={date} onChange={e => handleDateChange(e.target.value)}
+                  className={`w-full bg-transparent border-none outline-none px-3 sm:px-4 py-3.5 text-sm sm:text-base text-foreground min-w-0 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
+              </div>
             </div>
             <div className="flex flex-col min-w-0">
               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{t("eventTime")}</label>
-              <input type="time" value={time} onChange={e => handleTimeChange(e.target.value)}
-                className={`w-full min-w-0 px-3 sm:px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
+              <div className="w-full rounded-[20px] border border-border bg-secondary/40 transition-all duration-300 focus-within:border-[#5BC0DE] focus-within:ring-4 focus-within:ring-[#5BC0DE]/15 overflow-hidden flex items-center">
+                <input type="time" value={time} onChange={e => handleTimeChange(e.target.value)}
+                  className={`w-full bg-transparent border-none outline-none px-3 sm:px-4 py-3.5 text-sm sm:text-base text-foreground min-w-0 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
+              </div>
             </div>
           </div>
 
