@@ -61,17 +61,4 @@ export default tseslint.config(
       ],
     },
   },
-
-  // ── استثناءات لمكتبة Shadcn UI (عشان متطلعش تحذيرات على الكود الجاهز) ──
-  {
-    files: [
-      "src/components/ui/**",
-      "src/components/theme-provider.tsx",
-      "src/hooks/use-mobile.ts",
-      "src/hooks/use-toast.ts"
-    ],
-    rules: {
-      "no-restricted-syntax": "off"
-    }
-  }
 );
