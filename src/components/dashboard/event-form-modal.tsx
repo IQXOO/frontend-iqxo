@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   X, ImagePlus, FileCheck, AlertTriangle,
 } from "lucide-react";
@@ -110,7 +110,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
 
   // ── Task 3: Conflict check ─────────────────────────────────────────────────
   // Returns title of conflicting event within 60 min on the same date
-  const findConflict = (d: string, tm: string): string | null => {
+  const findConflict = useCallback((d: string, tm: string): string | null => {
     if (!d || !tm) return null;
     const checkDt = new Date(`${d}T${tm}`);
     const checkMins = checkDt.getHours() * 60 + checkDt.getMinutes();
@@ -143,10 +143,15 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
     }
 
     return null;
-  };
+  }, [events, editEvent, workSchedule, language]);
 
-  const handleDateChange = (val: string) => { setDate(val); setConflictTitle(findConflict(val, time)); };
-  const handleTimeChange = (val: string) => { setTime(val); setConflictTitle(findConflict(date, val)); };
+  // Run conflict check reactive to input or schedule data changes
+  useEffect(() => {
+    setConflictTitle(findConflict(date, time));
+  }, [date, time, findConflict]);
+
+  const handleDateChange = (val: string) => { setDate(val); };
+  const handleTimeChange = (val: string) => { setTime(val); };
 
   // ── File handlers ──────────────────────────────────────────────────────────
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,18 +182,6 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
   // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!title.trim() || !date || !user) return;
-    if (conflictTitle) {
-      const message = language === "ar" ? `تعارض مع "${conflictTitle}" — حدث في نفس الوقت`
-        : language === "fr" ? `Conflit avec "${conflictTitle}" — événement au même moment`
-        : `Time conflict with "${conflictTitle}" — you already have an event at this time`
-      setUploadError(message);
-      toast({
-        title: "Time conflict",
-        description: message,
-        variant: "destructive",
-      });
-      return;
-    }
     setIsUploading(true); setUploadError(null);
     try {
       let finalImageUrl: string | undefined = imageFile ? undefined : (imagePreview ?? undefined);
@@ -357,7 +350,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
             <div className="flex items-start gap-2 p-3 rounded-[20px] bg-amber-500/10 border border-amber-500/30">
               <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-400 leading-relaxed">
-                {language === "ar" ? "⚠️ تعارض مع:" : language === "fr" ? "⚠️ Conflit avec :" : "⚠️ Conflict with:"}{" "}
+                {language === "ar" ? " تعارض مع: " : language === "fr" ? " Conflit avec : " : " Conflict with: "}
                 <span className="font-semibold">{conflictTitle}</span>
               </p>
             </div>
@@ -410,7 +403,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
         <div className="border-t border-border px-5 py-4 shrink-0 bg-background">
           <button
             onClick={handleSave}
-            disabled={!isValid || isUploading || !!conflictTitle}
+            disabled={!isValid || isUploading}
             className="w-full py-4 rounded-[20px] font-semibold text-black transition-all duration-300 bg-[#5BC0DE] hover:bg-[#45B8D8] hover:shadow-[0_8px_24px_rgba(91,192,222,0.25)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
           >
             {isUploading ? lbl.uploading : (language === "ar" ? "حفظ الحدث" : "Save Event")}
