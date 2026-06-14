@@ -773,74 +773,84 @@ export function WorkScheduleView() {
       >
         <div className="mx-auto flex w-full max-w-screen-sm justify-end overflow-visible px-5 pointer-events-auto">
           <div className="flex flex-col items-end gap-3">
-        {/* Name prompt */}
+        {/* Name prompt (Centered Modal) */}
         <AnimatePresence>
           {showNamePrompt && (
-            <motion.div
-              key="name-prompt"
-              initial={{ opacity: 0, y: 16, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 16, scale: 0.95 }}
-              className="bg-background/98 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-4 w-72 space-y-3"
-            >
-              <div
-                className={`flex items-center justify-between ${isRTL ? "flex-row-reverse" : ""}`}
+            <>
+              <motion.div
+                key="name-prompt-overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowNamePrompt(false)}
+                className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm pointer-events-auto"
+              />
+              <motion.div
+                key="name-prompt-modal"
+                initial={{ opacity: 0, scale: 0.95, y: "calc(-50% + 20px)", x: "-50%" }}
+                animate={{ opacity: 1, scale: 1, y: "-50%", x: "-50%" }}
+                exit={{ opacity: 0, scale: 0.95, y: "calc(-50% + 20px)", x: "-50%" }}
+                className="fixed top-1/2 left-1/2 z-50 bg-background/98 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-5 w-11/12 max-w-[340px] space-y-4 pointer-events-auto"
               >
-                <p className="text-sm font-semibold text-foreground">
-                  {language === "ar"
-                    ? "اسمك في الجدول"
-                    : language === "fr"
-                      ? "Votre nom dans le planning"
-                      : "Your name in the schedule"}
+                <div
+                  className={`flex items-center justify-between ${isRTL ? "flex-row-reverse" : ""}`}
+                >
+                  <p className="text-base font-semibold text-foreground">
+                    {language === "ar"
+                      ? "اسمك في الجدول"
+                      : language === "fr"
+                        ? "Votre nom dans le planning"
+                        : "Your name in the schedule"}
+                  </p>
+                  <button
+                    onClick={() => setShowNamePrompt(false)}
+                    className="text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-secondary/50 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={scheduleNameOverride}
+                  onChange={(e) => setScheduleNameOverride(e.target.value)}
+                  placeholder={
+                    displayName ||
+                    (language === "ar"
+                      ? "مثال: روسانا بياجيوتي"
+                      : "e.g. Rossana Biagiotti")
+                  }
+                  className="w-full px-4 py-3 rounded-xl bg-secondary/40 border border-border text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary/50 transition-colors"
+                  autoFocus
+                  dir={isRTL ? "rtl" : "ltr"}
+                />
+                <p className="text-xs text-muted-foreground/80">
+                  {scheduleNameOverride.trim()
+                    ? language === "ar"
+                      ? `سيبحث عن: "${scheduleNameOverride.trim()}"`
+                      : `Will search for: "${scheduleNameOverride.trim()}"`
+                    : displayName
+                      ? language === "ar"
+                        ? `سيستخدم: "${displayName}"`
+                        : `Using account name: "${displayName}"`
+                      : language === "ar"
+                        ? "أدخل اسمك أعلاه"
+                        : "Enter your name above"}
                 </p>
                 <button
-                  onClick={() => setShowNamePrompt(false)}
-                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setShowNamePrompt(false);
+                    fileInputRef.current?.click();
+                  }}
+                  className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  {language === "ar"
+                    ? "اختر ملفاً"
+                    : language === "fr"
+                      ? "Choisir un fichier"
+                      : "Choose File"}
                 </button>
-              </div>
-              <input
-                type="text"
-                value={scheduleNameOverride}
-                onChange={(e) => setScheduleNameOverride(e.target.value)}
-                placeholder={
-                  displayName ||
-                  (language === "ar"
-                    ? "مثال: روسانا بياجيوتي"
-                    : "e.g. Rossana Biagiotti")
-                }
-                className="w-full px-3 py-2.5 rounded-xl bg-secondary/40 border border-border text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary/50 transition-colors"
-                autoFocus
-                dir={isRTL ? "rtl" : "ltr"}
-              />
-              <p className="text-[10px] text-muted-foreground/60">
-                {scheduleNameOverride.trim()
-                  ? language === "ar"
-                    ? `سيبحث عن: "${scheduleNameOverride.trim()}"`
-                    : `Will search for: "${scheduleNameOverride.trim()}"`
-                  : displayName
-                    ? language === "ar"
-                      ? `سيستخدم: "${displayName}"`
-                      : `Using account name: "${displayName}"`
-                    : language === "ar"
-                      ? "أدخل اسمك أعلاه"
-                      : "Enter your name above"}
-              </p>
-              <button
-                onClick={() => {
-                  setShowNamePrompt(false);
-                  fileInputRef.current?.click();
-                }}
-                className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all"
-              >
-                {language === "ar"
-                  ? "اختر ملفاً"
-                  : language === "fr"
-                    ? "Choisir un fichier"
-                    : "Choose File"}
-              </button>
-            </motion.div>
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
 
