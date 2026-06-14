@@ -722,6 +722,48 @@ export function BottomNav({
   const handleTakePhotoOption = (capture?: string) => {
     setMenuOpen(false);
     setShowPhotoOptions(false);
+
+    // In Android WebView, input[capture] fails without a native FileProvider.
+    // Use getUserMedia + canvas to capture photo instead.
+    const isNativeApp = !!(window as any).ReactNativeWebView;
+    if (isNativeApp && capture) {
+      (async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: capture === "environment" ? "environment" : "user" },
+          });
+          // Draw one frame to a canvas and convert to a File
+          const video = document.createElement("video");
+          video.srcObject = stream;
+          video.setAttribute("playsinline", "true");
+          await video.play();
+          const canvas = document.createElement("canvas");
+          canvas.width = video.videoWidth || 1280;
+          canvas.height = video.videoHeight || 720;
+          canvas.getContext("2d")?.drawImage(video, 0, 0);
+          stream.getTracks().forEach((t) => t.stop());
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const file = new File([blob], `photo_${Date.now()}.jpg`, { type: "image/jpeg" });
+              onUploadClick({ autoOpenPicker: false, file });
+            }
+          }, "image/jpeg", 0.9);
+        } catch {
+          // Fallback to regular file input if getUserMedia fails
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = "image/*";
+          input.onchange = (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) onUploadClick({ autoOpenPicker: false, file });
+          };
+          input.click();
+        }
+      })();
+      return;
+    }
+
+    // Standard browser / gallery flow
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
