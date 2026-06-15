@@ -12,16 +12,16 @@ import "./styles/globals.css";
 // ── Native app OAuth redirect ─────────────────────────────────────────────────
 // When Google OAuth completes in the external browser, Supabase redirects to
 // https://website.com/home?iqxo_app=1#access_token=...&refresh_token=...
-// We detect this here and immediately redirect to iqxo://auth#... so the OS
-// opens the IQXO native app and passes the tokens back to the WebView.
+// We detect this here and immediately redirect to com.iqxo.app://auth#... so
+// the OS opens the IQXO native app and passes the tokens back to the WebView.
 function useNativeAppOAuthRedirect() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const hash = window.location.hash; // "#access_token=xxx&..."
 
     if (params.get("iqxo_app") === "1" && hash.includes("access_token")) {
-      // Forward the fragment to the native app
-      window.location.href = "iqxo://auth" + hash;
+      // Use the scheme registered in AndroidManifest: com.iqxo.app://
+      window.location.href = "com.iqxo.app://auth" + hash;
     }
   }, []);
 }

@@ -19,8 +19,8 @@ export function buildAppUrl(pathname: string): string {
  * Strategy:
  * - In the native WebView app  → redirect to website.com/home?iqxo_app=1
  *   The website detects this flag and the access_token in the hash, then does
- *   window.location.href = 'iqxo://auth#...' to bring the user back to the app.
- *   This is more reliable than redirecting directly to iqxo:// from Supabase.
+ *   window.location.href = 'com.iqxo.app://auth#...' to bring user back to app.
+ *   Uses com.iqxo.app:// scheme which is registered in AndroidManifest.xml.
  *
  * - In the web browser (normal) → redirect to website.com/home (unchanged).
  */
