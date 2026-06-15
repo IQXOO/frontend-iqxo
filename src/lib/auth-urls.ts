@@ -14,14 +14,20 @@ export function buildAppUrl(pathname: string): string {
 }
 
 /**
- * - When running inside the native WebView app (window.isNativeApp === true),
- *   returns the iqxo:// deep-link scheme so that after Google auth the OS
- *   hands control back to the app automatically.
+ * Builds the OAuth redirectTo URL.
+ *
+ * Strategy:
+ * - In the native WebView app  → redirect to website.com/home?iqxo_app=1
+ *   The website detects this flag and the access_token in the hash, then does
+ *   window.location.href = 'iqxo://auth#...' to bring the user back to the app.
+ *   This is more reliable than redirecting directly to iqxo:// from Supabase.
+ *
+ * - In the web browser (normal) → redirect to website.com/home (unchanged).
  */
 export function buildOAuthRedirectUrl(): string {
   if (typeof window !== "undefined" && (window as any).isNativeApp) {
-    // iqxo://auth is registered in Supabase → Authentication → URL Configuration
-    return "iqxo://auth";
+    // Pass iqxo_app=1 so the website knows to redirect back to the native app
+    return buildAppUrl("/home?iqxo_app=1");
   }
   return buildAppUrl("/home");
 }
