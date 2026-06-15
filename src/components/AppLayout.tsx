@@ -14,15 +14,19 @@ const CommandPalette = React.lazy(() =>
 );
 
 function AppLayoutContent() {
-  const { events, signOut, toggleTheme, user, planStatus, planResolved, trialEndsAt, language } = useApp();
+  const { events, signOut, toggleTheme, user, session, planStatus, planResolved, trialEndsAt, language } = useApp();
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
   const [paywallCycle, setPaywallCycle] = useState<"monthly" | "yearly">("monthly");
   const { openEventDetail, openAddEvent } = useEventEditor();
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   const isRTL = language === "ar";
   const shouldShowPaywall = user && planStatus !== "pro";
   const shouldBlockAI = user && shouldAutoOpenBillingRoute(planResolved, planStatus, trialEndsAt);
+
+  const isMobileDevice = typeof window !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const showNativeAppBanner = typeof window !== "undefined" && !(window as any).isNativeApp && isMobileDevice && !!session && !bannerDismissed;
 
   const [paywallOpen, setPaywallOpen] = useState(() => {
     if (typeof window !== "undefined") {
@@ -95,6 +99,8 @@ function AppLayoutContent() {
       ctaYearly: "Commit to Calm",
       guarantee: "No questions asked. Full refund within 30 days.",
       logout: "Sign Out",
+      openInApp: "Open in IQXO App",
+      launch: "Launch App",
     },
     fr: {
       upgradePro: "Améliorez vers Pro",
@@ -114,6 +120,8 @@ function AppLayoutContent() {
       ctaYearly: "S'engager dans le Calme",
       guarantee: "Sans questions. Remboursement sous 30 jours.",
       logout: "Se déconnecter",
+      openInApp: "Ouvrir dans l'application IQXO",
+      launch: "Lancer",
     },
     ar: {
       upgradePro: "الترقية إلى Pro",
@@ -133,6 +141,8 @@ function AppLayoutContent() {
       ctaYearly: "الالتزام بالهدوء والاسترخاء",
       guarantee: "بدون أي أسئلة. استرداد كامل خلال 30 يوماً.",
       logout: "تسجيل الخروج",
+      openInApp: "افتح في تطبيق IQXO",
+      launch: "تشغيل التطبيق",
     }
   };
 
@@ -154,6 +164,34 @@ function AppLayoutContent() {
 
   return (
     <div className={`min-h-screen max-w-md mx-auto bg-background text-foreground relative ${isRTL ? "dir-rtl" : ""}`}>
+      {/* Mobile App Fallback Banner */}
+      {showNativeAppBanner && (
+        <div className="bg-[#161618] border-b border-[#5BC0DE]/20 p-3 flex items-center justify-between text-xs text-[#A0A0A8] animate-in fade-in duration-300">
+          <div className="flex items-center gap-2">
+            <span className="text-[#5BC0DE] text-sm">📱</span>
+            <span>{dt.openInApp}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (session) {
+                  window.location.href = `com.iqxo.app://auth#access_token=${session.access_token}&refresh_token=${session.refresh_token}`;
+                }
+              }}
+              className="px-3 py-1 bg-[#5BC0DE]/10 hover:bg-[#5BC0DE]/20 border border-[#5BC0DE]/20 text-[#5BC0DE] rounded-full font-medium transition-all cursor-pointer"
+            >
+              {dt.launch}
+            </button>
+            <button
+              onClick={() => setBannerDismissed(true)}
+              className="text-[#6E6E78] hover:text-[#E8E8E8] transition-all cursor-pointer bg-transparent border-none text-sm"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {location.pathname !== "/profile" && (
         <DashboardHeader
           onProfileClick={() => navigateToPath("/profile")}

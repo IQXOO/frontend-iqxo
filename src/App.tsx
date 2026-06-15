@@ -18,8 +18,9 @@ function useNativeAppOAuthRedirect() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const hash = window.location.hash; // "#access_token=xxx&..."
+    const hasIqxoApp = params.get("iqxo_app") === "1" || hash.includes("iqxo_app=1");
 
-    if (params.get("iqxo_app") === "1" && hash.includes("access_token")) {
+    if (hasIqxoApp && hash.includes("access_token")) {
       // Use the scheme registered in AndroidManifest: com.iqxo.app://
       window.location.href = "com.iqxo.app://auth" + hash;
     }
@@ -184,7 +185,8 @@ function _AppShell() {
 }
 
 function RootRedirect() {
-  const { user } = useApp();
+  const { user, authLoading } = useApp();
+  if (authLoading) return null;
   if (user) {
     return <Navigate to="/home" replace />;
   }
@@ -192,7 +194,21 @@ function RootRedirect() {
 }
 
 function App() {
-  // Redirect back to native app if this page was opened after OAuth
+  // Redirect back to native app synchronously if this page was opened after OAuth.
+  // This must run before any hooks or component rendering to prevent React Router
+  // from navigating and stripping the hash/query parameters.
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    const hash = window.location.hash; // "#access_token=xxx&..."
+    const hasIqxoApp = params.get("iqxo_app") === "1" || hash.includes("iqxo_app=1");
+
+    if (hasIqxoApp && hash.includes("access_token")) {
+      window.location.href = "com.iqxo.app://auth" + hash;
+      return null;
+    }
+  }
+
+  // Redirect back to native app if this page was opened after OAuth (fallback hook)
   useNativeAppOAuthRedirect();
 
   return (

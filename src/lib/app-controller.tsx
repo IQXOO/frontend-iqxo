@@ -48,33 +48,37 @@ export default function AppController() {
 
   // Show onboarding immediate if not done
   useEffect(() => {
+    if (authLoading) return;
     const isDismissed = typeof window !== "undefined" && localStorage.getItem("iqxo_intro_dismissed") === "1";
     if (!onboardingDone && !isDismissed) {
       navigate("/onboarding");
     }
-  }, [onboardingDone, location.pathname, navigate]);
+  }, [onboardingDone, authLoading, location.pathname, navigate]);
 
   // Prevent logged-in users from seeing /login
   useEffect(() => {
+    if (authLoading) return;
     if (user && location.pathname === "/login") {
       navigate("/home", { replace: true });
     }
-  }, [user, location.pathname, navigate]);
+  }, [user, authLoading, location.pathname, navigate]);
 
   // Prevent logged-in users from seeing /onboarding if they already completed it
   useEffect(() => {
+    if (authLoading) return;
     if (user && onboardingDone && location.pathname === "/onboarding") {
       navigate("/home", { replace: true });
     }
-  }, [user, onboardingDone, location.pathname, navigate]);
+  }, [user, onboardingDone, authLoading, location.pathname, navigate]);
 
   // If not authenticated and not on a public path, redirect to /login
   useEffect(() => {
+    if (authLoading) return;
     const publicPaths = new Set(["/pricing", "/terms", "/privacy", "/reset-password", "/index.html", "/onboarding"]);
     if (!user && !publicPaths.has(location.pathname) && location.pathname !== "/login") {
       navigate("/login", { replace: true });
     }
-  }, [user, location.pathname, navigate]);
+  }, [user, authLoading, location.pathname, navigate]);
 
   // Render nothing — this component only controls side-effects and redirects.
   if (authLoading) return null;
