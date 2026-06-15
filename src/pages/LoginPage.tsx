@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useApp } from "../lib/store";
 import { supabase } from "../lib/supabase";
-import { buildAppUrl } from "../lib/auth-urls";
+import { buildAppUrl, buildOAuthRedirectUrl } from "../lib/auth-urls";
 import { devError, devLog, getFriendlyErrorMessage, withAsyncDiagnostics } from "../lib/logger";
 import { useToast } from "../hooks/use-toast";
 import { navigateToPath } from "../lib/navigation";
@@ -260,7 +260,9 @@ export default function LoginPage() {
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: buildAppUrl("/home"),
+          // In the native app  → redirectTo = iqxo://auth  (deep link back to app)
+          // In the web browser → redirectTo = https://site.com/home (normal flow)
+          redirectTo: buildOAuthRedirectUrl(),
         },
       });
       if (oauthError) {
