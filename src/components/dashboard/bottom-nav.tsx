@@ -716,40 +716,61 @@ export function BottomNav({
   const [nativeCalError, setNativeCalError] = useState<string | null>(null);
   const [nativeCalEvents, setNativeCalEvents] = useState<ParsedCalEvent[] | null>(null);
   const [showNativePreview, setShowNativePreview] = useState(false);
+  // camera preview states
+  const [showCameraPreview, setShowCameraPreview] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraFacing, setCameraFacing] = useState<"environment" | "user">("environment");
+  const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const menuOpen = composerOpen ?? internalMenuOpen;
   const setMenuOpen = onComposerOpenChange ?? setInternalMenuOpen;
+
+  // Stop the camera stream and hide the preview overlay
+  const stopCameraStream = useCallback(() => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((t) => t.stop());
+      setCameraStream(null);
+    }
+    setShowCameraPreview(false);
+  }, [cameraStream]);
+
+  // Called when user taps the shutter button
+  const handleCapturePhoto = useCallback(() => {
+    const video = cameraVideoRef.current;
+    const stream = cameraStream;
+    if (!video || !stream) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    canvas.getContext("2d")?.drawImage(video, 0, 0);
+    stream.getTracks().forEach((t) => t.stop());
+    setCameraStream(null);
+    setShowCameraPreview(false);
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], `photo_${Date.now()}.jpg`, { type: "image/jpeg" });
+        onUploadClick({ autoOpenPicker: false, file });
+      }
+    }, "image/jpeg", 0.9);
+  }, [cameraStream, onUploadClick]);
 
   const handleTakePhotoOption = (capture?: string) => {
     setMenuOpen(false);
     setShowPhotoOptions(false);
 
     // In Android WebView, input[capture] fails without a native FileProvider.
-    // Use getUserMedia + canvas to capture photo instead.
+    // Show a full-screen camera preview with a shutter button instead.
     const isNativeApp = !!(window as any).ReactNativeWebView;
     if (isNativeApp && capture) {
-      (async () => {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: capture === "environment" ? "environment" : "user" },
-          });
-          // Draw one frame to a canvas and convert to a File
-          const video = document.createElement("video");
-          video.srcObject = stream;
-          video.setAttribute("playsinline", "true");
-          await video.play();
-          const canvas = document.createElement("canvas");
-          canvas.width = video.videoWidth || 1280;
-          canvas.height = video.videoHeight || 720;
-          canvas.getContext("2d")?.drawImage(video, 0, 0);
-          stream.getTracks().forEach((t) => t.stop());
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const file = new File([blob], `photo_${Date.now()}.jpg`, { type: "image/jpeg" });
-              onUploadClick({ autoOpenPicker: false, file });
-            }
-          }, "image/jpeg", 0.9);
-        } catch {
-          // Fallback to regular file input if getUserMedia fails
+      const facing = capture === "environment" ? "environment" : "user";
+      setCameraFacing(facing);
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: facing }, audio: false })
+        .then((stream) => {
+          setCameraStream(stream);
+          setShowCameraPreview(true);
+        })
+        .catch(() => {
+          // Fallback: regular file input
           const input = document.createElement("input");
           input.type = "file";
           input.accept = "image/*";
@@ -758,8 +779,7 @@ export function BottomNav({
             if (file) onUploadClick({ autoOpenPicker: false, file });
           };
           input.click();
-        }
-      })();
+        });
       return;
     }
 
@@ -782,6 +802,15 @@ export function BottomNav({
     setShowPhotoOptions(false);
     onManualAdd();
   };
+
+  // Connect stream to video element whenever it changes
+  useEffect(() => {
+    if (cameraVideoRef.current && cameraStream) {
+      cameraVideoRef.current.srcObject = cameraStream;
+      cameraVideoRef.current.play().catch(() => {});
+    }
+  }, [cameraStream]);
+
   const handleClose = () => {
     setMenuOpen(false);
     setShowPhotoOptions(false);
@@ -791,6 +820,7 @@ export function BottomNav({
     setNativeCalError(null);
     setNativeCalEvents(null);
     setShowNativePreview(false);
+    stopCameraStream();
   };
 
   const handleCalendarImport = () => {
@@ -1402,6 +1432,83 @@ export function BottomNav({
           </nav>
         </div>
       </motion.div>
+
+      {/* ── Camera Preview Overlay (Native WebView only) ── */}
+      {showCameraPreview && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 200,
+            backgroundColor: "#000",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Live video viewfinder */}
+          <video
+            ref={cameraVideoRef}
+            playsInline
+            muted
+            autoPlay
+            style={{
+              flex: 1,
+              width: "100%",
+              objectFit: "cover",
+              transform: cameraFacing === "user" ? "scaleX(-1)" : "none",
+            }}
+          />
+
+          {/* Controls bar */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "24px 36px",
+              backgroundColor: "rgba(0,0,0,0.85)",
+            }}
+          >
+            {/* Cancel */}
+            <button
+              onClick={stopCameraStream}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: "50%",
+                backgroundColor: "rgba(255,255,255,0.15)",
+                border: "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              <X style={{ width: 22, height: 22, color: "#fff" }} />
+            </button>
+
+            {/* Shutter button */}
+            <button
+              onClick={handleCapturePhoto}
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: "50%",
+                backgroundColor: "#fff",
+                border: "5px solid rgba(255,255,255,0.4)",
+                boxShadow: "0 0 0 3px rgba(255,255,255,0.25), 0 4px 24px rgba(0,0,0,0.6)",
+                cursor: "pointer",
+                transition: "transform 0.1s ease",
+              }}
+              onMouseDown={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.92)"; }}
+              onMouseUp={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"; }}
+            />
+
+            {/* Spacer to centre the shutter */}
+            <div style={{ width: 48 }} />
+          </div>
+        </div>
+      )}
     </>
   );
 }
