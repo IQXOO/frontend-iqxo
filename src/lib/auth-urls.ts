@@ -25,7 +25,7 @@ export function buildAppUrl(pathname: string): string {
  * - In the web browser (normal) → redirect to website.com/home (unchanged).
  */
 export function buildOAuthRedirectUrl(): string {
-  if (typeof window !== "undefined" && (window as any).isNativeApp) {
+  if (typeof window !== "undefined" && (window as Window & { isNativeApp?: unknown }).isNativeApp) {
     // Pass iqxo_app=1 so the website knows to redirect back to the native app
     return buildAppUrl("/home?iqxo_app=1");
   }
