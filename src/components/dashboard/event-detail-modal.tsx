@@ -471,7 +471,7 @@ ${origin}`;
           </div>
 
           {/* ── ACTION BUTTONS FOOTER ── */}
-          <div className="px-4 py-4 shrink-0 flex gap-3 border-t border-border">
+          <div className="px-3 sm:px-4 py-4 shrink-0 flex gap-2 sm:gap-3 border-t border-border">
             {/* Edit — amber */}
             {!isVirtual && (
               <button
@@ -479,62 +479,68 @@ ${origin}`;
                   onEdit(event);
                   onOpenChange(false);
                 }}
-                className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-[0.97]"
+                className="flex-1 flex items-center justify-center gap-1 sm:gap-2 px-1 py-3.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all active:scale-[0.97] min-w-0"
                 style={{
                   background: "rgba(212,168,83,0.10)",
                   border: "1px solid rgba(212,168,83,0.25)",
                   color: "#D4A853",
                 }}
               >
-                <Pencil className="w-4 h-4" />
-                {language === "ar"
-                  ? "تعديل"
-                  : language === "fr"
-                    ? "Modifier"
-                    : "Edit"}
+                <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="truncate">
+                  {language === "ar"
+                    ? "تعديل"
+                    : language === "fr"
+                      ? "Modifier"
+                      : "Edit"}
+                </span>
               </button>
             )}
 
             {/* Complete — cyan */}
             <button
               onClick={handleComplete}
-              className={`flex-[1.4] flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-[0.97] border ${
+              className={`flex-[1.2] flex items-center justify-center gap-1 sm:gap-2 px-1 py-3.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all active:scale-[0.97] border min-w-0 ${
                 event.is_done
                   ? "bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400 border-green-500/20 dark:border-green-500/30"
                   : "bg-primary text-primary-foreground border-transparent"
               }`}
             >
-              <CheckCircle2 className="w-4 h-4" />
-              {event.is_done
-                ? language === "ar"
-                  ? "إلغاء"
-                  : language === "fr"
-                    ? "Annuler"
-                    : "Undo"
-                : language === "ar"
-                  ? "اكتمل"
-                  : language === "fr"
-                    ? "Terminer"
-                    : "Complete"}
+              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="truncate">
+                {event.is_done
+                  ? language === "ar"
+                    ? "إلغاء"
+                    : language === "fr"
+                      ? "Annuler"
+                      : "Undo"
+                  : language === "ar"
+                    ? "اكتمل"
+                    : language === "fr"
+                      ? "Terminer"
+                      : "Complete"}
+              </span>
             </button>
 
             {/* Delete — red */}
             {!isVirtual && (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-[0.97]"
+                className="flex-1 flex items-center justify-center gap-1 sm:gap-2 px-1 py-3.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all active:scale-[0.97] min-w-0"
                 style={{
                   background: "rgba(222,91,91,0.10)",
                   border: "1px solid rgba(222,91,91,0.25)",
                   color: "#DE5B5B",
                 }}
               >
-                <Trash2 className="w-4 h-4" />
-                {language === "ar"
-                  ? "حذف"
-                  : language === "fr"
-                    ? "Supprimer"
-                    : "Delete"}
+                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="truncate">
+                  {language === "ar"
+                    ? "حذف"
+                    : language === "fr"
+                      ? "Supprimer"
+                      : "Delete"}
+                </span>
               </button>
             )}
           </div>
