@@ -29,8 +29,8 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {
-          vars: "all",           // كل المتغيرات
-          args: "after-used",    // arguments بعد آخر argument مستخدم
+          vars: "all", // كل المتغيرات
+          args: "after-used", // arguments بعد آخر argument مستخدم
           ignoreRestSiblings: true,
           varsIgnorePattern: "^_", // لو اسمه بيبدأ بـ _ → تجاهله (اصطلاح شائع)
           argsIgnorePattern: "^_", // نفس الكلام للـ arguments
@@ -44,11 +44,12 @@ export default tseslint.config(
           patterns: [
             {
               group: ["**/pages/*", "../pages/*", "./pages/*"],
-              message: "Please use React.lazy() to import pages instead of static imports to enable Lazy Loading.",
-              allowTypeImports: true
-            }
-          ]
-        }
+              message:
+                "Please use React.lazy() to import pages instead of static imports to enable Lazy Loading.",
+              allowTypeImports: true,
+            },
+          ],
+        },
       ],
 
       // ✅ 4) منع أو التحذير من استدعاء Namespace (import * as X)
@@ -56,8 +57,9 @@ export default tseslint.config(
         "warn",
         {
           selector: "ImportNamespaceSpecifier",
-          message: "Namespace imports (import * as X) are discouraged. Use named imports instead to support tree-shaking."
-        }
+          message:
+            "Namespace imports (import * as X) are discouraged. Use named imports instead to support tree-shaking.",
+        },
       ],
     },
   },
