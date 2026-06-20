@@ -759,7 +759,7 @@ export function BottomNav({
 
     // In Android WebView, input[capture] fails without a native FileProvider.
     // Show a full-screen camera preview with a shutter button instead.
-    const isNativeApp = !!(window as any).ReactNativeWebView;
+    const isNativeApp = !!(window as Window & { ReactNativeWebView?: unknown }).ReactNativeWebView;
     if (isNativeApp && capture) {
       const facing = capture === "environment" ? "environment" : "user";
       setCameraFacing(facing);
