@@ -767,12 +767,12 @@ export function WorkScheduleView() {
     <div className="relative">
       {/* ── Floating Upload FAB — shows/hides on scroll like Home page ─────────── */}
       <motion.div
-        className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+72px)] z-40 pointer-events-none"
-        animate={(fabVisible || showNamePrompt || uploadState === "analyzing") ? { y: 0, opacity: 1 } : { y: 56, opacity: 0 }}
+        className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+80px)] z-40 pointer-events-none"
+        animate={(fabVisible || showNamePrompt || uploadState === "analyzing") ? { y: 0, opacity: 1 } : { y: 48, opacity: 0 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="mx-auto flex w-full max-w-screen-sm justify-end overflow-visible px-5 pointer-events-auto">
-          <div className="flex flex-col items-end gap-3">
+        <div className="mx-auto flex w-full max-w-md justify-end overflow-visible px-4 md:px-6 pointer-events-auto">
+          <div className="flex flex-col items-end gap-[12px]">
         {/* Name prompt (Centered Modal) */}
         <AnimatePresence>
           {showNamePrompt && (
