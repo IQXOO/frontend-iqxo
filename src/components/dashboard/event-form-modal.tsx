@@ -59,11 +59,12 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
   const [isUploading, setIsUploading]     = useState(false);
   const [uploadError, setUploadError]     = useState<string | null>(null);
   const [conflictTitle, setConflictTitle] = useState<string | null>(null);
+  const [isDuplicate, setIsDuplicate]     = useState(false);
 
   // ── Fill form ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
-    setUploadError(null); setConflictTitle(null);
+    setUploadError(null); setConflictTitle(null); setIsDuplicate(false);
     // Fetch user's work schedule for conflict checking
     // SECURITY: this client-side call requires Supabase Row Level Security (RLS)
     // to be configured. Do not rely on client filtering as a security boundary.
@@ -108,19 +109,60 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
     if (voiceData) { setTitle(voiceData.title || ""); setDate(voiceData.date || ""); setTime(voiceData.time || ""); setLocation(voiceData.location || ""); setPhone(voiceData.phone || ""); }
   }, [voiceData]);
 
-  // ── Task 3: Conflict check ─────────────────────────────────────────────────
-  // Returns title of conflicting event within 60 min on the same date
-  const findConflict = useCallback((d: string, tm: string): string | null => {
-    if (!d || !tm) return null;
+  // ── Task 3: Conflict / Duplicate check ─────────────────────────────────────
+  const checkDuplicateAndConflict = useCallback((currentTitle: string, d: string, tm: string) => {
+    if (!d || !tm) {
+      setIsDuplicate(false);
+      setConflictTitle(null);
+      return;
+    }
+    
     const checkDt = new Date(`${d}T${tm}`);
     const checkMins = checkDt.getHours() * 60 + checkDt.getMinutes();
+    const cleanCurrentTitle = currentTitle.trim().toLowerCase();
 
-    // Check against existing calendar events (within 60 min)
+    let foundConflictName: string | null = null;
+    let foundDuplicateName: string | null = null;
+
+    // Check existing events
     for (const ev of events) {
       if (ev.id === editEvent?.id) continue;
       if (ev.date !== d || !ev.time) continue;
+
       const evDt = new Date(`${ev.date}T${ev.time}`);
-      if (Math.abs(checkDt.getTime() - evDt.getTime()) / 60000 < 60) return ev.title;
+      const timeDiffMinutes = Math.abs(checkDt.getTime() - evDt.getTime()) / 60000;
+
+      // Duplicate Check: Same Date, Same Time (within 1 minute), Similar Title
+      if (timeDiffMinutes < 1.0) {
+        const cleanEvTitle = ev.title.trim().toLowerCase();
+        if (
+          cleanCurrentTitle &&
+          (cleanCurrentTitle === cleanEvTitle ||
+            cleanCurrentTitle.includes(cleanEvTitle) ||
+            cleanEvTitle.includes(cleanCurrentTitle))
+        ) {
+          foundDuplicateName = ev.title;
+          break; // Duplicate warning takes priority
+        }
+      }
+
+      // Conflict Check: within 60 minutes
+      if (timeDiffMinutes < 60 && !foundConflictName) {
+        foundConflictName = ev.title;
+      }
+    }
+
+    if (foundDuplicateName) {
+      setIsDuplicate(true);
+      setConflictTitle(foundDuplicateName);
+      return;
+    }
+
+    setIsDuplicate(false);
+
+    if (foundConflictName) {
+      setConflictTitle(foundConflictName);
+      return;
     }
 
     // Check against work schedule for that day-of-week
@@ -130,25 +172,26 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
       const [sh, sm] = ws.start_time.split(":").map(Number);
       const [eh, em] = ws.end_time.split(":").map(Number);
       const wsStart = sh * 60 + sm;
-      // Handle overnight shifts (e.g. 22:00 → 02:00)
       const wsEnd = eh * 60 + em < wsStart ? eh * 60 + em + 24 * 60 : eh * 60 + em;
       const checkAdjusted = checkMins < wsStart ? checkMins + 24 * 60 : checkMins;
       if (checkAdjusted >= wsStart && checkAdjusted < wsEnd) {
-        return language === "ar"
+        const workHoursLabel = language === "ar"
           ? `ساعات العمل (${ws.start_time}–${ws.end_time})`
           : language === "fr"
           ? `Heures de travail (${ws.start_time}–${ws.end_time})`
           : `Work hours (${ws.start_time}–${ws.end_time})`;
+        setConflictTitle(workHoursLabel);
+        return;
       }
     }
 
-    return null;
+    setConflictTitle(null);
   }, [events, editEvent, workSchedule, language]);
 
-  // Run conflict check reactive to input or schedule data changes
+  // Run conflict & duplicate check reactive to title, date, time or schedule data changes
   useEffect(() => {
-    setConflictTitle(findConflict(date, time));
-  }, [date, time, findConflict]);
+    checkDuplicateAndConflict(title, date, time);
+  }, [title, date, time, checkDuplicateAndConflict]);
 
   const handleDateChange = (val: string) => { setDate(val); };
   const handleTimeChange = (val: string) => { setTime(val); };
@@ -349,12 +392,30 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
             </div>
           </div>
 
-          {/* ── TASK 3: Conflict warning ───────────────────────────────────── */}
-          {conflictTitle && (
+          {/* ── TASK 3: Conflict / Duplicate warning ───────────────────────── */}
+          {isDuplicate && conflictTitle && (
             <div className="flex items-start gap-2 p-3 rounded-[20px] bg-amber-500/10 border border-amber-500/30">
               <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-400 leading-relaxed">
-                {language === "ar" ? " تعارض مع: " : language === "fr" ? " Conflit avec : " : " Conflict with: "}
+                {language === "ar"
+                  ? "قد يكون هذا الحدث موجوداً بالفعل في جدولك باسم: "
+                  : language === "fr"
+                  ? "Cet événement existe peut-être déjà dans votre calendrier : "
+                  : "This event may already exist in your schedule: "}
+                <span className="font-semibold">{conflictTitle}</span>
+              </p>
+            </div>
+          )}
+
+          {!isDuplicate && conflictTitle && (
+            <div className="flex items-start gap-2 p-3 rounded-[20px] bg-amber-500/10 border border-amber-500/30">
+              <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-400 leading-relaxed">
+                {language === "ar"
+                  ? "لديك حدث بالفعل مجدول في هذا الوقت: "
+                  : language === "fr"
+                  ? "Vous avez déjà un événement programmé à cette heure : "
+                  : "You already have an event scheduled at this time: "}
                 <span className="font-semibold">{conflictTitle}</span>
               </p>
             </div>
