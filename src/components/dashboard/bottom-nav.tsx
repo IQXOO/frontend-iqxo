@@ -1345,7 +1345,9 @@ export function BottomNav({
                   <div className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all ${isActive ? 'bg-[rgba(59,130,246,0.14)]' : ''}`}>
                     <Home className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${isActive ? "text-[#3B82F6]" : "opacity-75"}`} />
                   </div>
-                  <span className={isActive ? "font-medium" : "font-normal"}>Home</span>
+                  <span className={isActive ? "font-medium" : "font-normal"}>
+                    {language === "ar" ? "الرئيسية" : language === "fr" ? "Accueil" : "Home"}
+                  </span>
                 </>
               )}
             </NavLink>
@@ -1365,7 +1367,9 @@ export function BottomNav({
                   <div className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all ${isActive ? 'bg-[rgba(234,179,8,0.14)]' : ''}`}>
                     <Calendar className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${isActive ? "text-[#EAB308]" : "opacity-75"}`} />
                   </div>
-                  <span className={isActive ? "font-medium" : "font-normal"}>Tomorrow</span>
+                  <span className={isActive ? "font-medium" : "font-normal"}>
+                    {language === "ar" ? "غداً" : language === "fr" ? "Demain" : "Tomorrow"}
+                  </span>
                 </>
               )}
             </NavLink>
@@ -1385,7 +1389,9 @@ export function BottomNav({
                   <div className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all ${isActive ? 'bg-[rgba(168,85,247,0.14)]' : ''}`}>
                     <CheckCircle2 className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${isActive ? "text-[#A855F7]" : "opacity-75"}`} />
                   </div>
-                  <span className={isActive ? "font-medium" : "font-normal"}>Future</span>
+                  <span className={isActive ? "font-medium" : "font-normal"}>
+                    {language === "ar" ? "مستقبلاً" : language === "fr" ? "À venir" : "Future"}
+                  </span>
                 </>
               )}
             </NavLink>
@@ -1405,7 +1411,9 @@ export function BottomNav({
                   <div className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all ${isActive ? 'bg-[rgba(59,130,246,0.14)]' : ''}`}>
                     <CalendarPlus className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${isActive ? "text-[#3B82F6]" : "opacity-75"}`} />
                   </div>
-                  <span className={isActive ? "font-medium" : "font-normal"}>Schedule</span>
+                  <span className={isActive ? "font-medium" : "font-normal"}>
+                    {language === "ar" ? "الجدول" : language === "fr" ? "Planning" : "Schedule"}
+                  </span>
                 </>
               )}
             </NavLink>
@@ -1425,7 +1433,9 @@ export function BottomNav({
                   <div className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all ${isActive ? 'bg-[rgba(34,197,94,0.14)]' : ''}`}>
                     <FolderOpen className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${isActive ? "text-[#22C55E]" : "opacity-75"}`} />
                   </div>
-                  <span className={isActive ? "font-medium" : "font-normal"}>Archive</span>
+                  <span className={isActive ? "font-medium" : "font-normal"}>
+                    {language === "ar" ? "الأرشيف" : language === "fr" ? "Archive" : "Archive"}
+                  </span>
                 </>
               )}
             </NavLink>
