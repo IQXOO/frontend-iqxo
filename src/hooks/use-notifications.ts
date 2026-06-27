@@ -150,6 +150,20 @@ export function useNotifications() {
     notificationIdsRef.current.add(incoming.id)
     setNotifications((current) => mergeNotificationLists([incoming], current))
     setRecentNotificationId(incoming.id)
+
+    // Trigger local notification if running inside native WebView app
+    const isNativeApp = typeof window !== "undefined" && !!(window as any).isNativeApp;
+    if (isNativeApp && (window as any).ReactNativeWebView) {
+      (window as any).ReactNativeWebView.postMessage(
+        JSON.stringify({
+          type: "showNotification",
+          title: incoming.title,
+          body: incoming.body,
+          data: { id: incoming.id },
+        })
+      );
+    }
+
     window.setTimeout(() => {
       setRecentNotificationId((current) => (current === incoming.id ? null : current))
     }, 2400)
