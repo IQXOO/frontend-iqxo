@@ -3,6 +3,33 @@
 import { useEffect, useCallback } from "react"
 import type { IQXOEvent } from "../lib/types"
 
+// ── i18n strings for notifications ───────────────────────────────────────────
+const i18n = {
+  en: {
+    oneHourTitle: "IQXO - In 1 hour",
+    oneHourBody: (title: string, location?: string) =>
+      `${title}${location ? ` · ${location}` : ""}`,
+  },
+  fr: {
+    oneHourTitle: "IQXO - Dans 1 heure",
+    oneHourBody: (title: string, location?: string) =>
+      `${title}${location ? ` · ${location}` : ""}`,
+  },
+  ar: {
+    oneHourTitle: "IQXO - بعد ساعة",
+    oneHourBody: (title: string, location?: string) =>
+      `${title}${location ? ` · ${location}` : ""}`,
+  },
+} as const
+
+type Lang = keyof typeof i18n
+
+function getLang(language: string): Lang {
+  if (language === "ar") return "ar"
+  if (language === "fr") return "fr"
+  return "en"
+}
+
 // ── Notification sender ───────────────────────────────────────────────────────
 // On native app: delegates to the React Native shell via postMessage.
 // On browser: uses the Web Notification API directly.
@@ -28,7 +55,10 @@ function showNotification(title: string, body: string, tag: string) {
 // suppress unused warning — kept for potential future browser-path use
 void showNotification
 
-export function useEventNotifications(events: IQXOEvent[]) {
+export function useEventNotifications(events: IQXOEvent[], language: string = "en") {
+  const lang = getLang(language)
+  const strings = i18n[lang]
+
   // ── Permission request ────────────────────────────────────────────────────
   // On native: permissions are handled in the App shell on startup.
   // On browser: requests the user's permission via the Web Notification API.
@@ -76,8 +106,8 @@ export function useEventNotifications(events: IQXOEvent[]) {
       if (oneHourReminder.getTime() > now) {
         notificationsToSchedule.push({
           id: `${event.id}-1h`,
-          title: "IQXO - Dans 1 heure",
-          body: `${event.title}${event.location ? ` - ${event.location}` : ""}`,
+          title: strings.oneHourTitle,
+          body: strings.oneHourBody(event.title, event.location || undefined),
           triggerAt: oneHourReminder.getTime(),
         })
       }
@@ -91,7 +121,7 @@ export function useEventNotifications(events: IQXOEvent[]) {
         notifications: notificationsToSchedule,
       })
     )
-  }, [events])
+  }, [events, strings])
 
   return { requestPermission }
 }
