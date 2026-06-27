@@ -33,7 +33,7 @@ export function DashboardHeader({
     "User"
 
   return (
-    <header className="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-2">
+    <header className="flex items-center justify-between px-5 pt-4 pb-2">
       {/* Logo container taking up remaining space on the left */}
       <div className="flex-1 flex justify-start items-center pl-1 sm:pl-3">
         <h1 className="flex items-center gap-2 text-foreground font-geometric">
