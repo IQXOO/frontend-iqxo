@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion"
 import { Bell, RefreshCw, X } from "lucide-react"
 import { useEffect, useMemo } from "react"
+import { createPortal } from "react-dom"
 import { Button } from "@/components/ui/button"
 import { useIsMobile } from "@/hooks/use-mobile"
 import type { NotificationRecord } from "@/lib/notification-utils"
@@ -252,7 +253,7 @@ export function NotificationPanel({
     </>
   )
 
-  return (
+  return typeof document !== "undefined" ? createPortal(
     <AnimatePresence>
       {open && (
         <>
@@ -260,7 +261,7 @@ export function NotificationPanel({
             <>
               <motion.div
                 key="notifications-backdrop"
-                className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-sm"
+                className="fixed inset-0 z-[100] bg-black/45 backdrop-blur-sm"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -271,7 +272,7 @@ export function NotificationPanel({
                 role="dialog"
                 aria-modal="true"
                 aria-label={localized.title}
-                className="fixed right-4 top-16 z-[71] flex w-[420px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-5rem)] flex-col overflow-hidden rounded-3xl border border-border/70 bg-background/90 shadow-2xl shadow-black/40 backdrop-blur-2xl"
+                className="fixed right-4 top-16 z-[101] flex w-[420px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-5rem)] flex-col overflow-hidden rounded-3xl border border-border/70 bg-background/90 shadow-2xl shadow-black/40 backdrop-blur-2xl"
                 initial={{ opacity: 0, y: -12, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.98 }}
@@ -308,6 +309,6 @@ export function NotificationPanel({
           )}
         </>
       )}
-    </AnimatePresence>
-  )
+    </AnimatePresence>, document.body
+  ) : null
 }
