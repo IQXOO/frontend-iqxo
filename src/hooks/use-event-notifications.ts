@@ -1,35 +1,48 @@
 "use client"
 
-import { useEffect, useCallback, useRef } from "react"
+import { useEffect, useCallback } from "react"
 import type { IQXOEvent } from "../lib/types"
 
-const STORAGE_KEY = "iqxo_notified_events"
+// ── i18n strings for notifications ───────────────────────────────────────────
+const i18n = {
+  en: {
+    oneHourTitle: "IQXO - In 1 hour",
+    oneHourBody: (title: string, location?: string) =>
+      `${title}${location ? ` · ${location}` : ""}`,
+  },
+  fr: {
+    oneHourTitle: "IQXO - Dans 1 heure",
+    oneHourBody: (title: string, location?: string) =>
+      `${title}${location ? ` · ${location}` : ""}`,
+  },
+  ar: {
+    oneHourTitle: "IQXO - بعد ساعة",
+    oneHourBody: (title: string, location?: string) =>
+      `${title}${location ? ` · ${location}` : ""}`,
+  },
+} as const
 
-function getNotifiedEvents(): Record<string, string[]> {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    return stored ? JSON.parse(stored) : {}
-  } catch {
-    return {}
-  }
+type Lang = keyof typeof i18n
+
+function getLang(language: string): Lang {
+  if (language === "ar") return "ar"
+  if (language === "fr") return "fr"
+  return "en"
 }
 
-function markAsNotified(eventId: string, type: string) {
-  const notified = getNotifiedEvents()
-  if (!notified[eventId]) notified[eventId] = []
-  if (!notified[eventId].includes(type)) {
-    notified[eventId].push(type)
-  }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(notified))
-}
-
-function wasNotified(eventId: string, type: string): boolean {
-  const notified = getNotifiedEvents()
-  return notified[eventId]?.includes(type) || false
-}
-
+// ── Notification sender ───────────────────────────────────────────────────────
+// On native app: delegates to the React Native shell via postMessage.
+// On browser: uses the Web Notification API directly.
 function showNotification(title: string, body: string, tag: string) {
-  if (Notification.permission !== "granted") return
+  const isNativeApp = typeof window !== "undefined" && !!(window as any).isNativeApp
+  if (isNativeApp && (window as any).ReactNativeWebView) {
+    ;(window as any).ReactNativeWebView.postMessage(
+      JSON.stringify({ type: "showNotification", title, body, data: { tag } })
+    )
+    return
+  }
+
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return
 
   new Notification(title, {
     body,
@@ -39,12 +52,21 @@ function showNotification(title: string, body: string, tag: string) {
   })
 }
 
-export function useEventNotifications(events: IQXOEvent[]) {
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+// suppress unused warning — kept for potential future browser-path use
+void showNotification
 
+export function useEventNotifications(events: IQXOEvent[], language: string = "en") {
+  const lang = getLang(language)
+  const strings = i18n[lang]
+
+  // ── Permission request ────────────────────────────────────────────────────
+  // On native: permissions are handled in the App shell on startup.
+  // On browser: requests the user's permission via the Web Notification API.
   const requestPermission = useCallback(async () => {
-    if (!("Notification" in window)) return false
+    const isNativeApp = typeof window !== "undefined" && !!(window as any).isNativeApp
+    if (isNativeApp) return true // native app handles permissions in App.tsx
 
+    if (!("Notification" in window)) return false
     if (Notification.permission === "granted") return true
     if (Notification.permission === "denied") return false
 
@@ -52,12 +74,26 @@ export function useEventNotifications(events: IQXOEvent[]) {
     return result === "granted"
   }, [])
 
-  const checkNotifications = useCallback(() => {
-    if (!("Notification" in window) || Notification.permission !== "granted") {
-      return
-    }
+  useEffect(() => {
+    requestPermission()
+  }, [requestPermission])
 
-    const now = new Date()
+  // ── Native app: sync 1h-before reminders to the OS scheduler ─────────────
+  // The server already sends morning notifications each night (next day summary).
+  // We only schedule the "1 hour before" reminder via the native OS scheduler —
+  // this fires even when the app is fully closed or in the background.
+  // No polling interval needed — the OS owns the scheduling.
+  useEffect(() => {
+    const isNativeApp = typeof window !== "undefined" && !!(window as any).isNativeApp
+    if (!isNativeApp || !(window as any).ReactNativeWebView || !events?.length) return
+
+    const now = Date.now()
+    const notificationsToSchedule: {
+      id: string
+      title: string
+      body: string
+      triggerAt: number
+    }[] = []
 
     events.forEach((event) => {
       const eventDate = new Date(event.date)
@@ -65,67 +101,27 @@ export function useEventNotifications(events: IQXOEvent[]) {
       const [hours, minutes] = eventTime.split(":").map(Number)
       eventDate.setHours(hours, minutes, 0, 0)
 
-      const msUntilEvent = eventDate.getTime() - now.getTime()
-      const minutesUntilEvent = msUntilEvent / (1000 * 60)
-
-      if (msUntilEvent < 0) return
-
-      const morningReminder = new Date(event.date)
-      morningReminder.setHours(9, 0, 0, 0)
-      const msUntilMorning = morningReminder.getTime() - now.getTime()
-
-      if (
-        msUntilMorning >= 0 &&
-        msUntilMorning < 60000 &&
-        !wasNotified(event.id, "morning")
-      ) {
-        showNotification(
-          "IQXO - Rappel du jour",
-          `${event.title} - ${event.time || "Aujourd'hui"}`,
-          `${event.id}-morning`
-        )
-        markAsNotified(event.id, "morning")
-      }
-
-      if (
-        minutesUntilEvent > 59 &&
-        minutesUntilEvent <= 60 &&
-        !wasNotified(event.id, "1h")
-      ) {
-        showNotification(
-          "IQXO - Dans 1 heure",
-          `${event.title}${event.location ? ` - ${event.location}` : ""}`,
-          `${event.id}-1h`
-        )
-        markAsNotified(event.id, "1h")
-      }
-
-      if (
-        minutesUntilEvent > 29 &&
-        minutesUntilEvent <= 30 &&
-        !wasNotified(event.id, "30m")
-      ) {
-        showNotification(
-          "IQXO - Dans 30 minutes",
-          `${event.title}${event.location ? ` - ${event.location}` : ""}`,
-          `${event.id}-30m`
-        )
-        markAsNotified(event.id, "30m")
+      // Only the 1h-before reminder — morning is handled by the server nightly.
+      const oneHourReminder = new Date(eventDate.getTime() - 60 * 60 * 1000)
+      if (oneHourReminder.getTime() > now) {
+        notificationsToSchedule.push({
+          id: `${event.id}-1h`,
+          title: strings.oneHourTitle,
+          body: strings.oneHourBody(event.title, event.location || undefined),
+          triggerAt: oneHourReminder.getTime(),
+        })
       }
     })
-  }, [events])
 
-  useEffect(() => {
-    requestPermission()
-    checkNotifications()
-    intervalRef.current = setInterval(checkNotifications, 60000)
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-    }
-  }, [requestPermission, checkNotifications])
+    // React Native receives this, cancels old scheduled notifications,
+    // then registers the updated list with the OS — no polling required.
+    ;(window as any).ReactNativeWebView.postMessage(
+      JSON.stringify({
+        type: "syncScheduledNotifications",
+        notifications: notificationsToSchedule,
+      })
+    )
+  }, [events, strings])
 
   return { requestPermission }
 }

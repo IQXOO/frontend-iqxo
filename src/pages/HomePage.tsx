@@ -36,11 +36,11 @@ function LazyModalFallback() {
 }
 
 export default function Page() {
-  const { events, t, theme, planStatus, planResolved, trialEndsAt } = useApp();
+  const { events, t, theme, planStatus, planResolved, trialEndsAt, language } = useApp();
   const shouldBlockAI = shouldAutoOpenBillingRoute(planResolved, planStatus, trialEndsAt);
 
   // Initialize browser notifications
-  useEventNotifications(events);
+  useEventNotifications(events, language);
 
   const [activeTab, setActiveTab] = useState<NavTab>("home");
   // legacy in-page navigation removed; Home shows today's dashboard content
