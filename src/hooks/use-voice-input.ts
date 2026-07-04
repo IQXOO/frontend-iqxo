@@ -117,6 +117,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
   const audioChunksRef = useRef<Blob[]>([]);
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const isRecognitionActiveRef = useRef(false);
 
   // Convert WebM to WAV format
   const _convertWebMToWav = async (webmBlob: Blob): Promise<Blob> => {
@@ -177,6 +178,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
       setEventData(null); // reset previous result so it never bleeds into next analysis
       setSpeechRecognitionFailed(false);
       audioChunksRef.current = [];
+      isRecognitionActiveRef.current = true;
 
       try {
         // Ensure browser mediaDevices support (requires HTTPS secure context on mobile browsers)
@@ -217,10 +219,9 @@ export function useVoiceInput(): UseVoiceInputReturn {
           speechRecognition.interimResults = true;
           speechRecognition.maxAlternatives = 1;
 
-          if (langCode) {
-            speechRecognition.lang = langCode;
-            devLog('Voice', 'Speech recognition language set', { langCode });
-          }
+          // Set language, falling back to navigator.language or ar-EG
+          speechRecognition.lang = langCode || (typeof navigator !== 'undefined' ? navigator.language : '') || "ar-EG";
+          devLog('Voice', 'Speech recognition language set', { lang: speechRecognition.lang });
 
           speechRecognition.onstart = () => {
             devLog('Voice', 'Speech recognition started for interim results');
@@ -253,8 +254,24 @@ export function useVoiceInput(): UseVoiceInputReturn {
 
           speechRecognition.onerror = (event: SpeechRecognitionErrorEvent) => {
             devWarn('Voice', 'Speech recognition error (interim)', { error: event.error });
-            // Only show error for critical errors, not network issues
-            if (event.error !== "network" && event.error !== "no-speech") {
+            
+            // Handle audio-capture (mic conflict) on Android by retrying shortly
+            if (event.error === "audio-capture") {
+              devWarn('Voice', 'Audio capture conflict, will retry restarting in 800ms...');
+              setTimeout(() => {
+                if (isRecognitionActiveRef.current && speechRecognitionRef.current) {
+                  try {
+                    speechRecognitionRef.current.start();
+                  } catch (e) {
+                    devWarn('Voice', 'Failed to restart after audio-capture error', { error: String(e) });
+                  }
+                }
+              }, 800);
+              return;
+            }
+
+            // Only show error for critical errors, not network issues or aborted ones
+            if (event.error !== "network" && event.error !== "no-speech" && event.error !== "aborted") {
               devError('Voice', 'Speech recognition critical error', event.error);
               toast({
                 title: "Voice transcription interrupted",
@@ -265,6 +282,19 @@ export function useVoiceInput(): UseVoiceInputReturn {
             // Mark as failed but don't stop recording
             setSpeechRecognitionFailed(true);
             // Don't stop recording - let audio recording continue for OpenAI
+          };
+
+          speechRecognition.onend = () => {
+            devLog('Voice', 'Speech recognition ended');
+            // Auto restart loop for Android continuous limitations and silence timeouts
+            if (isRecognitionActiveRef.current && speechRecognitionRef.current) {
+              try {
+                speechRecognitionRef.current.start();
+                devLog('Voice', 'Speech recognition restarted successfully in onend');
+              } catch (e) {
+                devWarn('Voice', 'Could not restart speech recognition in onend', { error: String(e) });
+              }
+            }
           };
 
           speechRecognitionRef.current = speechRecognition;
@@ -289,9 +319,14 @@ export function useVoiceInput(): UseVoiceInputReturn {
           setInterimTranscript(""); // Clear interim transcript
 
           // Stop speech recognition
+          isRecognitionActiveRef.current = false;
 
           if (speechRecognitionRef.current) {
-            speechRecognitionRef.current.stop();
+            try {
+              speechRecognitionRef.current.stop();
+            } catch (e) {
+              devWarn('Voice', 'Error stopping speech recognition on mediaRecorder stop', { error: String(e) });
+            }
             speechRecognitionRef.current = null;
           }
 
@@ -385,8 +420,13 @@ export function useVoiceInput(): UseVoiceInputReturn {
           setIsProcessing(false);
 
           // Stop speech recognition
+          isRecognitionActiveRef.current = false;
           if (speechRecognitionRef.current) {
-            speechRecognitionRef.current.stop();
+            try {
+              speechRecognitionRef.current.stop();
+            } catch (e) {
+              devWarn('Voice', 'Error stopping speech recognition on mediaRecorder error', { error: String(e) });
+            }
             speechRecognitionRef.current = null;
           }
         };
@@ -406,8 +446,13 @@ export function useVoiceInput(): UseVoiceInputReturn {
         setIsProcessing(false);
 
         // Stop speech recognition if it started
+        isRecognitionActiveRef.current = false;
         if (speechRecognitionRef.current) {
-          speechRecognitionRef.current.stop();
+          try {
+            speechRecognitionRef.current.stop();
+          } catch (e) {
+            devWarn('Voice', 'Error stopping speech recognition on start catch block', { error: String(e) });
+          }
           speechRecognitionRef.current = null;
         }
       }
@@ -417,6 +462,9 @@ export function useVoiceInput(): UseVoiceInputReturn {
 
   const stopListening = useCallback(() => {
     devLog('Voice', 'Stopping voice input');
+
+    // Prevent any further auto restart loops
+    isRecognitionActiveRef.current = false;
 
     // Stop audio recording
     if (
@@ -433,7 +481,11 @@ export function useVoiceInput(): UseVoiceInputReturn {
 
     // Stop speech recognition
     if (speechRecognitionRef.current) {
-      speechRecognitionRef.current.stop();
+      try {
+        speechRecognitionRef.current.stop();
+      } catch (e) {
+        devWarn('Voice', 'Error stopping speech recognition in stopListening', { error: String(e) });
+      }
       speechRecognitionRef.current = null;
     }
 
