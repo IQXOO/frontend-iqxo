@@ -103,7 +103,7 @@ interface UseVoiceInputReturn {
 }
 
 export function useVoiceInput(): UseVoiceInputReturn {
-  const { user, session, setTotalUsage } = useApp();
+  const { user, session, setTotalUsage, language } = useApp();
   const { toast } = useToast();
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -118,6 +118,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const isRecognitionActiveRef = useRef(false);
+  const audioCaptureRetryCountRef = useRef(0);
 
   // Convert WebM to WAV format
   const _convertWebMToWav = async (webmBlob: Blob): Promise<Blob> => {
@@ -179,6 +180,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
       setSpeechRecognitionFailed(false);
       audioChunksRef.current = [];
       isRecognitionActiveRef.current = true;
+      audioCaptureRetryCountRef.current = 0;
 
       try {
         // Ensure browser mediaDevices support (requires HTTPS secure context on mobile browsers)
@@ -257,27 +259,46 @@ export function useVoiceInput(): UseVoiceInputReturn {
             
             // Handle audio-capture (mic conflict) on Android by retrying shortly
             if (event.error === "audio-capture") {
-              devWarn('Voice', 'Audio capture conflict, will retry restarting in 800ms...');
-              setTimeout(() => {
-                if (isRecognitionActiveRef.current && speechRecognitionRef.current) {
-                  try {
-                    speechRecognitionRef.current.start();
-                  } catch (e) {
-                    devWarn('Voice', 'Failed to restart after audio-capture error', { error: String(e) });
+              if (audioCaptureRetryCountRef.current < 3) {
+                audioCaptureRetryCountRef.current += 1;
+                devWarn('Voice', `Audio capture conflict, retry ${audioCaptureRetryCountRef.current}/3 in 800ms...`);
+                setTimeout(() => {
+                  if (isRecognitionActiveRef.current && speechRecognitionRef.current) {
+                    try {
+                      speechRecognitionRef.current.start();
+                    } catch (e) {
+                      devWarn('Voice', 'Failed to restart after audio-capture error', { error: String(e) });
+                    }
                   }
+                }, 800);
+                return;
+              } else {
+                devWarn('Voice', 'Audio capture conflict persistent after 3 retries. Continuing in recording-only mode.');
+                // Show a non-destructive warning toast once
+                if (!speechRecognitionFailed) {
+                  toast({
+                    title: language === "ar" ? "معاينة النص غير متاحة" : "Text preview unavailable",
+                    description: language === "ar" 
+                      ? "نحن نسجل صوتك الآن، وسيتم تحويله إلى نص فور التوقف." 
+                      : "We are recording your voice, text will be processed when you stop.",
+                  });
                 }
-              }, 800);
-              return;
+                setSpeechRecognitionFailed(true);
+                return;
+              }
             }
 
             // Only show error for critical errors, not network issues or aborted ones
             if (event.error !== "network" && event.error !== "no-speech" && event.error !== "aborted") {
-              devError('Voice', 'Speech recognition critical error', event.error);
-              toast({
-                title: "Voice transcription interrupted",
-                description: "The microphone or speech recognition stopped early. Please try again.",
-                variant: "destructive",
-              });
+              devWarn('Voice', 'Speech recognition critical error, fallback to recording-only', { error: event.error });
+              if (!speechRecognitionFailed) {
+                toast({
+                  title: language === "ar" ? "معاينة النص غير متاحة" : "Text preview unavailable",
+                  description: language === "ar" 
+                    ? "نحن نسجل صوتك الآن، وسيتم تحويله إلى نص فور التوقف." 
+                    : "We are recording your voice, text will be processed when you stop.",
+                });
+              }
             }
             // Mark as failed but don't stop recording
             setSpeechRecognitionFailed(true);
