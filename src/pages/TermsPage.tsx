@@ -215,8 +215,6 @@ export default function TermsPage() {
                 <h2 className="text-xl font-semibold mt-8 mb-4">1. Company Information</h2>
                 <p>
                   IQXO<br />
-                  [Your Company Name / Legal Entity]<br />
-                  [Your Address – preferably EU-based]<br />
                   Email: privacy@iqxo.ai
                 </p>
 
