@@ -119,6 +119,13 @@ export function useVoiceInput(): UseVoiceInputReturn {
   const streamRef = useRef<MediaStream | null>(null);
   const isRecognitionActiveRef = useRef(false);
   const audioCaptureRetryCountRef = useRef(0);
+  const accumulatedTranscriptRef = useRef(""); // للباك اند — يجمع الجمل المكتملة عند نهاية كل جلسة
+  const sessionFinalRef = useRef("");           // آخر نتيجة نهائية داخل الجلسة الحالية فقط
+  const displayBaseRef = useRef("");             // للعرض — آخر جملة مؤكدة في الجلسة الحالية
+  // يسجّل القرار مرة واحدة عند start ويُعاد قراءته في stop — لضمان تطابق المسار
+  const isAndroidModeRef = useRef(false);
+  // guard: يمنع إضافة sessionFinalRef مرتين (مرة في flush ومرة في onend)
+  const sessionCommittedRef = useRef(false);
 
   // Convert WebM to WAV format
   const _convertWebMToWav = async (webmBlob: Blob): Promise<Blob> => {
@@ -181,8 +188,119 @@ export function useVoiceInput(): UseVoiceInputReturn {
       audioChunksRef.current = [];
       isRecognitionActiveRef.current = true;
       audioCaptureRetryCountRef.current = 0;
+      accumulatedTranscriptRef.current = "";
+      sessionFinalRef.current = "";
+      sessionCommittedRef.current = false;
+      displayBaseRef.current = "";
 
       try {
+        // نحدد المسار مرة واحدة ونخزنه — سيتم استخدامه دون إعادة حساب في stopListening
+        const isAndroidPlatform = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+        isAndroidModeRef.current = isAndroidPlatform;
+
+        if (isAndroidPlatform) {
+          const SpeechRecognitionAPI =
+            window.SpeechRecognition || window.webkitSpeechRecognition;
+
+          if (!SpeechRecognitionAPI) {
+            throw new Error("Speech recognition API not supported on this browser/device.");
+          }
+
+          const startAndroidSpeech = () => {
+            if (!isRecognitionActiveRef.current) return;
+
+            // Reset per-session state for the new session
+            sessionFinalRef.current = "";
+            sessionCommittedRef.current = false;
+
+            // Re-instantiate to avoid Android Chrome state locks
+            const speechRecognition = new SpeechRecognitionAPI();
+            speechRecognition.continuous = true;
+            speechRecognition.interimResults = true;
+            speechRecognition.maxAlternatives = 1;
+            speechRecognition.lang = langCode || (typeof navigator !== 'undefined' ? navigator.language : '') || "ar-EG";
+
+            speechRecognition.onstart = () => {
+              devLog('Voice', 'Speech recognition session started (Android Mode)');
+              setIsListening(true);
+            };
+
+            speechRecognition.onresult = (event: SpeechRecognitionEvent) => {
+              let interim = "";
+              let final = "";
+
+              for (let i = event.resultIndex; i < event.results.length; i++) {
+                const result = event.results[i];
+                if (result.isFinal) {
+                  final += result[0].transcript;
+                } else {
+                  interim += result[0].transcript;
+                }
+              }
+
+              if (final) {
+                // = داخل الجلسة: نتابع فقط آخر نتيجة نهائية (Chrome يرسل كل كلمة بشكل متراكم)
+                sessionFinalRef.current = final.trim();
+                displayBaseRef.current = final.trim();
+                setInterimTranscript(displayBaseRef.current);
+                // للعرض الكلي: كل الجلسات السابقة + الجلسة الحالية
+                const preview = accumulatedTranscriptRef.current
+                  ? accumulatedTranscriptRef.current + " " + sessionFinalRef.current
+                  : sessionFinalRef.current;
+                setTranscript(preview.trim());
+                devLog('Voice', 'Speech final chunk (Android Mode)', { transcript: final });
+              } else if (interim) {
+                // الـ interim يظهر بعد الجملة الأخيرة المؤكدة فقط
+                setInterimTranscript(
+                  displayBaseRef.current
+                    ? displayBaseRef.current + " " + interim.trim()
+                    : interim.trim()
+                );
+              }
+            };
+
+            speechRecognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+              devWarn('Voice', 'Speech recognition error (Android Mode)', { error: event.error });
+              
+              // Ignore harmless errors like silence or aborts so they don't break the UI
+              if (event.error !== "no-speech" && event.error !== "aborted" && event.error !== "network") {
+                setError(`Error: ${event.error}`);
+                setSpeechRecognitionFailed(true);
+              }
+            };
+
+            speechRecognition.onend = () => {
+              devLog('Voice', 'Speech recognition session ended (Android Mode)');
+
+              // commit دائماً — لكن مرة واحدة فقط (guard يمنع التكرار مع flush)
+              if (sessionFinalRef.current && !sessionCommittedRef.current) {
+                accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
+                  ? accumulatedTranscriptRef.current + " " + sessionFinalRef.current
+                  : sessionFinalRef.current;
+                sessionCommittedRef.current = true;
+              }
+
+              if (isRecognitionActiveRef.current) {
+                // الشاشة تبدأ من آخر جملة مؤكدة في الجلسة السابقة
+                displayBaseRef.current = sessionFinalRef.current;
+                setTimeout(() => {
+                  startAndroidSpeech();
+                }, 0);
+              }
+            };
+
+            speechRecognitionRef.current = speechRecognition;
+            try {
+              speechRecognition.start();
+            } catch (err) {
+              devWarn('Voice', 'Failed to call start() on Android SpeechRecognition', err);
+            }
+          };
+
+          startAndroidSpeech();
+          return;
+        }
+
         // Ensure browser mediaDevices support (requires HTTPS secure context on mobile browsers)
         if (typeof window === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error(
@@ -353,12 +471,17 @@ export function useVoiceInput(): UseVoiceInputReturn {
 
           try {
             const audioBlob = new Blob(audioChunksRef.current, {
-              type: mediaRecorderRef.current?.mimeType || "audio/webm",
+              // نقرأ الـ mimeType من الـ mediaRecorder مباشرة (متاح في الـ closure)
+              type: mediaRecorder.mimeType || "audio/webm",
             });
             devLog('Voice', 'Sending audio to server', {
               mimeType: audioBlob.type,
               size: audioBlob.size,
             });
+
+            if (audioBlob.size === 0) {
+              throw new Error('No audio data recorded. Please try again.');
+            }
 
             // Create form data to send to your server
             const formData = new FormData();
@@ -481,8 +604,10 @@ export function useVoiceInput(): UseVoiceInputReturn {
     [isSupported, toast],
   );
 
-  const stopListening = useCallback(() => {
+  const stopListening = useCallback(async () => {
     devLog('Voice', 'Stopping voice input');
+    // نقرأ القرار المخزّن عند البداية — ضمان نفس المسار بالضبط
+    const isAndroidPlatform = isAndroidModeRef.current;
 
     // Prevent any further auto restart loops
     isRecognitionActiveRef.current = false;
@@ -492,12 +617,14 @@ export function useVoiceInput(): UseVoiceInputReturn {
       mediaRecorderRef.current &&
       mediaRecorderRef.current.state !== "inactive"
     ) {
-      mediaRecorderRef.current.stop();
+      // نحفظ الـ ref محلياً قبل ما يتمسح — onstop محتاجه يقرأ الـ mimeType
+      const recorder = mediaRecorderRef.current;
+      mediaRecorderRef.current = null;
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       }
-      mediaRecorderRef.current = null;
+      recorder.stop(); // ← onstop هيشتغل بعدها وعنده الـ mimeType من المتغير المحلي
     }
 
     // Stop speech recognition
@@ -513,7 +640,106 @@ export function useVoiceInput(): UseVoiceInputReturn {
     setIsListening(false);
     setInterimTranscript("");
     setSpeechRecognitionFailed(false);
-  }, []);
+
+    if (isAndroidPlatform) {
+      // flush الجلسة الأخيرة قبل الإرسال (في حال onend لم يشتغل بعد أو لم يكن هناك شيء)
+      // sessionCommittedRef يمنع الإضافة المزدوجة لو onend سبق stopListening
+      if (sessionFinalRef.current && !sessionCommittedRef.current) {
+        accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
+          ? accumulatedTranscriptRef.current + " " + sessionFinalRef.current
+          : sessionFinalRef.current;
+        sessionCommittedRef.current = true;
+        sessionFinalRef.current = "";
+      }
+
+      const finalResult = accumulatedTranscriptRef.current.trim();
+      console.log("\n=== ANDROID SPEECH RECOGNITION FINAL RESULT ===\n");
+      console.log(finalResult);
+      console.log("\n===============================================\n");
+      
+      // Save to localStorage under key "testVoice"
+      localStorage.setItem("testVoice", finalResult);
+
+      // Trigger downloading testVoice.txt automatically
+      try {
+        const blob = new Blob([finalResult], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "testVoice.txt";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("Failed to download testVoice.txt", err);
+      }
+
+      if (!finalResult) return;
+
+      setIsProcessing(true);
+      setError(null);
+
+      try {
+        const formData = new FormData();
+        formData.append("text", finalResult);
+        if (user?.id) {
+          formData.append("userId", user.id);
+        }
+
+        const headers: Record<string, string> = {};
+        if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+        const response = await fetchWithDiagnostics(
+          'Voice',
+          'POST /analyze-voice',
+          `${import.meta.env.VITE_BACKEND_API}/analyze-voice`,
+          {
+            method: "POST",
+            headers,
+            body: formData,
+          },
+          { timeoutMs: 60000, context: { textLength: finalResult.length } },
+        );
+
+        if (!response.ok) {
+          const responseText = await readResponseText(response);
+          throw new Error(responseText || `Server error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        devLog('Voice', 'Android Voice analysis response received', {
+          hasTranscript: Boolean(result.transcript || result.text),
+          hasEvent: Boolean(result.event),
+        });
+
+        if (result.event) {
+          setEventData(result.event);
+        }
+
+        const transcription = result.transcript || result.text || finalResult;
+        setTranscript(transcription);
+
+        if (typeof result.total_usage === "number") {
+          setTotalUsage(result.total_usage);
+        }
+      } catch (transcriptionError) {
+        devError('Voice', 'Android text submission failed', transcriptionError);
+        const message = getFriendlyErrorMessage(
+          transcriptionError,
+          "Failed to process text description",
+        );
+        setError(message);
+        toast({
+          title: "Couldn't process voice message",
+          description: message,
+          variant: "destructive",
+        });
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+  }, [user, session, setTotalUsage, toast]);
 
   return {
     isListening,
