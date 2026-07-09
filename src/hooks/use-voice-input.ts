@@ -653,27 +653,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
       }
 
       const finalResult = accumulatedTranscriptRef.current.trim();
-      console.log("\n=== ANDROID SPEECH RECOGNITION FINAL RESULT ===\n");
-      console.log(finalResult);
-      console.log("\n===============================================\n");
-      
-      // Save to localStorage under key "testVoice"
-      localStorage.setItem("testVoice", finalResult);
-
-      // Trigger downloading testVoice.txt automatically
-      try {
-        const blob = new Blob([finalResult], { type: "text/plain;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "testVoice.txt";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      } catch (err) {
-        console.error("Failed to download testVoice.txt", err);
-      }
+      devLog('Voice', 'Android final transcript ready', { length: finalResult.length, preview: finalResult.slice(0, 80) });
 
       if (!finalResult) return;
 
