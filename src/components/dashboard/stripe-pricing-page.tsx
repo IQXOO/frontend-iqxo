@@ -179,25 +179,28 @@ export function StripePricingPage({
           : base)
       : null;
 
-    // ── Check ReactNativeWebView DIRECTLY at click-time (never stale) ─────────
-    // Do NOT rely on useState - check the bridge synchronously at the moment of click.
-    // ReactNativeWebView is injected by react-native-webview SDK before page loads.
+    // ── Native detection: use __IQXO_IS_NATIVE injected BEFORE content loads ──
+    // This flag is set by injectedJavaScriptBeforeContentLoaded (always reliable).
+    // window.ReactNativeWebView can have timing issues with New Architecture.
     // @ts-ignore
-    const rnBridge = typeof window !== "undefined" ? window.ReactNativeWebView : null;
+    const isNative = typeof window !== "undefined" && (window.__IQXO_IS_NATIVE === true || !!window.ReactNativeWebView);
+    // @ts-ignore
+    const platform: string = typeof window !== "undefined" ? (window.__IQXO_PLATFORM || "") : "";
+    // @ts-ignore
+    const postMsg = typeof window !== "undefined" && (window.__IQXO_postMessage || (window.ReactNativeWebView?.postMessage?.bind(window.ReactNativeWebView)));
 
-    if (rnBridge) {
-      // Inside native app → delegate to native to decide: iOS=IAP, Android=Stripe
+    if (isNative && postMsg) {
       setIsPurchasing(true);
-      rnBridge.postMessage(JSON.stringify({
+      postMsg(JSON.stringify({
         type: "initiate_purchase",
         cycle,
         productId: cycle === "monthly" ? "com.iqxo.premium.monthly" : "com.iqxo.premium.yearly",
         userId: user?.id,
         stripeUrl,
+        platform,
       }));
       return;
     }
-    // ─────────────────────────────────────────────────────────────────────────────
 
     // Pure web/browser: use Stripe directly
     if (!stripeUrl) {
