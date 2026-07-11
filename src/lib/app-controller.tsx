@@ -49,6 +49,9 @@ export default function AppController() {
   // Show onboarding immediate if not done
   useEffect(() => {
     if (authLoading) return;
+    const publicPaths = new Set(["/pricing", "/terms", "/privacy", "/reset-password", "/index.html", "/onboarding", "/login"]);
+    if (publicPaths.has(location.pathname)) return;
+
     const isDismissed = typeof window !== "undefined" && localStorage.getItem("iqxo_intro_dismissed") === "1";
     if (!onboardingDone && !isDismissed) {
       navigate("/onboarding");
