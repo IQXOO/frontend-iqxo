@@ -1057,6 +1057,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       };
 
+      const handleNativeUpdate = () => {
+        devLog("Billing", "Native subscription update received, refreshing plan...");
+        fetchPlanStatus();
+      };
+
+      if (typeof window !== "undefined") {
+        window.addEventListener("nativeCustomerInfoUpdate", handleNativeUpdate);
+      }
+
       let pollInterval: NodeJS.Timeout | null = null;
 
       // If the user was previously confirmed as PRO (cached in localStorage),
@@ -1097,6 +1106,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       return () => {
         if (pollInterval) clearInterval(pollInterval);
+        if (typeof window !== "undefined") {
+          window.removeEventListener("nativeCustomerInfoUpdate", handleNativeUpdate);
+        }
       };
     } else {
       setDbEvents([]);
