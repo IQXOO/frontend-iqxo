@@ -1097,6 +1097,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       return () => {
         if (pollInterval) clearInterval(pollInterval);
+        if (typeof window !== "undefined") {
+          window.removeEventListener("nativeCustomerInfoUpdate", handleNativeUpdate);
+        }
       };
     } else {
       setDbEvents([]);
