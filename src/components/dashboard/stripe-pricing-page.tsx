@@ -172,20 +172,21 @@ export function StripePricingPage({
   const handleSubscribe = (cycle: BillingCycle) => {
     if (isPurchasing) return;
 
+    const productId = cycle === "monthly" ? "com.iqxo.premium.monthly" : "com.iqxo.premium.yearly";
     const base = PAYMENT_LINKS[cycle];
+
+    // Always embed iqxo_product_id in the Stripe URL.
+    // The native app intercepts stripe.com navigations on iOS and reads this
+    // parameter to trigger Apple IAP — no window.ReactNativeWebView required.
     const stripeUrl = base
       ? (user?.id
-          ? `${base}?client_reference_id=${encodeURIComponent(user.id)}&prefilled_email=${encodeURIComponent(user?.email || "")}`
-          : base)
+          ? `${base}?client_reference_id=${encodeURIComponent(user.id)}&prefilled_email=${encodeURIComponent(user?.email || "")}&iqxo_product_id=${encodeURIComponent(productId)}`
+          : `${base}?iqxo_product_id=${encodeURIComponent(productId)}`)
       : null;
 
-    // ── Native detection: use __IQXO_IS_NATIVE injected BEFORE content loads ──
-    // This flag is set by injectedJavaScriptBeforeContentLoaded (always reliable).
-    // window.ReactNativeWebView can have timing issues with New Architecture.
+    // ── Try native bridge first (postMessage path) ────────────────────
     // @ts-ignore
     const isNative = typeof window !== "undefined" && (window.__IQXO_IS_NATIVE === true || !!window.ReactNativeWebView);
-    // @ts-ignore
-    const platform: string = typeof window !== "undefined" ? (window.__IQXO_PLATFORM || "") : "";
     // @ts-ignore
     const postMsg = typeof window !== "undefined" && (window.__IQXO_postMessage || (window.ReactNativeWebView?.postMessage?.bind(window.ReactNativeWebView)));
 
@@ -194,15 +195,17 @@ export function StripePricingPage({
       postMsg(JSON.stringify({
         type: "initiate_purchase",
         cycle,
-        productId: cycle === "monthly" ? "com.iqxo.premium.monthly" : "com.iqxo.premium.yearly",
+        productId,
         userId: user?.id,
         stripeUrl,
-        platform,
       }));
       return;
     }
+    // ── Fallback: navigate to Stripe URL (native intercepts on iOS) ───────────
+    // On iOS the native handleShouldStartLoadWithRequest will detect
+    // iqxo_product_id and trigger Apple IAP instead of loading Stripe.
+    // On Android and web this opens Stripe normally.
 
-    // Pure web/browser: use Stripe directly
     if (!stripeUrl) {
       devWarn("Billing", "Missing payment link for billing cycle", { cycle });
       toast({
