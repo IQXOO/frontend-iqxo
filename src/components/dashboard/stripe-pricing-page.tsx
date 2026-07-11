@@ -67,6 +67,79 @@ export function StripePricingPage({
 
   const trialActive = planStatus === "free_trial" && trialEndsAt && trialEndsAt > new Date();
 
+  // ── Native detection: use useState so it's set AFTER mount (injected JS is ready) ──
+  const [isIosNative, setIsIosNative] = useState(false);
+  const [isInNativeApp, setIsInNativeApp] = useState(false); // any native platform
+
+  useEffect(() => {
+    // @ts-ignore
+    const hasNativeBridge = typeof window !== 'undefined' && !!window.ReactNativeWebView;
+    setIsInNativeApp(hasNativeBridge);
+
+    const iosDetected =
+      // @ts-ignore
+      (window.isNativeApp && window.nativePlatform === "ios") ||
+      (navigator.userAgent.includes("IQXONativeApp") && /iPad|iPhone|iPod/.test(navigator.userAgent));
+    setIsIosNative(hasNativeBridge && iosDetected);
+  }, []);
+
+  const [localizedMonthly, setLocalizedMonthly] = useState<string>("€9.99");
+  const [localizedYearly, setLocalizedYearly] = useState<string>("€79");
+  const [isPurchasing, setIsPurchasing] = useState(false);
+
+  useEffect(() => {
+    if (!isInNativeApp) return;
+    // Request localized prices from native (works on iOS; ignored on Android)
+    // @ts-ignore
+    window.ReactNativeWebView?.postMessage(JSON.stringify({ type: "get_products" }));
+
+    const handleProductsResult = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const products = customEvent.detail;
+      if (products && products.length > 0) {
+        const monthly = products.find((p: any) => p.identifier === "com.iqxo.premium.monthly");
+        const yearly = products.find((p: any) => p.identifier === "com.iqxo.premium.yearly");
+        if (monthly?.priceString) setLocalizedMonthly(monthly.priceString);
+        if (yearly?.priceString) setLocalizedYearly(yearly.priceString);
+      }
+    };
+
+    window.addEventListener("nativeProductsResult", handleProductsResult);
+    return () => window.removeEventListener("nativeProductsResult", handleProductsResult);
+  }, [isInNativeApp]);
+
+  useEffect(() => {
+    const handleNativeIapResult = (e: Event) => {
+      setIsPurchasing(false);
+      const customEvent = e as CustomEvent;
+      const detail = customEvent.detail;
+      if (detail.success) {
+        if (detail.isRestore) {
+          toast({
+            title: t("Purchases Restored", "Achats restaurés", "تمت استعادة المشتريات"),
+            description: t("Your purchases have been synchronized.", "Vos achats ont été synchronisés.", "تمت مزامنة مشترياتك."),
+          });
+        } else {
+          toast({
+            title: t("Purchase successful! 🎉", "Achat réussi ! 🎉", "تمت عملية الشراء بنجاح! 🎉"),
+            description: t("Welcome to Calm.", "Bienvenue dans Calm.", "أهلاً بك في Calm."),
+          });
+          onClose?.();
+        }
+        // State is updated by the global nativeCustomerInfoUpdate listener in store.tsx
+      } else {
+        toast({
+          title: detail.isRestore ? t("Restore Failed", "Restauration échouée", "فشل الاستعادة") : t("Purchase Failed", "Achat échoué", "فشل الشراء"),
+          description: detail.error || t("Something went wrong.", "Une erreur est survenue.", "حدث خطأ."),
+          variant: "destructive",
+        });
+      }
+    };
+
+    window.addEventListener("nativeIapResult", handleNativeIapResult);
+    return () => window.removeEventListener("nativeIapResult", handleNativeIapResult);
+  }, [onClose, toast, t]);
+
   const _features = useMemo(
     () => [
       { icon: Mic, en: "Voice → Event", fr: "Voix → Événement", ar: "صوت ← حدث" },
@@ -97,8 +170,40 @@ export function StripePricingPage({
   }, [open, forceOpen, onClose]);
 
   const handleSubscribe = (cycle: BillingCycle) => {
+    if (isPurchasing) return;
+
     const base = PAYMENT_LINKS[cycle];
-    if (!base) {
+    const stripeUrl = base
+      ? (user?.id
+          ? `${base}?client_reference_id=${encodeURIComponent(user.id)}&prefilled_email=${encodeURIComponent(user?.email || "")}`
+          : base)
+      : null;
+
+    // ── Native detection: use __IQXO_IS_NATIVE injected BEFORE content loads ──
+    // This flag is set by injectedJavaScriptBeforeContentLoaded (always reliable).
+    // window.ReactNativeWebView can have timing issues with New Architecture.
+    // @ts-ignore
+    const isNative = typeof window !== "undefined" && (window.__IQXO_IS_NATIVE === true || !!window.ReactNativeWebView);
+    // @ts-ignore
+    const platform: string = typeof window !== "undefined" ? (window.__IQXO_PLATFORM || "") : "";
+    // @ts-ignore
+    const postMsg = typeof window !== "undefined" && (window.__IQXO_postMessage || (window.ReactNativeWebView?.postMessage?.bind(window.ReactNativeWebView)));
+
+    if (isNative && postMsg) {
+      setIsPurchasing(true);
+      postMsg(JSON.stringify({
+        type: "initiate_purchase",
+        cycle,
+        productId: cycle === "monthly" ? "com.iqxo.premium.monthly" : "com.iqxo.premium.yearly",
+        userId: user?.id,
+        stripeUrl,
+        platform,
+      }));
+      return;
+    }
+
+    // Pure web/browser: use Stripe directly
+    if (!stripeUrl) {
       devWarn("Billing", "Missing payment link for billing cycle", { cycle });
       toast({
         title: "Payment link unavailable",
@@ -111,11 +216,20 @@ export function StripePricingPage({
       return;
     }
 
-    const url = user?.id
-      ? `${base}?client_reference_id=${encodeURIComponent(user.id)}&prefilled_email=${encodeURIComponent(user?.email || "")}`
-      : base;
+    window.location.href = stripeUrl;
+  };
 
-    window.location.href = url;
+  const handleRestore = () => {
+    if (isPurchasing) return;
+    setIsPurchasing(true);
+    // @ts-ignore
+    if (window.ReactNativeWebView) {
+      // @ts-ignore
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: "restore_iap",
+        userId: user?.id,
+      }));
+    }
   };
 
   const handleTrial = async () => {
@@ -357,8 +471,7 @@ export function StripePricingPage({
                   </div>
 
                   <div className="mt-8 flex items-end justify-center gap-0.5 tracking-[-0.03em] text-[#E8E8E8]">
-                    <span className="text-[3rem] font-light leading-none">€9</span>
-                    <span className="pb-1 text-[1.1rem] font-normal text-[#6E6E78]">.99</span>
+                    <span className="text-[3rem] font-light leading-none">{isIosNative ? localizedMonthly : "€9.99"}</span>
                   </div>
                   <div className="mt-2 text-[0.85rem] text-[#6E6E78]">
                     {t("per month", "par mois", "شهريًا")}
@@ -382,9 +495,10 @@ export function StripePricingPage({
 
                   <button
                     onClick={() => handleSubscribe("monthly")}
-                    className="mt-8 block w-full rounded-full border border-[var(--border-hover)] bg-transparent px-4 py-4 text-[0.9rem] font-medium text-[#A0A0A8] transition-all hover:border-[rgba(91,192,222,0.3)] hover:bg-[rgba(91,192,222,0.04)] hover:text-[#E8E8E8]"
+                    disabled={isPurchasing}
+                    className="mt-6 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#E8E8E8] to-[#FFFFFF] py-4 text-[1.1rem] font-medium tracking-tight text-[#0C0C0E] transition-all hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
                   >
-                    {t("Upgrade to Calm", "Passer à Calm", "الترقية إلى Calm")}
+                    {isPurchasing ? t("Processing...", "Traitement...", "جاري المعالجة...") : t("Get Monthly", "Obtenir Mensuel", "اشترك شهريًا")}
                   </button>
 
                   <div className="mt-5 text-[0.75rem] text-[#6E6E78]">
@@ -418,8 +532,7 @@ export function StripePricingPage({
                   </div>
 
                   <div className="mt-6 flex items-end justify-center gap-0.5 tracking-[-0.03em] text-[#E8E8E8]">
-                    <span className="text-[3rem] font-light leading-none">€79</span>
-                    <span className="pb-1 text-[1.1rem] font-normal text-[#6E6E78]"></span>
+                    <span className="text-[3rem] font-light leading-none">{isIosNative ? localizedYearly : "€79"}</span>
                   </div>
                   <div className="mt-2 text-[0.85rem] text-[#6E6E78]">
                     {t("per year", "par an", "سنويًا")}
@@ -446,9 +559,10 @@ export function StripePricingPage({
 
                   <button
                     onClick={() => handleSubscribe("yearly")}
-                    className="mt-8 block w-full rounded-full border border-[rgba(212,168,83,0.15)] bg-[var(--amber-soft)] px-4 py-4 text-[0.9rem] font-medium text-[var(--amber)] transition-all hover:border-[rgba(212,168,83,0.25)] hover:bg-[rgba(212,168,83,0.1)] hover:text-[#E8C070]"
+                    disabled={isPurchasing}
+                    className="mt-8 block w-full rounded-full border border-[rgba(212,168,83,0.15)] bg-[var(--amber-soft)] px-4 py-4 text-[0.9rem] font-medium text-[var(--amber)] transition-all hover:border-[rgba(212,168,83,0.25)] hover:bg-[rgba(212,168,83,0.1)] hover:text-[#E8C070] disabled:opacity-50 disabled:hover:scale-100"
                   >
-                    {t("Commit to Calm", "S'engager vers le calme", "الالتزام بالهدوء")}
+                    {isPurchasing ? t("Processing...", "Traitement...", "جاري المعالجة...") : t("Commit to Calm", "S'engager vers le calme", "الالتزام بالهدوء")}
                   </button>
 
                   <div className="mt-5 text-[0.75rem] text-[#6E6E78]">
@@ -485,6 +599,21 @@ export function StripePricingPage({
                   )}
                 </span>
               </div>
+
+              {isIosNative && (
+                <div className="mt-4 flex flex-col items-center gap-2">
+                  <button onClick={handleRestore} disabled={isPurchasing} className="text-sm text-[#6E6E78] underline transition-colors hover:text-[#E8E8E8] disabled:opacity-50">
+                    {isPurchasing ? t("Processing...", "Traitement...", "جاري المعالجة...") : t("Restore Purchases", "Restaurer les achats", "استعادة المشتريات")}
+                  </button>
+                  <a href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noreferrer" className="text-sm text-[#6E6E78] underline transition-colors hover:text-[#E8E8E8]">
+                    {t("Manage Subscription", "Gérer l'abonnement", "إدارة الاشتراك")}
+                  </a>
+                  <div className="flex gap-4 text-xs text-[#6E6E78] mt-2">
+                    <a href="/terms" target="_blank" className="underline hover:text-[#E8E8E8]">{t("Terms of Service", "Conditions d'utilisation", "شروط الخدمة")}</a>
+                    <a href="/privacy" target="_blank" className="underline hover:text-[#E8E8E8]">{t("Privacy Policy", "Politique de confidentialité", "سياسة الخصوصية")}</a>
+                  </div>
+                </div>
+              )}
 
             </div>
           </div>

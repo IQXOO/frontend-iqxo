@@ -89,6 +89,27 @@ function _AppShell() {
     return () => window.removeEventListener("popstate", handlePathChange);
   }, []);
 
+  // ── Sync user ID to Native App for RevenueCat ──────────────────────────────────
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isNative = window.isNativeApp || (typeof navigator !== 'undefined' && navigator.userAgent.includes("IQXONativeApp"));
+    // @ts-ignore
+    if (!isNative || !window.ReactNativeWebView) return;
+
+    if (user?.id) {
+      // @ts-ignore
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: "set_user_id",
+        userId: user.id,
+      }));
+    } else if (user === null) {
+      // @ts-ignore
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: "logout",
+      }));
+    }
+  }, [user]);
+
   // ── Trigger 1: Show pricing right after login or signup ──────────────────────
   useEffect(() => {
     const prevUserId = prevUserIdRef.current;
