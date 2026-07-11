@@ -67,8 +67,12 @@ export function StripePricingPage({
 
   const trialActive = planStatus === "free_trial" && trialEndsAt && trialEndsAt > new Date();
 
-  // @ts-ignore
-  const isIosNative = typeof window !== 'undefined' && window.isNativeApp && window.nativePlatform === "ios";
+  const isIosNative = typeof window !== 'undefined' && 
+    typeof navigator !== 'undefined' && 
+    (
+      (window.isNativeApp && window.nativePlatform === "ios") || 
+      (navigator.userAgent.includes("IQXONativeApp") && /iPad|iPhone|iPod/.test(navigator.userAgent))
+    );
 
   const [localizedMonthly, setLocalizedMonthly] = useState<string>("€9.99");
   const [localizedYearly, setLocalizedYearly] = useState<string>("€79");
