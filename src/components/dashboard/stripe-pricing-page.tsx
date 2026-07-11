@@ -179,19 +179,21 @@ export function StripePricingPage({
           : base)
       : null;
 
-    // ── If running inside the native app, ALWAYS delegate to native ──────────────
-    // The native app decides: iOS → Apple IAP, Android → open Stripe in WebView
-    // This is 100% reliable because ReactNativeWebView is injected by the SDK itself
+    // ── Check ReactNativeWebView DIRECTLY at click-time (never stale) ─────────
+    // Do NOT rely on useState - check the bridge synchronously at the moment of click.
+    // ReactNativeWebView is injected by react-native-webview SDK before page loads.
     // @ts-ignore
-    if (isInNativeApp && window.ReactNativeWebView) {
+    const rnBridge = typeof window !== "undefined" ? window.ReactNativeWebView : null;
+
+    if (rnBridge) {
+      // Inside native app → delegate to native to decide: iOS=IAP, Android=Stripe
       setIsPurchasing(true);
-      // @ts-ignore
-      window.ReactNativeWebView.postMessage(JSON.stringify({
+      rnBridge.postMessage(JSON.stringify({
         type: "initiate_purchase",
         cycle,
         productId: cycle === "monthly" ? "com.iqxo.premium.monthly" : "com.iqxo.premium.yearly",
         userId: user?.id,
-        stripeUrl, // native uses this for Android
+        stripeUrl,
       }));
       return;
     }
