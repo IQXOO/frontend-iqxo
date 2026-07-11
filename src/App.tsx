@@ -92,8 +92,9 @@ function _AppShell() {
   // ── Sync user ID to Native App for RevenueCat ──────────────────────────────────
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const isNative = window.isNativeApp || (typeof navigator !== 'undefined' && navigator.userAgent.includes("IQXONativeApp"));
     // @ts-ignore
-    if (!window.isNativeApp || !window.ReactNativeWebView) return;
+    if (!isNative || !window.ReactNativeWebView) return;
 
     if (user?.id) {
       // @ts-ignore
