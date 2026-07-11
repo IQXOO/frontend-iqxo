@@ -67,50 +67,46 @@ export function StripePricingPage({
 
   const trialActive = planStatus === "free_trial" && trialEndsAt && trialEndsAt > new Date();
 
-  const isIosNative = typeof window !== 'undefined' && 
-    typeof navigator !== 'undefined' && 
-    (
-      (window.isNativeApp && window.nativePlatform === "ios") || 
-      (navigator.userAgent.includes("IQXONativeApp") && /iPad|iPhone|iPod/.test(navigator.userAgent))
-    );
+  // ── Native detection: use useState so it's set AFTER mount (injected JS is ready) ──
+  const [isIosNative, setIsIosNative] = useState(false);
+  const [isInNativeApp, setIsInNativeApp] = useState(false); // any native platform
+
+  useEffect(() => {
+    // @ts-ignore
+    const hasNativeBridge = typeof window !== 'undefined' && !!window.ReactNativeWebView;
+    setIsInNativeApp(hasNativeBridge);
+
+    const iosDetected =
+      // @ts-ignore
+      (window.isNativeApp && window.nativePlatform === "ios") ||
+      (navigator.userAgent.includes("IQXONativeApp") && /iPad|iPhone|iPod/.test(navigator.userAgent));
+    setIsIosNative(hasNativeBridge && iosDetected);
+  }, []);
 
   const [localizedMonthly, setLocalizedMonthly] = useState<string>("€9.99");
   const [localizedYearly, setLocalizedYearly] = useState<string>("€79");
   const [isPurchasing, setIsPurchasing] = useState(false);
 
   useEffect(() => {
-    if (isIosNative) {
-      // Request localized prices
-      // @ts-ignore
-      if (window.ReactNativeWebView) {
-        // @ts-ignore
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: "get_products" }));
+    if (!isInNativeApp) return;
+    // Request localized prices from native (works on iOS; ignored on Android)
+    // @ts-ignore
+    window.ReactNativeWebView?.postMessage(JSON.stringify({ type: "get_products" }));
+
+    const handleProductsResult = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const products = customEvent.detail;
+      if (products && products.length > 0) {
+        const monthly = products.find((p: any) => p.identifier === "com.iqxo.premium.monthly");
+        const yearly = products.find((p: any) => p.identifier === "com.iqxo.premium.yearly");
+        if (monthly?.priceString) setLocalizedMonthly(monthly.priceString);
+        if (yearly?.priceString) setLocalizedYearly(yearly.priceString);
       }
+    };
 
-      const handleProductsResult = (e: Event) => {
-        const customEvent = e as CustomEvent;
-        const products = customEvent.detail;
-        if (products && products.length > 0) {
-          const monthly = products.find((p: any) => p.identifier === "com.iqxo.premium.monthly");
-          const yearly = products.find((p: any) => p.identifier === "com.iqxo.premium.yearly");
-          if (monthly && monthly.priceString) setLocalizedMonthly(monthly.priceString);
-          if (yearly && yearly.priceString) setLocalizedYearly(yearly.priceString);
-        }
-      };
-
-      const handleCustomerInfoUpdate = (e: Event) => {
-        // Global listener in store.tsx now handles this!
-      };
-
-      window.addEventListener("nativeProductsResult", handleProductsResult);
-      window.addEventListener("nativeCustomerInfoUpdate", handleCustomerInfoUpdate);
-
-      return () => {
-        window.removeEventListener("nativeProductsResult", handleProductsResult);
-        window.removeEventListener("nativeCustomerInfoUpdate", handleCustomerInfoUpdate);
-      };
-    }
-  }, [isIosNative]);
+    window.addEventListener("nativeProductsResult", handleProductsResult);
+    return () => window.removeEventListener("nativeProductsResult", handleProductsResult);
+  }, [isInNativeApp]);
 
   useEffect(() => {
     const handleNativeIapResult = (e: Event) => {
@@ -174,26 +170,35 @@ export function StripePricingPage({
   }, [open, forceOpen, onClose]);
 
   const handleSubscribe = (cycle: BillingCycle) => {
-    // ── Apple IAP Branch ──────────────────────────────────────────────────────────
-    if (isIosNative) {
-      if (isPurchasing) return;
+    if (isPurchasing) return;
+
+    const base = PAYMENT_LINKS[cycle];
+    const stripeUrl = base
+      ? (user?.id
+          ? `${base}?client_reference_id=${encodeURIComponent(user.id)}&prefilled_email=${encodeURIComponent(user?.email || "")}`
+          : base)
+      : null;
+
+    // ── If running inside the native app, ALWAYS delegate to native ──────────────
+    // The native app decides: iOS → Apple IAP, Android → open Stripe in WebView
+    // This is 100% reliable because ReactNativeWebView is injected by the SDK itself
+    // @ts-ignore
+    if (isInNativeApp && window.ReactNativeWebView) {
       setIsPurchasing(true);
-      const productId = cycle === "monthly" ? "com.iqxo.premium.monthly" : "com.iqxo.premium.yearly";
       // @ts-ignore
-      if (window.ReactNativeWebView) {
-        // @ts-ignore
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: "purchase_iap",
-          productId,
-          userId: user?.id,
-        }));
-      }
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: "initiate_purchase",
+        cycle,
+        productId: cycle === "monthly" ? "com.iqxo.premium.monthly" : "com.iqxo.premium.yearly",
+        userId: user?.id,
+        stripeUrl, // native uses this for Android
+      }));
       return;
     }
     // ─────────────────────────────────────────────────────────────────────────────
 
-    const base = PAYMENT_LINKS[cycle];
-    if (!base) {
+    // Pure web/browser: use Stripe directly
+    if (!stripeUrl) {
       devWarn("Billing", "Missing payment link for billing cycle", { cycle });
       toast({
         title: "Payment link unavailable",
@@ -206,11 +211,7 @@ export function StripePricingPage({
       return;
     }
 
-    const url = user?.id
-      ? `${base}?client_reference_id=${encodeURIComponent(user.id)}&prefilled_email=${encodeURIComponent(user?.email || "")}`
-      : base;
-
-    window.location.href = url;
+    window.location.href = stripeUrl;
   };
 
   const handleRestore = () => {
