@@ -149,18 +149,39 @@ function AppLayoutContent() {
   const dt = drawerI18n[language === "ar" ? "ar" : language === "fr" ? "fr" : "en"];
 
   const handlePaywallSubscribe = (cycle: "monthly" | "yearly") => {
+    const productId = cycle === "monthly" ? "com.iqxo.premium.monthly" : "com.iqxo.premium.yearly";
     const monthlyLink = import.meta.env?.VITE_STRIPE_MONTHLY_LINK;
     const yearlyLink = import.meta.env?.VITE_STRIPE_YEARLY_LINK || "";
     const base = cycle === "yearly" ? yearlyLink : monthlyLink;
 
-    if (!base) {
+    const url = base
+      ? `${base}?client_reference_id=${encodeURIComponent(user?.id || "")}&prefilled_email=${encodeURIComponent(user?.email || "")}&iqxo_product_id=${encodeURIComponent(productId)}`
+      : null;
+
+    // @ts-ignore
+    const isNative = typeof window !== "undefined" && (window.__IQXO_IS_NATIVE === true || !!window.ReactNativeWebView);
+    // @ts-ignore
+    const postMsg = typeof window !== "undefined" && (window.__IQXO_postMessage || (window.ReactNativeWebView?.postMessage?.bind(window.ReactNativeWebView)));
+
+    if (isNative && postMsg) {
+      postMsg(JSON.stringify({
+        type: "initiate_purchase",
+        cycle,
+        productId,
+        userId: user?.id,
+        stripeUrl: url,
+      }));
+      return;
+    }
+
+    if (!url) {
       alert("Stripe billing link is not configured yet.");
       return;
     }
 
-    const url = `${base}?client_reference_id=${encodeURIComponent(user?.id || "")}&prefilled_email=${encodeURIComponent(user?.email || "")}`;
     window.location.href = url;
   };
+
 
   return (
     <div className={`min-h-screen max-w-md mx-auto bg-background text-foreground relative ${isRTL ? "dir-rtl" : ""}`}>
