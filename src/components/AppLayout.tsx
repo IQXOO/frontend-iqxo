@@ -162,10 +162,13 @@ function AppLayoutContent() {
     const isNative = typeof window !== "undefined" && (window.__IQXO_IS_NATIVE === true || !!window.ReactNativeWebView);
     // @ts-ignore
     const postMsg = typeof window !== "undefined" && (window.__IQXO_postMessage || (window.ReactNativeWebView?.postMessage?.bind(window.ReactNativeWebView)));
+    // @ts-ignore
+    const platform = typeof window !== "undefined" ? (window.nativePlatform || "") : "";
+    const isIos = platform === "ios";
 
-    if (isNative && postMsg) {
+    if (isNative && isIos && postMsg) {
       postMsg(JSON.stringify({
-        type: "initiate_purchase",
+        type: "purchase_iap",
         cycle,
         productId,
         userId: user?.id,
