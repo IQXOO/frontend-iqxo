@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, LogOut, Settings, Info, Trash2 } from "lucide-react";
+import { Loader2, LogOut, Settings, Info, Trash2, Crown } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +19,7 @@ import { useApp } from "../lib/store";
 import { navigateToPath } from "../lib/navigation";
 
 export default function ProfilePage() {
-  const { language, signOut, t } = useApp();
+  const { language, signOut, t, planStatus } = useApp();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const isRTL = language === "ar";
 
@@ -30,6 +30,10 @@ export default function ProfilePage() {
     } finally {
       setIsSigningOut(false);
     }
+  };
+
+  const handleUpgradeClick = () => {
+    window.dispatchEvent(new CustomEvent("trigger-paywall"));
   };
 
   return (
@@ -56,7 +60,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="pb-8">
-        <ProfileIdentityHub />
+        <ProfileIdentityHub onUpgradeClick={handleUpgradeClick} />
 
         <div className="px-5 pt-6 pb-2">
           <div className="flex items-center gap-2 mb-4 text-muted-foreground">
@@ -67,6 +71,24 @@ export default function ProfilePage() {
           </div>
 
           <div className="glass rounded-2xl border border-white/5 overflow-hidden flex flex-col mb-6">
+            {/* Upgrade Plan */}
+            {planStatus !== "pro" && (
+              <button
+                onClick={handleUpgradeClick}
+                className="px-4 py-3.5 flex items-center justify-between w-full hover:bg-white/5 transition-colors text-left group border-b border-white/5"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500/20 transition-colors">
+                    <Crown className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    {language === "ar" ? "ترقية الحساب إلى Pro" : language === "fr" ? "Passer à Pro" : "Upgrade to Pro"}
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">{language === "ar" ? "ترقية" : "Upgrade"}</span>
+              </button>
+            )}
+
             {/* Version Number */}
             <div className="px-4 py-3.5 flex items-center justify-between border-b border-white/5">
               <div className="flex items-center gap-3">

@@ -43,7 +43,7 @@ function AppLayoutContent() {
   React.useEffect(() => {
     if (shouldBlockAI) {
       const path = location.pathname;
-      if (path === "/schedule" || path === "/tomorrow" || path === "/future") {
+      if (path === "/schedule") {
         setPaywallOpen(true);
       }
     }
@@ -65,7 +65,7 @@ function AppLayoutContent() {
       sessionStorage.removeItem("iqxo_just_signed_in");
     }
     const path = location.pathname;
-    if (shouldBlockAI && (path === "/schedule" || path === "/tomorrow" || path === "/future")) {
+    if (shouldBlockAI && path === "/schedule") {
       navigateToPath("/home");
     }
   };
@@ -222,7 +222,7 @@ function AppLayoutContent() {
         />
       )}
 
-      <main className="pb-28">
+      <main className="pb-24">
         <Outlet />
       </main>
 

@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
-import { Sparkles, Clock, Archive, CalendarCheck, TrendingUp, Heart, Download, Shield, Camera } from "lucide-react"
+import { Sparkles, Clock, Archive, CalendarCheck, TrendingUp, Heart, Download, Shield, Camera, Crown } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useApp } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
@@ -12,7 +12,11 @@ import { lazyNamed } from "@/lib/lazy"
 
 const BentoChart = lazyNamed(() => import("./bento-chart"), "BentoChart")
 
-export function ProfileIdentityHub() {
+interface ProfileIdentityHubProps {
+  onUpgradeClick?: () => void
+}
+
+export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) {
   const { user, events, language, planStatus, trialEndsAt, totalUsage: _totalUsage } = useApp()
   const isRTL = language === "ar"
 
@@ -28,7 +32,7 @@ export function ProfileIdentityHub() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [_loadError, _setLoadError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -462,41 +466,55 @@ export function ProfileIdentityHub() {
         transition={{ delay: 0.55 }}
         className="glass rounded-2xl p-5 border border-border"
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-amber-400" />
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {planStatus === "pro"
+                    ? (language === "ar" ? "Pro" : "Pro Plan")
+                    : planStatus === "free_trial"
+                    ? (language === "ar" ? "تجربة مجانية" : "Free Trial")
+                    : planStatus === "expired"
+                    ? (language === "ar" ? "التجربة انتهت" : "Trial Expired")
+                    : (language === "ar" ? "لا توجد خطة" : "No Plan")}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {planStatus === "free_trial" && trialEndsAt
+                    ? (language === "ar"
+                        ? `تنتهي ${new Date(trialEndsAt).toLocaleDateString("ar")}`
+                        : `Ends ${new Date(trialEndsAt).toLocaleDateString()}`)
+                    : planStatus === "pro"
+                    ? (language === "ar" ? "وصول كامل" : "Full access")
+                    : (language === "ar" ? "اختر خطة للمتابعة" : "Choose a plan to continue")}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                {planStatus === "pro"
-                  ? (language === "ar" ? "Pro" : "Pro Plan")
-                  : planStatus === "free_trial"
-                  ? (language === "ar" ? "تجربة مجانية" : "Free Trial")
-                  : planStatus === "expired"
-                  ? (language === "ar" ? "التجربة انتهت" : "Trial Expired")
-                  : (language === "ar" ? "لا توجد خطة" : "No Plan")}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                {planStatus === "free_trial" && trialEndsAt
-                  ? (language === "ar"
-                      ? `تنتهي ${new Date(trialEndsAt).toLocaleDateString("ar")}`
-                      : `Ends ${new Date(trialEndsAt).toLocaleDateString()}`)
-                  : planStatus === "pro"
-                  ? (language === "ar" ? "وصول كامل" : "Full access")
-                  : (language === "ar" ? "اختر خطة للمتابعة" : "Choose a plan to continue")}
-              </p>
+            <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
+              planStatus === "pro"
+                ? "bg-emerald-500/20 text-emerald-400"
+                : planStatus === "free_trial"
+                ? "bg-blue-500/20 text-blue-400"
+                : "bg-rose-500/20 text-rose-400"
+            }`}>
+              {planStatus === "pro" ? "✓ Active" : planStatus === "free_trial" ? "Trial" : "Inactive"}
             </div>
           </div>
-          <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
-            planStatus === "pro"
-              ? "bg-emerald-500/20 text-emerald-400"
-              : planStatus === "free_trial"
-              ? "bg-blue-500/20 text-blue-400"
-              : "bg-rose-500/20 text-rose-400"
-          }`}>
-            {planStatus === "pro" ? "✓ Active" : planStatus === "free_trial" ? "Trial" : "Inactive"}
-          </div>
+
+          {planStatus !== "pro" && (
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={onUpgradeClick}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-semibold hover:from-amber-600 hover:to-amber-700 transition-colors shadow-lg shadow-amber-500/10 flex items-center justify-center gap-1.5"
+            >
+              <Crown className="w-3.5 h-3.5" />
+              <span>{language === "ar" ? "ترقية الحساب إلى Pro" : "Upgrade to Pro"}</span>
+            </motion.button>
+          )}
         </div>
       </motion.div>
 
