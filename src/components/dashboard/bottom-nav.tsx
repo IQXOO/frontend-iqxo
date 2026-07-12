@@ -1333,7 +1333,7 @@ export function BottomNav({
             <NavLink
               to="/home"
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-1 min-[375px]:px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   isActive
                     ? "text-[#3B82F6]" // Blue
                     : "bg-transparent text-[#6E6E78] hover:text-foreground"
@@ -1355,7 +1355,7 @@ export function BottomNav({
             <NavLink
               to="/tomorrow"
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-1 min-[375px]:px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   isActive
                     ? "text-[#EAB308]" // Yellow
                     : "bg-transparent text-[#6E6E78] hover:text-foreground"
@@ -1377,7 +1377,7 @@ export function BottomNav({
             <NavLink
               to="/future"
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-1 min-[375px]:px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   isActive
                     ? "text-[#A855F7]" // Purple
                     : "bg-transparent text-[#6E6E78] hover:text-foreground"
@@ -1399,7 +1399,7 @@ export function BottomNav({
             <NavLink
               to="/schedule"
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-1 min-[375px]:px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   isActive
                     ? "text-[#3B82F6]" // Blue
                     : "bg-transparent text-[#6E6E78] hover:text-foreground"
@@ -1421,7 +1421,7 @@ export function BottomNav({
             <NavLink
               to="/archive"
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                `flex flex-col items-center justify-center gap-[2px] rounded-2xl px-1 min-[375px]:px-2 py-1 text-[10px] sm:text-[11px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   isActive
                     ? "text-[#22C55E]" // Green
                     : "bg-transparent text-[#6E6E78] hover:text-foreground"
