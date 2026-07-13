@@ -27,6 +27,7 @@ import {
   withAsyncDiagnostics,
 } from "../../lib/logger";
 import { useToast } from "../../hooks/use-toast";
+import { WorkScheduleSkeleton } from "./skeleton";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface WorkDay {
@@ -136,9 +137,11 @@ function fmtDate(iso: string, language: string): string {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function WorkScheduleView() {
-  const { user, language, addEvent, events, setTotalUsage, refreshEvents } = useApp();
+  const { user, language, addEvent, events, setTotalUsage, refreshEvents, loading: storeLoading } = useApp();
   const { toast } = useToast();
   const isRTL = language === "ar";
+
+  if (storeLoading) return <WorkScheduleSkeleton count={5} />;
 
   const displayName: string =
     user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";

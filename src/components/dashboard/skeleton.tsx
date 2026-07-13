@@ -122,3 +122,127 @@ export function HomePageSkeleton() {
     </>
   );
 }
+
+// ── Archive / History row skeleton ────────────────────────────────────────────
+// شكل صف واحد من الأرشيف (عنوان + تاريخ)
+function ArchiveRowSkeleton() {
+  return (
+    <div className="glass rounded-2xl p-4 flex items-start justify-between gap-3">
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-3/4 rounded-full" />
+        <Skeleton className="h-3 w-1/3 rounded-full" />
+        <Skeleton className="h-3 w-2/3 rounded-full" />
+      </div>
+      <div className="flex gap-2 shrink-0">
+        <Skeleton className="h-8 w-8 rounded-lg" />
+        <Skeleton className="h-8 w-8 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+export function ArchiveSkeleton({ count = 5 }: { count?: number }) {
+  return (
+    <div className="px-5 py-6 space-y-3" aria-label="Loading archive">
+      <Skeleton className="h-3 w-32 rounded-full mb-4" />
+      {Array.from({ length: count }).map((_, i) => (
+        <ArchiveRowSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+// ── History view skeleton (re-uses EventListSkeleton for past layout) ─────────
+export function HistorySkeleton() {
+  return (
+    <div className="py-4" aria-label="Loading history">
+      <div className="px-5 mb-4">
+        <Skeleton className="h-7 w-28 rounded-xl" />
+      </div>
+      <EventListSkeleton count={4} label="Loading past events" />
+    </div>
+  );
+}
+
+// ── Tomorrow view skeleton ────────────────────────────────────────────────────
+function TomorrowRowSkeleton() {
+  return (
+    <div className="glass rounded-2xl p-4 flex items-start justify-between gap-3">
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-3/5 rounded-full" />
+        <Skeleton className="h-3 w-1/4 rounded-full" />
+        <Skeleton className="h-3 w-2/5 rounded-full" />
+      </div>
+      <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
+    </div>
+  );
+}
+
+export function TomorrowSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <div className="px-5 py-6 space-y-3" aria-label="Loading tomorrow">
+      {Array.from({ length: count }).map((_, i) => (
+        <TomorrowRowSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+// ── Future Explorer skeleton ──────────────────────────────────────────────────
+function FutureWeekGroupSkeleton() {
+  return (
+    <div className="space-y-2">
+      {/* week header */}
+      <div className="flex items-center gap-2 px-2 mb-3">
+        <Skeleton className="h-4 w-4 rounded" />
+        <Skeleton className="h-3 w-20 rounded-full" />
+      </div>
+      {/* 2-3 event rows per week */}
+      {Array.from({ length: 2 }).map((_, i) => (
+        <div key={i} className="glass rounded-xl p-3 space-y-1.5">
+          <Skeleton className="h-4 w-2/3 rounded-full" />
+          <Skeleton className="h-3 w-1/4 rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function FutureExplorerSkeleton({ weeks = 2 }: { weeks?: number }) {
+  return (
+    <div className="px-5 py-6 space-y-6" aria-label="Loading future events">
+      {Array.from({ length: weeks }).map((_, i) => (
+        <FutureWeekGroupSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+// ── Work Schedule skeleton ────────────────────────────────────────────────────
+function ScheduleRowSkeleton() {
+  return (
+    <div className="glass rounded-2xl p-4 flex items-center gap-4">
+      <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-1/3 rounded-full" />
+        <Skeleton className="h-3 w-1/2 rounded-full" />
+      </div>
+      <Skeleton className="h-6 w-12 rounded-full shrink-0" />
+    </div>
+  );
+}
+
+export function WorkScheduleSkeleton({ count = 5 }: { count?: number }) {
+  return (
+    <div className="px-5 py-6 space-y-3" aria-label="Loading schedule">
+      {/* header */}
+      <div className="flex items-center justify-between mb-4">
+        <Skeleton className="h-6 w-36 rounded-xl" />
+        <Skeleton className="h-8 w-20 rounded-xl" />
+      </div>
+      {Array.from({ length: count }).map((_, i) => (
+        <ScheduleRowSkeleton key={i} />
+      ))}
+    </div>
+  );
+}

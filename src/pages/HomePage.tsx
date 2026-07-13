@@ -16,6 +16,7 @@ import { useVoiceInput } from "../hooks/use-voice-input";
 import { useEventEditor } from "../lib/event-editor-context";
 import { lazyNamed } from "../lib/lazy";
 import { InfiniteScroll } from "../components/dashboard/infinite-scroll";
+import { HomePageSkeleton } from "../components/dashboard/skeleton";
 
 const UploadButton = lazyNamed(() => import("../components/dashboard/upload-button"), "UploadButton");
 const VoiceButton = lazyNamed(() => import("../components/dashboard/voice-button"), "VoiceButton");
@@ -41,6 +42,7 @@ export default function Page() {
     events,
     t,
     theme,
+    loading,
     planStatus,
     planResolved,
     trialEndsAt,
@@ -217,6 +219,10 @@ export default function Page() {
       <main className="relative z-10 overflow-y-auto pb-36">
         {activeTab === "home" && (
           <>
+            {loading ? (
+              <HomePageSkeleton />
+            ) : (
+              <>
             <StatsCard />
 
             {/* Today View (always shown on Home). Legacy in-page tabs removed. */}
@@ -266,6 +272,8 @@ export default function Page() {
                   isLoading={activeLoading}
                   onLoadMore={loadMoreActiveEvents}
                 />
+              </>
+            )}
               </>
             )}
           </>

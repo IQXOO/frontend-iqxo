@@ -6,6 +6,7 @@ import { useApp, computePriority } from "@/lib/store"
 import type { IQXOEvent } from "@/lib/types"
 import { useMemo, useEffect } from "react"
 import { InfiniteScroll } from "./infinite-scroll"
+import { HistorySkeleton } from "./skeleton"
 
 interface HistoryViewProps {
   onEventClick: (event: IQXOEvent) => void
@@ -42,6 +43,11 @@ export function HistoryView({ onEventClick }: HistoryViewProps) {
         ),
     [events]
   )
+
+  // عرض skeleton لما يكون في loading أولية
+  if (archiveLoading && pastEvents.length === 0) {
+    return <HistorySkeleton />
+  }
 
   if (pastEvents.length === 0) {
     return (

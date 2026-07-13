@@ -143,6 +143,12 @@
   }
 }
 
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 @layer utilities {
   .glass {
     @apply bg-white/20 backdrop-blur-xl border border-white/30 shadow-lg;

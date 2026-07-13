@@ -7,6 +7,7 @@ import { toLocalDateStr } from "@/lib/store"
 import type { IQXOEvent } from "@/lib/types"
 import { useEffect } from "react"
 import { InfiniteScroll } from "./infinite-scroll"
+import { ArchiveSkeleton } from "./skeleton"
 
 interface ArchiveVaultProps {
   onEventClick: (event: IQXOEvent) => void
@@ -49,6 +50,11 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
       ...event,
       date: toLocalDateStr(),
     })
+  }
+
+  // عرض skeleton لما يكون في loading أولية (مفيش داتا لسه وبيتحمل)
+  if (archiveLoading && pastEvents.length === 0) {
+    return <ArchiveSkeleton count={5} />
   }
 
   if (pastEvents.length === 0) {
