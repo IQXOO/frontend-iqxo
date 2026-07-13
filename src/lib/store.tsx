@@ -96,6 +96,15 @@ interface AppContextValue {
   removeEventOptimistic: (id: string) => void;
   refreshEvents: () => Promise<void>;
 
+  // Pagination
+  activeLoading: boolean;
+  activeHasMore: boolean;
+  loadMoreActiveEvents: () => Promise<void>;
+  archiveLoading: boolean;
+  archiveHasMore: boolean;
+  fetchArchiveEvents: () => Promise<void>;
+  loadMoreArchiveEvents: () => Promise<void>;
+
   // UI helpers
   theme: Theme;
   language: Language;
@@ -784,7 +793,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // side-effects that land in the catch block and break plan resolution.
   const sessionRef = React.useRef<Session | null>(null);
 
-  const [dbEvents, setDbEvents] = useState<IQXOEvent[]>([]);
+  const [activeEvents, setActiveEvents] = useState<IQXOEvent[]>([]);
+  const [archiveEvents, setArchiveEvents] = useState<IQXOEvent[]>([]);
+
+  // Derived dbEvents to keep existing memo and virtual shifts working
+  const dbEvents = React.useMemo<IQXOEvent[]>(() => {
+    return [...activeEvents, ...archiveEvents];
+  }, [activeEvents, archiveEvents]);
+
+  // Active events pagination state
+  const [activePage, setActivePage] = useState(0);
+  const [activeHasMore, setActiveHasMore] = useState(true);
+  const [activeTotal, setActiveTotal] = useState<number | null>(null);
+  const [activeLoading, setActiveLoading] = useState(false);
+
+  // Archive events pagination state
+  const [archivePage, setArchivePage] = useState(0);
+  const [archiveHasMore, setArchiveHasMore] = useState(true);
+  const [archiveTotal, setArchiveTotal] = useState<number | null>(null);
+  const [archiveLoading, setArchiveLoading] = useState(false);
+
+  const PAGE_SIZE = 50;
+
+  // Helpers for synchronizing state updates
+  const addEventToState = useCallback((event: IQXOEvent) => {
+    const isPast = computePriority(event.date) === "past";
+    if (isPast) {
+      setArchiveEvents((prev) => [event, ...prev]);
+    } else {
+      setActiveEvents((prev) => [event, ...prev]);
+    }
+  }, []);
+
+  const removeEventFromState = useCallback((id: string) => {
+    setActiveEvents((prev) => prev.filter((e) => e.id !== id));
+    setArchiveEvents((prev) => prev.filter((e) => e.id !== id));
+  }, []);
+
+  const updateEventInState = useCallback((id: string, updatedEvent: IQXOEvent) => {
+    const isPast = computePriority(updatedEvent.date) === "past";
+    setActiveEvents((prev) => {
+      const filtered = prev.filter((e) => e.id !== id);
+      if (!isPast) return [updatedEvent, ...filtered];
+      return filtered;
+    });
+    setArchiveEvents((prev) => {
+      const filtered = prev.filter((e) => e.id !== id);
+      if (isPast) return [updatedEvent, ...filtered];
+      return filtered;
+    });
+  }, []);
+
   const [workScheduleRows, setWorkScheduleRows] = useState<WorkScheduleRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -859,29 +918,128 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [language, hydrated]);
 
   // ── Load events + work schedules from Supabase ───────────────────────────────
-  const fetchEvents = useCallback(async (uid: string) => {
+  const fetchActivePage = useCallback(async (uid: string, pageNum: number, isRefresh = false) => {
+    if (!uid) return;
+    setActiveLoading(true);
+    try {
+      const todayStr = toLocalDateStr();
+      const from = pageNum * PAGE_SIZE;
+      const to = (pageNum + 1) * PAGE_SIZE - 1;
+
+      const { data, count, error } = await supabase
+        .from("events")
+        .select(
+          "id,user_id,title,notes,date,time,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
+          { count: "exact" }
+        )
+        .eq("user_id", uid)
+        .gte("date", todayStr)
+        .order("date", { ascending: true })
+        .range(from, to);
+
+      if (error) throw error;
+
+      const formatted = (data ?? []).map(rowToEvent);
+
+      setActiveEvents((prev) => {
+        const base = isRefresh || pageNum === 0 ? [] : prev;
+        const existingIds = new Set(base.map(e => e.id));
+        const filteredNew = formatted.filter(e => !existingIds.has(e.id));
+        const merged = [...base, ...filteredNew];
+        
+        const total = count ?? 0;
+        setActiveTotal(total);
+        setActiveHasMore(merged.length < total && formatted.length === PAGE_SIZE);
+        
+        return merged;
+      });
+
+      setActivePage(pageNum);
+    } catch (err) {
+      devError("Events", "Failed to load active events page", err);
+    } finally {
+      setActiveLoading(false);
+    }
+  }, []);
+
+  const fetchArchivePage = useCallback(async (uid: string, pageNum: number, isRefresh = false) => {
+    if (!uid) return;
+    setArchiveLoading(true);
+    try {
+      const todayStr = toLocalDateStr();
+      const from = pageNum * PAGE_SIZE;
+      const to = (pageNum + 1) * PAGE_SIZE - 1;
+
+      const { data, count, error } = await supabase
+        .from("events")
+        .select(
+          "id,user_id,title,notes,date,time,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
+          { count: "exact" }
+        )
+        .eq("user_id", uid)
+        .lt("date", todayStr)
+        .order("date", { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+
+      const formatted = (data ?? []).map(rowToEvent);
+
+      setArchiveEvents((prev) => {
+        const base = isRefresh || pageNum === 0 ? [] : prev;
+        const existingIds = new Set(base.map(e => e.id));
+        const filteredNew = formatted.filter(e => !existingIds.has(e.id));
+        const merged = [...base, ...filteredNew];
+        
+        const total = count ?? 0;
+        setArchiveTotal(total);
+        setArchiveHasMore(merged.length < total && formatted.length === PAGE_SIZE);
+        
+        return merged;
+      });
+
+      setArchivePage(pageNum);
+    } catch (err) {
+      devError("Events", "Failed to load archive events page", err);
+    } finally {
+      setArchiveLoading(false);
+    }
+  }, []);
+
+  const userId = user?.id;
+
+  const loadMoreActiveEvents = useCallback(async () => {
+    if (activeLoading || !activeHasMore || !userId) return;
+    await fetchActivePage(userId, activePage + 1);
+  }, [activeLoading, activeHasMore, userId, activePage, fetchActivePage]);
+
+  const loadMoreArchiveEvents = useCallback(async () => {
+    if (archiveLoading || !archiveHasMore || !userId) return;
+    await fetchArchivePage(userId, archivePage + 1);
+  }, [archiveLoading, archiveHasMore, userId, archivePage, fetchArchivePage]);
+
+  const fetchInitialData = useCallback(async (uid: string) => {
     setLoading(true);
     try {
-      // SECURITY: rely on Supabase Row Level Security (RLS) to enforce
-      // per-user access. Client-side filtering (eq("user_id", uid)) is
-      // NOT a security boundary. Ensure RLS policies exist in the DB.
-
       if (!uid) {
-        devWarn("Events", "fetchEvents called without uid — aborting");
-        setDbEvents([]);
+        devWarn("Events", "fetchInitialData called without uid — aborting");
+        setActiveEvents([]);
+        setArchiveEvents([]);
         setWorkScheduleRows([]);
         return;
       }
 
-      // Fetch calendar events and work schedules in parallel
       const [eventsRes, scheduleRes] = await Promise.all([
         supabase
           .from("events")
           .select(
             "id,user_id,title,notes,date,time,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
+            { count: "exact" }
           )
           .eq("user_id", uid)
-          .order("date", { ascending: true }),
+          .gte("date", toLocalDateStr())
+          .order("date", { ascending: true })
+          .range(0, PAGE_SIZE - 1),
         supabase
           .from("work_schedules")
           .select("day_of_week,start_time,end_time,is_active,location,schedule_label")
@@ -889,8 +1047,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       if (eventsRes.error) throw eventsRes.error;
-      devLog("Events", "Events loaded", { count: (eventsRes.data ?? []).length });
-      setDbEvents((eventsRes.data ?? []).map(rowToEvent));
+
+      const formatted = (eventsRes.data ?? []).map(rowToEvent);
+      setActiveEvents(formatted);
+      setActivePage(0);
+
+      const total = eventsRes.count ?? 0;
+      setActiveTotal(total);
+      setActiveHasMore(formatted.length < total && formatted.length === PAGE_SIZE);
 
       if (!scheduleRes.error && scheduleRes.data) {
         setWorkScheduleRows(
@@ -907,7 +1071,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         );
       }
     } catch (err) {
-      devError("Events", "Failed to load events", err, { userId: uid });
+      devError("Events", "Failed to load initial events data", err, { userId: uid });
       toast({
         title: "Couldn't load your events",
         description: getFriendlyErrorMessage(
@@ -921,17 +1085,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const userId = user?.id;
+  const fetchArchiveEvents = useCallback(async () => {
+    if (userId) await fetchArchivePage(userId, 0, true);
+  }, [userId, fetchArchivePage]);
 
   // ── refreshEvents: public method called after schedule edits ─────────────────
   const refreshEvents = useCallback(async () => {
-    if (userId) await fetchEvents(userId);
-  }, [userId, fetchEvents]);
+    if (userId) await fetchInitialData(userId);
+  }, [userId, fetchInitialData]);
 
   useEffect(() => {
     if (userId) {
       setPlanResolved(false);
-      fetchEvents(userId);
+      fetchInitialData(userId);
 
       const fetchTotalUsage = async () => {
         try {
@@ -1111,14 +1277,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       };
     } else {
-      setDbEvents([]);
+      setActiveEvents([]);
+      setArchiveEvents([]);
       setWorkScheduleRows([]);
       setPlanStatusState("none");
       setTrialEndsAt(null);
       setPlanResolved(false);
       setTotalUsage(0);
     }
-  }, [userId, fetchEvents]);
+  }, [userId, fetchInitialData]);
 
   // keep onboarding flag in sync with current user metadata
   useEffect(() => {
@@ -1208,7 +1375,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       devLog("Auth", "Logout succeeded");
       // ── Clear all local state immediately ─────────────────────────────────
       sessionRef.current = null;
-      setDbEvents([]);
+      setActiveEvents([]);
+      setArchiveEvents([]);
       setUser(null);
       setSession(null);
       setPlanStatusState("none");
@@ -1357,9 +1525,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error("addEvent:", error);
         throw error;
       }
-      setDbEvents((prev) => [rowToEvent(row), ...prev]);
+      addEventToState(rowToEvent(row));
     },
-    [user],
+    [user, addEventToState],
   );
 
   const updateEvent = useCallback(
@@ -1392,9 +1560,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error("updateEvent:", error);
         throw error;
       }
-      setDbEvents((prev) => prev.map((e) => (e.id === id ? rowToEvent(row) : e)));
+      updateEventInState(id, rowToEvent(row));
     },
-    [user],
+    [user, updateEventInState],
   );
 
   const deleteEvent = useCallback(
@@ -1413,9 +1581,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error("deleteEvent:", error);
         throw error;
       }
-      setDbEvents((prev) => prev.filter((e) => e.id !== id));
+      removeEventFromState(id);
     },
-    [user],
+    [user, removeEventFromState],
   );
 
   // ── Generate virtual shift events from work schedule (next 30 days) ──────────
@@ -1485,12 +1653,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addEventOptimistic = useCallback((event: IQXOEvent) => {
-    setDbEvents((prev) => [event, ...prev]);
-  }, []);
+    addEventToState(event);
+  }, [addEventToState]);
 
   const removeEventOptimistic = useCallback((id: string) => {
-    setDbEvents((prev) => prev.filter((e) => e.id !== id));
-  }, []);
+    removeEventFromState(id);
+  }, [removeEventFromState]);
 
   // ── Theme / language ──────────────────────────────────────────────────────────
   const setTheme = useCallback((t: Theme) => setThemeState(t), []);
@@ -1538,6 +1706,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         getEventsByPriority,
         addEventOptimistic,
         removeEventOptimistic,
+        activeLoading,
+        activeHasMore,
+        loadMoreActiveEvents,
+        archiveLoading,
+        archiveHasMore,
+        fetchArchiveEvents,
+        loadMoreArchiveEvents,
         theme,
         language,
         setTheme,

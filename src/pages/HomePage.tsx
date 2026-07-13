@@ -15,6 +15,7 @@ import type { IQXOEvent } from "../lib/types";
 import { useVoiceInput } from "../hooks/use-voice-input";
 import { useEventEditor } from "../lib/event-editor-context";
 import { lazyNamed } from "../lib/lazy";
+import { InfiniteScroll } from "../components/dashboard/infinite-scroll";
 
 const UploadButton = lazyNamed(() => import("../components/dashboard/upload-button"), "UploadButton");
 const VoiceButton = lazyNamed(() => import("../components/dashboard/voice-button"), "VoiceButton");
@@ -36,7 +37,18 @@ function LazyModalFallback() {
 }
 
 export default function Page() {
-  const { events, t, theme, planStatus, planResolved, trialEndsAt, language } = useApp();
+  const {
+    events,
+    t,
+    theme,
+    planStatus,
+    planResolved,
+    trialEndsAt,
+    language,
+    activeLoading,
+    activeHasMore,
+    loadMoreActiveEvents,
+  } = useApp();
   const shouldBlockAI = shouldAutoOpenBillingRoute(planResolved, planStatus, trialEndsAt);
 
   // Initialize browser notifications
@@ -248,6 +260,11 @@ export default function Page() {
                   priority="later"
                   events={laterEvents}
                   onEventClick={handleEventClick}
+                />
+                <InfiniteScroll
+                  hasMore={activeHasMore}
+                  isLoading={activeLoading}
+                  onLoadMore={loadMoreActiveEvents}
                 />
               </>
             )}
