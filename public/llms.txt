@@ -1,0 +1,21 @@
+# IQXO
+
+Your intelligent digital brain with a premium glassmorphic interface, advanced voice capture, document parsing, and automated event management.
+
+This site is optimized for AI agents and automated clients. Below is the navigation index and application capabilities.
+
+## Application Capabilities
+
+- **Voice Event Capture:** Users can speak to describe events. The app parses natural language (voice inputs) into structured calendar events (title, date, time, location, notes).
+- **Document & Photo Parsing:** Users can take a photo of an invoice, receipt, or document. The app automatically extracts dates, times, and event descriptions.
+- **Calendar Synchronization:** Seamless import of `.ics` files and sync with native phone calendars.
+- **Smart Analytics:** Visual dashboard showcasing usage statistics, upcoming commitments, and event tracking.
+
+## Navigation Index
+
+- [Home](https://iqxo.ai) - Access the user dashboard, active event list, and quick actions.
+- [History & Archive](https://iqxo.ai/history) - Search and explore completed or past events.
+- [Pricing & Plans](https://iqxo.ai/pricing) - Details about standard and premium subscription plans (Pro features).
+- [Settings & Profile](https://iqxo.ai/profile) - Manage user preferences, voice recognition language, and identity info.
+- [Terms of Service](https://iqxo.ai/terms) - Legal terms and usage guidelines.
+- [Privacy Policy](https://iqxo.ai/privacy) - Information regarding user data protection and privacy policies.
