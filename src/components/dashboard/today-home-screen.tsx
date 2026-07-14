@@ -6,7 +6,7 @@ import { Coffee, Phone, MapPin } from "lucide-react"
 import { useApp } from "@/lib/store"
 import { TomorrowChainFAB } from "@/components/dashboard/tomorrow-chain-modal"
 import type { IQXOEvent } from "@/lib/types"
-import { format, isToday, differenceInHours, isPast } from "date-fns"
+import { format, isToday, differenceInHours, isPast } from "../../lib/date-utils"
 
 interface TodayHomeScreenProps {
   onEventClick: (event: IQXOEvent) => void

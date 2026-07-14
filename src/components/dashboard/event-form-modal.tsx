@@ -309,7 +309,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
             {/* Preview when photo attached */}
             {imagePreview && (
               <div className="relative rounded-[20px] overflow-hidden border border-border">
-                <img src={imagePreview} alt="Event" className="w-full h-36 object-cover" />
+                <img src={imagePreview} alt="Event" className="w-full h-36 object-cover" loading="lazy" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                 <button type="button" onClick={() => { setImagePreview(null); setImageFile(null); }}
                   className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors">

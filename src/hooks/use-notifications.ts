@@ -10,6 +10,13 @@ import {
   sortNotificationsNewestFirst,
 } from "@/lib/notification-utils"
 
+interface MobileWindow extends Window {
+  isNativeApp?: boolean;
+  ReactNativeWebView?: {
+    postMessage: (message: string) => void;
+  };
+}
+
 type NotificationChangeEvent = "INSERT" | "UPDATE" | "DELETE"
 
 interface NotificationChangePayload {
@@ -152,9 +159,10 @@ export function useNotifications() {
     setRecentNotificationId(incoming.id)
 
     // Trigger local notification if running inside native WebView app
-    const isNativeApp = typeof window !== "undefined" && !!(window as any).isNativeApp;
-    if (isNativeApp && (window as any).ReactNativeWebView) {
-      (window as any).ReactNativeWebView.postMessage(
+    const win = typeof window !== "undefined" ? (window as unknown as MobileWindow) : null
+    const isNativeApp = win && !!win.isNativeApp;
+    if (isNativeApp && win?.ReactNativeWebView) {
+      win.ReactNativeWebView.postMessage(
         JSON.stringify({
           type: "showNotification",
           title: incoming.title,
@@ -263,6 +271,8 @@ export function useNotifications() {
       return
     }
 
+    let loadTimeout: NodeJS.Timeout | null = null
+
     const setup = () => {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
@@ -286,7 +296,10 @@ export function useNotifications() {
         .subscribe((status) => {
           if (status === "SUBSCRIBED") {
             devLog("Notifications", "Realtime channel subscribed", { userId })
-            void loadNotifications(userId)
+            // Defer loading historical notifications by 1.5s to free up main thread LCP
+            loadTimeout = setTimeout(() => {
+              void loadNotifications(userId)
+            }, 1500)
             return
           }
 
@@ -303,6 +316,7 @@ export function useNotifications() {
     setup()
 
     return () => {
+      if (loadTimeout) clearTimeout(loadTimeout)
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
         channelRef.current = null

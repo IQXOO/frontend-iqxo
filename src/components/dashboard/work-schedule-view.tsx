@@ -27,6 +27,7 @@ import {
   withAsyncDiagnostics,
 } from "../../lib/logger";
 import { useToast } from "../../hooks/use-toast";
+import { WorkScheduleSkeleton } from "./skeleton";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface WorkDay {
@@ -136,7 +137,7 @@ function fmtDate(iso: string, language: string): string {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function WorkScheduleView() {
-  const { user, language, addEvent, events, setTotalUsage, refreshEvents } = useApp();
+  const { user, language, addEvent, events, setTotalUsage, refreshEvents, loading: storeLoading } = useApp();
   const { toast } = useToast();
   const isRTL = language === "ar";
 
@@ -215,13 +216,23 @@ export function WorkScheduleView() {
 
   useEffect(() => {
     let lastY = typeof window !== "undefined" ? window.scrollY : 0;
+    let ticking = false;
     const onScroll = () => {
-      const y = window.scrollY;
-      if (y > lastY + 8) {
-        if (!showNamePrompt) setFabVisible(false);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const y = window.scrollY;
+          if (y > lastY + 8) {
+            if (!showNamePrompt) {
+              setFabVisible((prev) => (prev ? false : prev));
+            }
+          } else if (y < lastY - 8) {
+            setFabVisible((prev) => (prev ? prev : true));
+          }
+          lastY = y;
+          ticking = false;
+        });
+        ticking = true;
       }
-      else if (y < lastY - 8) setFabVisible(true);
-      lastY = y;
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -761,6 +772,8 @@ export function WorkScheduleView() {
     if (f) analyzeFile(f);
     e.target.value = "";
   };
+
+  if (storeLoading) return <WorkScheduleSkeleton count={5} />;
 
   // ─────────────────────────────────────────────────────────────────────────────
   return (

@@ -5,13 +5,29 @@ import { Archive, RotateCcw, X } from "lucide-react"
 import { useApp } from "@/lib/store"
 import { toLocalDateStr } from "@/lib/store"
 import type { IQXOEvent } from "@/lib/types"
+import { useEffect } from "react"
+import { InfiniteScroll } from "./infinite-scroll"
+import { ArchiveSkeleton } from "./skeleton"
 
 interface ArchiveVaultProps {
   onEventClick: (event: IQXOEvent) => void
 }
 
 export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
-  const { events, deleteEvent, addEvent, language } = useApp()
+  const {
+    events,
+    deleteEvent,
+    addEvent,
+    language,
+    archiveLoading,
+    archiveHasMore,
+    fetchArchiveEvents,
+    loadMoreArchiveEvents
+  } = useApp()
+
+  useEffect(() => {
+    fetchArchiveEvents();
+  }, [fetchArchiveEvents]);
 
   // Get past events (using LOCAL today, exclude virtual schedule events)
   const today = new Date()
@@ -36,6 +52,11 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
     })
   }
 
+  // عرض skeleton لما يكون في loading أولية (مفيش داتا لسه وبيتحمل)
+  if (archiveLoading && pastEvents.length === 0) {
+    return <ArchiveSkeleton count={5} />
+  }
+
   if (pastEvents.length === 0) {
     return (
       <div className="px-5 py-12 flex flex-col items-center gap-4">
@@ -52,6 +73,11 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
               : "Past events will appear here"}
           </p>
         </div>
+        {archiveLoading && (
+          <div className="py-4 flex justify-center">
+            <div className="h-6 w-6 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+          </div>
+        )}
       </div>
     )
   }
@@ -113,6 +139,11 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
           </div>
         </motion.div>
       ))}
+      <InfiniteScroll
+        hasMore={archiveHasMore}
+        isLoading={archiveLoading}
+        onLoadMore={loadMoreArchiveEvents}
+      />
     </div>
   )
 }

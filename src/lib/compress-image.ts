@@ -7,7 +7,8 @@ export async function compressImage(
   maxSizeMB: number = 1,
   maxWidth: number = 1200,
   maxHeight: number = 1200,
-  quality: number = 0.75
+  quality: number = 0.75,
+  mimeType?: string
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -56,11 +57,12 @@ export async function compressImage(
               // If still too large, recursively compress with lower quality
               if (quality > 0.5) {
                 compressImage(
-                  new File([blob], file.name, { type: file.type }),
+                  new File([blob], file.name, { type: mimeType || file.type }),
                   maxSizeMB,
                   maxWidth,
                   maxHeight,
-                  quality - 0.1
+                  quality - 0.1,
+                  mimeType
                 )
                   .then(resolve)
                   .catch(reject)
@@ -71,7 +73,7 @@ export async function compressImage(
               resolve(blob)
             }
           },
-          file.type || "image/jpeg",
+          mimeType || file.type || "image/jpeg",
           quality
         )
       }
@@ -83,4 +85,9 @@ export async function compressImage(
     reader.onerror = () => reject(new Error("Failed to read file"))
     reader.readAsDataURL(file)
   })
+}
+
+export async function compressAvatar(file: File): Promise<Blob> {
+  // Compress profile pictures to max 128x128 WebP under 50KB (0.05MB)
+  return compressImage(file, 0.05, 128, 128, 0.8, "image/webp");
 }

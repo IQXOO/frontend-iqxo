@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { X, Stethoscope, FileText, Wrench, Zap, Clock, MapPin, ArrowDown, Calendar } from "lucide-react"
 import { useApp } from "@/lib/store"
 import { toLocalDateStr, parseLocalDate } from "@/lib/store"
-import { isTomorrow, format } from "date-fns"
+import { isTomorrow, format } from "@/lib/date-utils"
 import type { IQXOEvent } from "@/lib/types"
 
 // --- Types ---

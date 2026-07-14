@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
 import { SmartActionsCard } from "./smart-actions-card"
 import { lazyNamed } from "@/lib/lazy"
+import { compressAvatar } from "@/lib/compress-image"
 
 const BentoChart = lazyNamed(() => import("./bento-chart"), "BentoChart")
 
@@ -32,7 +33,6 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -91,14 +91,16 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
 
     setUploading(true)
     try {
-      const fileExt = file.name.split(".").pop()
-      const filePath = `${user.id}/avatar_${Date.now()}.${fileExt}`
+      console.log("Compressing avatar image to WebP...")
+      const compressedBlob = await compressAvatar(file)
+      const compressedFile = new File([compressedBlob], `${user.id}_avatar.webp`, { type: "image/webp" })
+      const filePath = `${user.id}/avatar_${Date.now()}.webp`
 
       // 1. Storage Upload
       console.log("Starting Storage upload... Path:", filePath)
       const { error: uploadError } = await supabase.storage
         .from("avatar")
-        .upload(filePath, file, { cacheControl: "3600", upsert: true })
+        .upload(filePath, compressedFile, { cacheControl: "3600", contentType: "image/webp", upsert: true })
 
       if (uploadError) {
         console.error("Storage upload error details:", uploadError)

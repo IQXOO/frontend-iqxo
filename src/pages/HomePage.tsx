@@ -15,6 +15,8 @@ import type { IQXOEvent } from "../lib/types";
 import { useVoiceInput } from "../hooks/use-voice-input";
 import { useEventEditor } from "../lib/event-editor-context";
 import { lazyNamed } from "../lib/lazy";
+import { InfiniteScroll } from "../components/dashboard/infinite-scroll";
+import { HomePageSkeleton } from "../components/dashboard/skeleton";
 
 const UploadButton = lazyNamed(() => import("../components/dashboard/upload-button"), "UploadButton");
 const VoiceButton = lazyNamed(() => import("../components/dashboard/voice-button"), "VoiceButton");
@@ -36,7 +38,19 @@ function LazyModalFallback() {
 }
 
 export default function Page() {
-  const { events, t, theme, planStatus, planResolved, trialEndsAt, language } = useApp();
+  const {
+    events,
+    t,
+    theme,
+    loading,
+    planStatus,
+    planResolved,
+    trialEndsAt,
+    language,
+    activeLoading,
+    activeHasMore,
+    loadMoreActiveEvents,
+  } = useApp();
   const shouldBlockAI = shouldAutoOpenBillingRoute(planResolved, planStatus, trialEndsAt);
 
   // Initialize browser notifications
@@ -131,9 +145,18 @@ export default function Page() {
     openEventForm(null);
   }, [openEventForm]);
 
+  const handleUploadClick = useCallback(({ autoOpenPicker = true, file = null } = {}) => {
+    if (shouldBlockAI) {
+      window.dispatchEvent(new CustomEvent("trigger-paywall"));
+    } else {
+      setUploadAutoOpenPicker(autoOpenPicker);
+      setPendingUploadFile(file);
+      setUploadOpen(true);
+    }
+  }, [shouldBlockAI]);
+
   const handleVoiceResult = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (data: any) => {
+    (data: string | { title?: string; date?: string; time?: string; location?: string; notes?: string }) => {
       const parsed: ParsedEvent =
         typeof data === "string"
           ? { title: data }
@@ -168,14 +191,21 @@ export default function Page() {
       lastY = window.scrollY;
     }
 
+    let ticking = false;
     const onScroll = () => {
-      const y = window.scrollY;
-      if (y > lastY + 8) {
-        setFabVisible(false);
-      } else if (y < lastY - 8) {
-        setFabVisible(true);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const y = window.scrollY;
+          if (y > lastY + 8) {
+            setFabVisible((prev) => (prev ? false : prev));
+          } else if (y < lastY - 8) {
+            setFabVisible((prev) => (prev ? prev : true));
+          }
+          lastY = y;
+          ticking = false;
+        });
+        ticking = true;
       }
-      lastY = y;
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -205,6 +235,10 @@ export default function Page() {
       <main className="relative z-10 overflow-y-auto pb-36">
         {activeTab === "home" && (
           <>
+            {loading ? (
+              <HomePageSkeleton />
+            ) : (
+              <>
             <StatsCard />
 
             {/* Today View (always shown on Home). Legacy in-page tabs removed. */}
@@ -249,6 +283,13 @@ export default function Page() {
                   events={laterEvents}
                   onEventClick={handleEventClick}
                 />
+                <InfiniteScroll
+                  hasMore={activeHasMore}
+                  isLoading={activeLoading}
+                  onLoadMore={loadMoreActiveEvents}
+                />
+              </>
+            )}
               </>
             )}
           </>
@@ -386,15 +427,7 @@ export default function Page() {
       <BottomNav
         active={activeTab}
         onTabChange={setActiveTab}
-        onUploadClick={({ autoOpenPicker = true, file = null } = {}) => {
-          if (shouldBlockAI) {
-            window.dispatchEvent(new CustomEvent("trigger-paywall"));
-          } else {
-            setUploadAutoOpenPicker(autoOpenPicker);
-            setPendingUploadFile(file);
-            setUploadOpen(true);
-          }
-        }}
+        onUploadClick={handleUploadClick}
         onManualAdd={handleManualAdd}
         composerOpen={composerOpen}
         onComposerOpenChange={setComposerOpen}

@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { motion } from "framer-motion"
 import { Zap, Calendar, Flame, Clock, Hourglass, Brain, Sparkles } from "lucide-react"
 import { useApp } from "@/lib/store"
@@ -8,22 +9,36 @@ import { getSmartGreeting, computeCriticalityScore } from "@/lib/ai-insights"
 export function StatsCard() {
   const { events, user, getEventsByPriority, t, language } = useApp()
 
-  const urgentCount = getEventsByPriority("urgent").length
-  const upcomingCount = getEventsByPriority("upcoming").length
-  const laterCount = getEventsByPriority("later").length
-  const displayName =
-    (user?.user_metadata as { full_name?: string; name?: string } | undefined)?.full_name?.trim() ||
-    (user?.user_metadata as { full_name?: string; name?: string } | undefined)?.name?.trim() ||
-    user?.email?.split("@")[0] ||
-    (language === "ar" ? "صديقي" : "there")
-  const smartGreeting = getSmartGreeting(displayName, events)
+  const displayName = useMemo(() => {
+    return (
+      (user?.user_metadata as { full_name?: string; name?: string } | undefined)?.full_name?.trim() ||
+      (user?.user_metadata as { full_name?: string; name?: string } | undefined)?.name?.trim() ||
+      user?.email?.split("@")[0] ||
+      (language === "ar" ? "صديقي" : "there")
+    );
+  }, [user, language]);
 
-  // Get top 3 critical items for highlighting
-  const criticalItems = events
-    .map((e) => ({ ...e, criticality: computeCriticalityScore(e) }))
-    .filter((e) => e.criticality >= 40)
-    .sort((a, b) => b.criticality - a.criticality)
-    .slice(0, 3)
+  // Memoize event counts to avoid recalculation on unrelated state updates
+  const { urgentCount, upcomingCount, laterCount } = useMemo(() => {
+    return {
+      urgentCount: getEventsByPriority("urgent").length,
+      upcomingCount: getEventsByPriority("upcoming").length,
+      laterCount: getEventsByPriority("later").length,
+    };
+  }, [events, getEventsByPriority]);
+
+  const smartGreeting = useMemo(() => {
+    return getSmartGreeting(displayName, events);
+  }, [displayName, events]);
+
+  // Memoize top 3 critical items for highlighting (filtering and sorting can be heavy)
+  const criticalItems = useMemo(() => {
+    return events
+      .map((e) => ({ ...e, criticality: computeCriticalityScore(e) }))
+      .filter((e) => e.criticality >= 40)
+      .sort((a, b) => b.criticality - a.criticality)
+      .slice(0, 3);
+  }, [events]);
 
   return (
     <section className="px-5 py-2 space-y-3">

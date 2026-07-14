@@ -373,6 +373,7 @@ export function UploadButton({
                     src={preview.dataUrl}
                     alt={preview.name}
                     className="h-full w-full object-contain"
+                    loading="lazy"
                   />
                 ) : (
                   <div className="flex flex-col items-center gap-2 py-6">

@@ -5,13 +5,16 @@ import { Zap, MapPin, Phone, Clock } from "lucide-react"
 import { useApp } from "../../lib/store"
 import { toLocalDateStr } from "../../lib/store"
 import type { IQXOEvent } from "../../lib/types"
+import { TomorrowSkeleton } from "./skeleton"
 
 interface TomorrowViewProps {
   onEventClick: (event: IQXOEvent) => void
 }
 
 export function TomorrowView({ onEventClick }: TomorrowViewProps) {
-  const { events, language } = useApp()
+  const { events, language, loading } = useApp()
+
+  if (loading) return <TomorrowSkeleton count={3} />
 
   // Get tomorrow's date in LOCAL timezone (avoids UTC-shift bugs)
   const tomorrow = new Date()

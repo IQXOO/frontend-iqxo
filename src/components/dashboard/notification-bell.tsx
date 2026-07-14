@@ -3,14 +3,14 @@
 import { Suspense } from "react"
 import { motion } from "framer-motion"
 import { Bell } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useMemo, useState, memo } from "react"
 import { useApp } from "@/lib/store"
 import { useNotifications } from "@/hooks/use-notifications"
 import { lazyNamed } from "@/lib/lazy"
 
 const NotificationPanel = lazyNamed(() => import("./notification-panel"), "NotificationPanel")
 
-export function NotificationBell() {
+export const NotificationBell = memo(function NotificationBell() {
   const { language } = useApp()
   const [open, setOpen] = useState(false)
   const {
@@ -85,4 +85,4 @@ export function NotificationBell() {
       </Suspense>
     </>
   )
-}
+})

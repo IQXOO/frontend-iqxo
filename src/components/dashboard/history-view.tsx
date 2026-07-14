@@ -4,14 +4,28 @@ import { History } from "lucide-react"
 import { EventList } from "./event-list"
 import { useApp, computePriority } from "@/lib/store"
 import type { IQXOEvent } from "@/lib/types"
-import { useMemo } from "react"
+import { useMemo, useEffect } from "react"
+import { InfiniteScroll } from "./infinite-scroll"
+import { HistorySkeleton } from "./skeleton"
 
 interface HistoryViewProps {
   onEventClick: (event: IQXOEvent) => void
 }
 
 export function HistoryView({ onEventClick }: HistoryViewProps) {
-  const { events, deleteEvent, t } = useApp()
+  const {
+    events,
+    deleteEvent,
+    t,
+    archiveLoading,
+    archiveHasMore,
+    fetchArchiveEvents,
+    loadMoreArchiveEvents,
+  } = useApp()
+
+  useEffect(() => {
+    fetchArchiveEvents();
+  }, [fetchArchiveEvents]);
 
   const pastEvents = useMemo(
     () =>
@@ -30,6 +44,11 @@ export function HistoryView({ onEventClick }: HistoryViewProps) {
     [events]
   )
 
+  // عرض skeleton لما يكون في loading أولية
+  if (archiveLoading && pastEvents.length === 0) {
+    return <HistorySkeleton />
+  }
+
   if (pastEvents.length === 0) {
     return (
       <div className="px-5 py-4">
@@ -44,6 +63,11 @@ export function HistoryView({ onEventClick }: HistoryViewProps) {
             {t("noPast")}
           </p>
         </div>
+        {archiveLoading && (
+          <div className="py-4 flex justify-center">
+            <div className="h-6 w-6 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+          </div>
+        )}
       </div>
     )
   }
@@ -60,6 +84,11 @@ export function HistoryView({ onEventClick }: HistoryViewProps) {
         events={pastEvents}
         onEventClick={onEventClick}
         onDelete={deleteEvent}
+      />
+      <InfiniteScroll
+        hasMore={archiveHasMore}
+        isLoading={archiveLoading}
+        onLoadMore={loadMoreArchiveEvents}
       />
     </div>
   )

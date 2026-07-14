@@ -26,7 +26,7 @@ function AppLayoutContent() {
   const shouldBlockAI = user && shouldAutoOpenBillingRoute(planResolved, planStatus, trialEndsAt);
 
   const isMobileDevice = typeof window !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const showNativeAppBanner = typeof window !== "undefined" && !(window as any).isNativeApp && isMobileDevice && !!session && !bannerDismissed;
+  const showNativeAppBanner = typeof window !== "undefined" && !(window as unknown as { isNativeApp?: boolean }).isNativeApp && isMobileDevice && !!session && !bannerDismissed;
 
   const [paywallOpen, setPaywallOpen] = useState(() => {
     if (typeof window !== "undefined") {
@@ -158,11 +158,11 @@ function AppLayoutContent() {
       ? `${base}?client_reference_id=${encodeURIComponent(user?.id || "")}&prefilled_email=${encodeURIComponent(user?.email || "")}&iqxo_product_id=${encodeURIComponent(productId)}`
       : null;
 
-    // @ts-ignore
+    // @ts-expect-error - injected by native
     const isNative = typeof window !== "undefined" && (window.__IQXO_IS_NATIVE === true || !!window.ReactNativeWebView);
-    // @ts-ignore
+    // @ts-expect-error - injected by native
     const postMsg = typeof window !== "undefined" && (window.__IQXO_postMessage || (window.ReactNativeWebView?.postMessage?.bind(window.ReactNativeWebView)));
-    // @ts-ignore
+    // @ts-expect-error - injected by native
     const platform = typeof window !== "undefined" ? (window.nativePlatform || "") : "";
     const isIos = platform === "ios";
 

@@ -5,14 +5,17 @@ import { Compass, CalendarDays, TrendingUp } from "lucide-react"
 import { useApp } from "@/lib/store"
 import { toLocalDateStr, parseLocalDate } from "@/lib/store"
 import type { IQXOEvent } from "@/lib/types"
+import { FutureExplorerSkeleton } from "./skeleton"
 
 interface FutureExplorerViewProps {
   onEventClick: (event: IQXOEvent) => void
 }
 
 export function FutureExplorerView({ onEventClick }: FutureExplorerViewProps) {
-  const { events, language } = useApp()
+  const { events, language, loading } = useApp()
   const isRTL = language === "ar"
+
+  if (loading) return <FutureExplorerSkeleton weeks={2} />
 
   // Events starting from day-after-tomorrow (LOCAL timezone)
   const dayAfterTomorrow = new Date()

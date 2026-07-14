@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, memo } from "react";
 import {
   Camera,
   CalendarPlus,
@@ -696,7 +696,7 @@ interface BottomNavProps {
   ) => void;
 }
 
-export function BottomNav({
+export const BottomNav = memo(function BottomNav({
   active: _active,
   onTabChange: _onTabChange,
   onUploadClick,
@@ -862,8 +862,8 @@ export function BottomNav({
         return;
       }
       // Map native events into ParsedCalEvent shape
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mapped: ParsedCalEvent[] = (result.events || []).map((e: any, i: number) => ({
+       
+      const mapped: ParsedCalEvent[] = (result.events || []).map((e: { title?: string; date?: string; time?: string; location?: string; notes?: string }, i: number) => ({
         uid: `native-${i}-${e.title}`,
         title: e.title || '',
         date: e.date || '',
@@ -920,14 +920,21 @@ export function BottomNav({
     let lastY = 0;
     if (typeof window !== "undefined") lastY = window.scrollY;
 
+    let ticking = false;
     const onScroll = () => {
-      const y = window.scrollY;
-      if (y > lastY + 8) {
-        setVisible(false);
-      } else if (y < lastY - 8) {
-        setVisible(true);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const y = window.scrollY;
+          if (y > lastY + 8) {
+            setVisible((prev) => (prev ? false : prev));
+          } else if (y < lastY - 8) {
+            setVisible((prev) => (prev ? prev : true));
+          }
+          lastY = y;
+          ticking = false;
+        });
+        ticking = true;
       }
-      lastY = y;
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -1521,4 +1528,4 @@ export function BottomNav({
       )}
     </>
   );
-}
+});
