@@ -23,3 +23,6 @@ node_modules/
 .vercel
 *.env
 /prd
+
+# tasks
+tasks.md

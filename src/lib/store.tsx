@@ -812,7 +812,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [_archiveTotal, setArchiveTotal] = useState<number | null>(null);
   const [archiveLoading, setArchiveLoading] = useState(false);
 
-  const PAGE_SIZE = 50;
+  const PAGE_SIZE = 40;
 
   // Helpers for synchronizing state updates
   const addEventToState = useCallback((event: IQXOEvent) => {
