@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, memo } from "react";
 import {
   Camera,
   CalendarPlus,
@@ -696,7 +696,7 @@ interface BottomNavProps {
   ) => void;
 }
 
-export function BottomNav({
+export const BottomNav = memo(function BottomNav({
   active: _active,
   onTabChange: _onTabChange,
   onUploadClick,
@@ -1521,4 +1521,4 @@ export function BottomNav({
       )}
     </>
   );
-}
+});
