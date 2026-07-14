@@ -216,13 +216,23 @@ export function WorkScheduleView() {
 
   useEffect(() => {
     let lastY = typeof window !== "undefined" ? window.scrollY : 0;
+    let ticking = false;
     const onScroll = () => {
-      const y = window.scrollY;
-      if (y > lastY + 8) {
-        if (!showNamePrompt) setFabVisible(false);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const y = window.scrollY;
+          if (y > lastY + 8) {
+            if (!showNamePrompt) {
+              setFabVisible((prev) => (prev ? false : prev));
+            }
+          } else if (y < lastY - 8) {
+            setFabVisible((prev) => (prev ? prev : true));
+          }
+          lastY = y;
+          ticking = false;
+        });
+        ticking = true;
       }
-      else if (y < lastY - 8) setFabVisible(true);
-      lastY = y;
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);

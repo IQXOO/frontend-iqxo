@@ -191,14 +191,21 @@ export default function Page() {
       lastY = window.scrollY;
     }
 
+    let ticking = false;
     const onScroll = () => {
-      const y = window.scrollY;
-      if (y > lastY + 8) {
-        setFabVisible(false);
-      } else if (y < lastY - 8) {
-        setFabVisible(true);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const y = window.scrollY;
+          if (y > lastY + 8) {
+            setFabVisible((prev) => (prev ? false : prev));
+          } else if (y < lastY - 8) {
+            setFabVisible((prev) => (prev ? prev : true));
+          }
+          lastY = y;
+          ticking = false;
+        });
+        ticking = true;
       }
-      lastY = y;
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });

@@ -920,14 +920,21 @@ export const BottomNav = memo(function BottomNav({
     let lastY = 0;
     if (typeof window !== "undefined") lastY = window.scrollY;
 
+    let ticking = false;
     const onScroll = () => {
-      const y = window.scrollY;
-      if (y > lastY + 8) {
-        setVisible(false);
-      } else if (y < lastY - 8) {
-        setVisible(true);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const y = window.scrollY;
+          if (y > lastY + 8) {
+            setVisible((prev) => (prev ? false : prev));
+          } else if (y < lastY - 8) {
+            setVisible((prev) => (prev ? prev : true));
+          }
+          lastY = y;
+          ticking = false;
+        });
+        ticking = true;
       }
-      lastY = y;
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
