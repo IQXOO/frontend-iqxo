@@ -145,6 +145,16 @@ export default function Page() {
     openEventForm(null);
   }, [openEventForm]);
 
+  const handleUploadClick = useCallback(({ autoOpenPicker = true, file = null } = {}) => {
+    if (shouldBlockAI) {
+      window.dispatchEvent(new CustomEvent("trigger-paywall"));
+    } else {
+      setUploadAutoOpenPicker(autoOpenPicker);
+      setPendingUploadFile(file);
+      setUploadOpen(true);
+    }
+  }, [shouldBlockAI]);
+
   const handleVoiceResult = useCallback(
     (data: string | { title?: string; date?: string; time?: string; location?: string; notes?: string }) => {
       const parsed: ParsedEvent =
@@ -410,15 +420,7 @@ export default function Page() {
       <BottomNav
         active={activeTab}
         onTabChange={setActiveTab}
-        onUploadClick={({ autoOpenPicker = true, file = null } = {}) => {
-          if (shouldBlockAI) {
-            window.dispatchEvent(new CustomEvent("trigger-paywall"));
-          } else {
-            setUploadAutoOpenPicker(autoOpenPicker);
-            setPendingUploadFile(file);
-            setUploadOpen(true);
-          }
-        }}
+        onUploadClick={handleUploadClick}
         onManualAdd={handleManualAdd}
         composerOpen={composerOpen}
         onComposerOpenChange={setComposerOpen}
