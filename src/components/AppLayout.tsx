@@ -55,9 +55,24 @@ function AppLayoutContent() {
         setPaywallOpen(true);
       }
     };
+    const handleNativeIap = (e: any) => {
+      const detail = e?.detail;
+      if (detail?.success) {
+        if (detail.isRestore) {
+          alert(language === "ar" ? "تم استعادة المشتريات بنجاح!" : "Purchases restored successfully!");
+        }
+        setPaywallOpen(false);
+      } else if (detail?.error && detail.isRestore) {
+        alert((language === "ar" ? "فشل استعادة المشتريات: " : "Restore failed: ") + detail.error);
+      }
+    };
     window.addEventListener("trigger-paywall", handleTrigger);
-    return () => window.removeEventListener("trigger-paywall", handleTrigger);
-  }, [shouldShowPaywall]);
+    window.addEventListener("nativeIapResult", handleNativeIap);
+    return () => {
+      window.removeEventListener("trigger-paywall", handleTrigger);
+      window.removeEventListener("nativeIapResult", handleNativeIap);
+    };
+  }, [shouldShowPaywall, language]);
 
   const handleClosePaywall = () => {
     setPaywallOpen(false);
@@ -98,6 +113,7 @@ function AppLayoutContent() {
       ctaMonthly: "Upgrade to Calm",
       ctaYearly: "Commit to Calm",
       guarantee: "No questions asked. Full refund within 30 days.",
+      restore: "Restore Purchases",
       logout: "Sign Out",
       openInApp: "Open in IQXO App",
       launch: "Launch App",
@@ -119,6 +135,7 @@ function AppLayoutContent() {
       ctaMonthly: "Passer au Calme",
       ctaYearly: "S'engager dans le Calme",
       guarantee: "Sans questions. Remboursement sous 30 jours.",
+      restore: "Restaurer les achats",
       logout: "Se déconnecter",
       openInApp: "Ouvrir dans l'application IQXO",
       launch: "Lancer",
@@ -140,6 +157,7 @@ function AppLayoutContent() {
       ctaMonthly: "الترقية للاسترخاء",
       ctaYearly: "الالتزام بالهدوء والاسترخاء",
       guarantee: "بدون أي أسئلة. استرداد كامل خلال 30 يوماً.",
+      restore: "استعادة المشتريات",
       logout: "تسجيل الخروج",
       openInApp: "افتح في تطبيق IQXO",
       launch: "تشغيل التطبيق",
@@ -185,6 +203,25 @@ function AppLayoutContent() {
     window.location.href = url;
   };
 
+  const [isRestoring, setIsRestoring] = React.useState(false);
+
+  const handleRestorePurchases = () => {
+    if (isRestoring) return;
+    setIsRestoring(true);
+
+    // @ts-expect-error - injected by native
+    const isNative = typeof window !== "undefined" && (window.__IQXO_IS_NATIVE === true || !!window.ReactNativeWebView);
+    if (isNative) {
+      // @ts-expect-error - injected by native
+      const postMsg = window.__IQXO_postMessage || window.ReactNativeWebView?.postMessage?.bind(window.ReactNativeWebView);
+      if (postMsg) {
+        postMsg(JSON.stringify({ type: "restore_iap" }));
+      }
+    } else {
+      alert(language === "ar" ? "يرجى استعادة المشتريات مباشرة من تطبيق الهاتف (App Store)." : "Please restore purchases directly from the iOS App.");
+    }
+    setTimeout(() => setIsRestoring(false), 4000);
+  };
 
   return (
     <div className={`min-h-screen max-w-md mx-auto bg-background text-foreground relative ${isRTL ? "dir-rtl" : ""}`}>
@@ -324,12 +361,25 @@ function AppLayoutContent() {
               {dt.guarantee}
             </div>
 
+            {/* Restore Purchases Button (Required by Apple Guideline 3.1.1) */}
+            <button
+              onClick={handleRestorePurchases}
+              disabled={isRestoring}
+              className="w-full text-center text-xs text-[#A0A0A8] hover:text-[#5BC0DE] transition-all mt-4 block bg-none border-none cursor-pointer underline underline-offset-4"
+            >
+              {isRestoring
+                ? language === "ar"
+                  ? "جاري استعادة المشتريات..."
+                  : "Restoring purchases..."
+                : dt.restore}
+            </button>
+
             {/* Logout button */}
             <button
               onClick={async () => {
                 await signOut();
               }}
-              className="w-full text-center text-xs text-[#6E6E78] hover:text-white transition-all mt-4 block bg-none border-none cursor-pointer"
+              className="w-full text-center text-xs text-[#6E6E78] hover:text-white transition-all mt-3 block bg-none border-none cursor-pointer"
             >
               {dt.logout}
             </button>
