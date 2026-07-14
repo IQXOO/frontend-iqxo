@@ -146,8 +146,7 @@ export default function Page() {
   }, [openEventForm]);
 
   const handleVoiceResult = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (data: any) => {
+    (data: string | { title?: string; date?: string; time?: string; location?: string; notes?: string }) => {
       const parsed: ParsedEvent =
         typeof data === "string"
           ? { title: data }

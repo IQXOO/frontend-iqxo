@@ -26,6 +26,7 @@ export function AttachmentCarousel({ attachments, onClose }: AttachmentCarouselP
               src={current.url} 
               alt={current.name}
               className="w-full h-auto object-cover"
+              loading="lazy"
             />
           ) : (
             <div className="aspect-square flex items-center justify-center">

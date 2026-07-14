@@ -862,8 +862,8 @@ export function BottomNav({
         return;
       }
       // Map native events into ParsedCalEvent shape
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mapped: ParsedCalEvent[] = (result.events || []).map((e: any, i: number) => ({
+       
+      const mapped: ParsedCalEvent[] = (result.events || []).map((e: { title?: string; date?: string; time?: string; location?: string; notes?: string }, i: number) => ({
         uid: `native-${i}-${e.title}`,
         title: e.title || '',
         date: e.date || '',

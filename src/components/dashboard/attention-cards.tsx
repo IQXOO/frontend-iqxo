@@ -3,7 +3,7 @@
 import { Bell, Phone, MapPin } from "lucide-react"
 import { useApp } from "@/lib/store"
 import type { IQXOEvent } from "@/lib/types"
-import { format, isToday, isTomorrow } from "date-fns"
+import { format, isToday, isTomorrow } from "@/lib/date-utils"
 
 interface UrgentCardsProps {
   onEventClick: (event: IQXOEvent) => void

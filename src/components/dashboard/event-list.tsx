@@ -4,7 +4,7 @@ import { ChevronRight, Phone, MapPin, Calendar, Clock, Trash2, Lightbulb } from 
 import { useApp } from "../../lib/store"
 import { generateAIInsight } from "../../lib/ai-insights"
 import type { IQXOEvent, Priority } from "../../lib/types"
-import { format, isToday, isTomorrow } from "date-fns"
+import { format, isToday, isTomorrow } from "../../lib/date-utils"
 
 interface EventListProps {
   priority: Priority

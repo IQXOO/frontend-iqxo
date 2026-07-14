@@ -3,6 +3,13 @@
 import { useEffect, useCallback } from "react"
 import type { IQXOEvent } from "../lib/types"
 
+interface MobileWindow extends Window {
+  isNativeApp?: boolean;
+  ReactNativeWebView?: {
+    postMessage: (message: string) => void;
+  };
+}
+
 // ── i18n strings for notifications ───────────────────────────────────────────
 const i18n = {
   en: {
@@ -34,9 +41,10 @@ function getLang(language: string): Lang {
 // On native app: delegates to the React Native shell via postMessage.
 // On browser: uses the Web Notification API directly.
 function showNotification(title: string, body: string, tag: string) {
-  const isNativeApp = typeof window !== "undefined" && !!(window as any).isNativeApp
-  if (isNativeApp && (window as any).ReactNativeWebView) {
-    ;(window as any).ReactNativeWebView.postMessage(
+  const win = typeof window !== "undefined" ? (window as unknown as MobileWindow) : null
+  const isNativeApp = win && !!win.isNativeApp
+  if (isNativeApp && win?.ReactNativeWebView) {
+    win.ReactNativeWebView.postMessage(
       JSON.stringify({ type: "showNotification", title, body, data: { tag } })
     )
     return
@@ -63,7 +71,8 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
   // On native: permissions are handled in the App shell on startup.
   // On browser: requests the user's permission via the Web Notification API.
   const requestPermission = useCallback(async () => {
-    const isNativeApp = typeof window !== "undefined" && !!(window as any).isNativeApp
+    const win = typeof window !== "undefined" ? (window as unknown as MobileWindow) : null
+    const isNativeApp = win && !!win.isNativeApp
     if (isNativeApp) return true // native app handles permissions in App.tsx
 
     if (!("Notification" in window)) return false
@@ -84,8 +93,9 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
   // this fires even when the app is fully closed or in the background.
   // No polling interval needed — the OS owns the scheduling.
   useEffect(() => {
-    const isNativeApp = typeof window !== "undefined" && !!(window as any).isNativeApp
-    if (!isNativeApp || !(window as any).ReactNativeWebView || !events?.length) return
+    const win = typeof window !== "undefined" ? (window as unknown as MobileWindow) : null
+    const isNativeApp = win && !!win.isNativeApp
+    if (!isNativeApp || !win?.ReactNativeWebView || !events?.length) return
 
     const now = Date.now()
     const notificationsToSchedule: {
@@ -115,7 +125,7 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
 
     // React Native receives this, cancels old scheduled notifications,
     // then registers the updated list with the OS — no polling required.
-    ;(window as any).ReactNativeWebView.postMessage(
+    win.ReactNativeWebView.postMessage(
       JSON.stringify({
         type: "syncScheduledNotifications",
         notifications: notificationsToSchedule,

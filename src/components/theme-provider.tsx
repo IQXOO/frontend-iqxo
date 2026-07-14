@@ -1,20 +1,20 @@
 'use client'
 
-import * as React from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 
 type Theme = 'dark' | 'light' | 'system'
 
 interface ThemeProviderProps {
-  children: React.ReactNode
+  children: ReactNode
   attribute?: string
   defaultTheme?: Theme
   enableSystem?: boolean
 }
 
 export function ThemeProvider({ children, defaultTheme = 'system', ...props }: ThemeProviderProps) {
-  const [theme, _setTheme] = React.useState<Theme>(defaultTheme)
+  const [theme, _setTheme] = useState<Theme>(defaultTheme)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const root = window.document.documentElement
 
     // Apply theme to document

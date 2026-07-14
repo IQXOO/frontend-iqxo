@@ -31,7 +31,7 @@ import { useApp, computePriority } from "@/lib/store";
 import { parseLocalDate } from "@/lib/store";
 import { ImageLightbox } from "./image-lightbox";
 import type { IQXOEvent } from "@/lib/types";
-import { format, isToday, isTomorrow } from "date-fns";
+import { format, isToday, isTomorrow } from "@/lib/date-utils";
 
 interface EventDetailModalProps {
   open: boolean;
@@ -286,6 +286,7 @@ ${origin}`;
                 alt={event.title}
                 className="w-full h-full object-cover"
                 onError={() => setImgError(true)}
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/60" />
               <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-sm">

@@ -141,8 +141,6 @@ export function WorkScheduleView() {
   const { toast } = useToast();
   const isRTL = language === "ar";
 
-  if (storeLoading) return <WorkScheduleSkeleton count={5} />;
-
   const displayName: string =
     user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
 
@@ -764,6 +762,8 @@ export function WorkScheduleView() {
     if (f) analyzeFile(f);
     e.target.value = "";
   };
+
+  if (storeLoading) return <WorkScheduleSkeleton count={5} />;
 
   // ─────────────────────────────────────────────────────────────────────────────
   return (

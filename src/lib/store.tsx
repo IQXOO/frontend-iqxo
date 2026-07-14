@@ -750,24 +750,23 @@ export function computePriority(dateStr: string): Priority {
 }
 
 // ─── Map Supabase row → IQXOEvent ─────────────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToEvent(row: any): IQXOEvent {
+function rowToEvent(row: Record<string, string | boolean | null | undefined>): IQXOEvent {
   return {
-    id: row.id,
-    user_id: row.user_id,
-    title: row.title,
-    notes: row.notes ?? "",
-    date: row.date,
-    time: row.time ?? "",
-    phone: row.phone ?? undefined,
-    location: row.location ?? undefined,
-    email: row.email ?? undefined,
-    source: row.source ?? "manual",
-    image_url: row.image_url ?? undefined,
-    pdf_url: row.pdf_url ?? undefined,
-    is_done: row.is_done ?? false,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    id: row.id as string,
+    user_id: row.user_id as string,
+    title: row.title as string,
+    notes: (row.notes as string) ?? "",
+    date: row.date as string,
+    time: (row.time as string) ?? "",
+    phone: (row.phone as string) ?? undefined,
+    location: (row.location as string) ?? undefined,
+    email: (row.email as string) ?? undefined,
+    source: (row.source as string) ?? "manual",
+    image_url: (row.image_url as string) ?? undefined,
+    pdf_url: (row.pdf_url as string) ?? undefined,
+    is_done: (row.is_done as boolean) ?? false,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
   };
 }
 
@@ -804,13 +803,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Active events pagination state
   const [activePage, setActivePage] = useState(0);
   const [activeHasMore, setActiveHasMore] = useState(true);
-  const [activeTotal, setActiveTotal] = useState<number | null>(null);
+  const [_activeTotal, setActiveTotal] = useState<number | null>(null);
   const [activeLoading, setActiveLoading] = useState(false);
 
   // Archive events pagination state
   const [archivePage, setArchivePage] = useState(0);
   const [archiveHasMore, setArchiveHasMore] = useState(true);
-  const [archiveTotal, setArchiveTotal] = useState<number | null>(null);
+  const [_archiveTotal, setArchiveTotal] = useState<number | null>(null);
   const [archiveLoading, setArchiveLoading] = useState(false);
 
   const PAGE_SIZE = 50;
@@ -1232,6 +1231,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         window.addEventListener("nativeCustomerInfoUpdate", handleNativeUpdate);
       }
 
+      let planTimeout: NodeJS.Timeout | null = null;
       let pollInterval: NodeJS.Timeout | null = null;
 
       // If the user was previously confirmed as PRO (cached in localStorage),
@@ -1248,16 +1248,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setPlanStatusState("pro");
         setTrialEndsAt(null);
         setPlanResolved(true);
-        // Fetch usage directly from user_plans table so SmartActionsCard shows correct numbers
-        (async () => {
+        // Fetch usage directly from user_plans table so SmartActionsCard shows correct numbers (deferred)
+        planTimeout = setTimeout(async () => {
           const tableUsage = await fetchTotalUsage();
           if (tableUsage !== null) {
             setTotalUsage(tableUsage);
             devLog("Usage", "PRO usage loaded from user_plans", { tableUsage });
           }
-        })();
+        }, 1500);
       } else {
-        (async () => {
+        // Defer plan status loading by 1.5s to keep LCP path clean
+        planTimeout = setTimeout(async () => {
           await fetchPlanStatus();
 
           // Poll every 5 minutes for non-PRO users to pick up trigger-driven plan changes
@@ -1267,10 +1268,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           pollInterval = setInterval(() => {
             fetchPlanStatus();
           }, 300000);
-        })();
+        }, 1500);
       }
 
       return () => {
+        if (planTimeout) clearTimeout(planTimeout);
         if (pollInterval) clearInterval(pollInterval);
         if (typeof window !== "undefined") {
           window.removeEventListener("nativeCustomerInfoUpdate", handleNativeUpdate);

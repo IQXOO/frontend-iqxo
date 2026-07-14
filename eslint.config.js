@@ -63,4 +63,17 @@ export default tseslint.config(
       ],
     },
   },
+
+  // ── استثناءات لمكونات الواجهة الجاهزة shadcn والـ hooks ────────────────────────
+  {
+    files: [
+      "src/components/ui/**/*.ts",
+      "src/components/ui/**/*.tsx",
+      "src/hooks/**/*.ts",
+      "src/hooks/**/*.tsx",
+    ],
+    rules: {
+      "no-restricted-syntax": "off",
+    },
+  }
 );

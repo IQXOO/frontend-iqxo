@@ -46,6 +46,7 @@ export function ImageLightbox({
             alt={title || "Preview"}
             className="max-w-full max-h-[70vh] object-contain transition-transform duration-200"
             style={{ transform: `scale(${zoom})` }}
+            loading="lazy"
           />
         </div>
 
