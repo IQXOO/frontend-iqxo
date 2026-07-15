@@ -504,7 +504,7 @@ export function StripePricingPage({
                     disabled={isPurchasing}
                     className="mt-6 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#E8E8E8] to-[#FFFFFF] py-4 text-[1.1rem] font-medium tracking-tight text-[#0C0C0E] transition-all hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
                   >
-                    {isPurchasing ? t("Processing...", "Traitement...", "جاري المعالجة...") : t("Get Monthly", "Obtenir Mensuel", "اشترك شهريًا")}
+                    {isPurchasing ? t("Processing...", "Traitement...", "جاري المعالجة...") : t("Upgrade to Pro", "Passer au Pro", "الترقية إلى Pro")}
                   </button>
 
                   <div className="mt-5 text-[0.75rem] text-[#6E6E78]">
@@ -568,7 +568,7 @@ export function StripePricingPage({
                     disabled={isPurchasing}
                     className="mt-8 block w-full rounded-full border border-[rgba(212,168,83,0.15)] bg-[var(--amber-soft)] px-4 py-4 text-[0.9rem] font-medium text-[var(--amber)] transition-all hover:border-[rgba(212,168,83,0.25)] hover:bg-[rgba(212,168,83,0.1)] hover:text-[#E8C070] disabled:opacity-50 disabled:hover:scale-100"
                   >
-                    {isPurchasing ? t("Processing...", "Traitement...", "جاري المعالجة...") : t("Commit to Calm", "S'engager vers le calme", "الالتزام بالهدوء")}
+                    {isPurchasing ? t("Processing...", "Traitement...", "جاري المعالجة...") : t("Commit to Pro", "S'engager au Pro", "الاشتراك السنوي في Pro")}
                   </button>
 
                   <div className="mt-5 text-[0.75rem] text-[#6E6E78]">

@@ -92,8 +92,8 @@ const translations = {
     feature2: "All features unlocked",
     feature3: "Cancel anytime",
     feature4: "30-day money-back guarantee",
-    proCtaMonthly: "Upgrade to Calm",
-    proCtaYearly: "Commit to Calm",
+    proCtaMonthly: "Upgrade to Pro",
+    proCtaYearly: "Commit to Pro",
     proGuarantee: "No questions asked. Full refund within 30 days.",
     freeTierPart1: "After your 7-day trial, continue Free with 10 captures/month.",
     freeTierPart2: "No credit card required. Upgrade anytime.",
@@ -176,8 +176,8 @@ const translations = {
     feature2: "Toutes les fonctionnalités débloquées",
     feature3: "Annulation à tout moment",
     feature4: "Garantie 30 jours remboursement",
-    proCtaMonthly: "Passer au Calme",
-    proCtaYearly: "S'Engager dans le Calme",
+    proCtaMonthly: "Passer au Pro",
+    proCtaYearly: "S'Engager au Pro",
     proGuarantee: "Sans questions. Remboursement complet sous 30 jours.",
     freeTierPart1: "Après votre essai de 7 jours, continuez Gratuit avec 10 captures/mois.",
     freeTierPart2: "Pas de carte de crédit requise. Passez Pro à tout moment.",
@@ -898,6 +898,11 @@ export default function PricingPage() {
                   </button>
                 </div>
 
+                {/* Subscription Title (Apple Guideline 3.1.2) */}
+                <div style={{ fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#5BC0DE", marginBottom: "6px" }}>
+                  {billingCycle === "monthly" ? (pageLang === "fr" ? "IQXO Premium Mensuel" : "IQXO Premium Monthly") : (pageLang === "fr" ? "IQXO Premium Annuel" : "IQXO Premium Yearly")}
+                </div>
+
                 {/* Price Display */}
                 <div style={{ fontSize: "3rem", fontWeight: 300, color: "#E8E8E8", lineHeight: 1, marginBottom: "8px", letterSpacing: "-0.03em" }}>
                   {billingCycle === "monthly" ? t.monthlyAmount : t.yearlyAmount}
@@ -1032,6 +1037,24 @@ export default function PricingPage() {
                 </button>
                 <div style={{ marginTop: "20px", fontSize: "0.75rem", color: "#6E6E78" }}>
                   {t.proGuarantee}
+                </div>
+
+                {/* Apple Guideline 3.1.2 Legal Disclosure & Mandatory Links */}
+                <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid rgba(255,255,255,0.05)", textAlign: "center" }}>
+                  <p style={{ fontSize: "0.7rem", color: "#6E6E78", lineHeight: 1.5, marginBottom: "10px" }}>
+                    {pageLang === "fr"
+                      ? "Facturation récurrente. Annulez à tout moment au moins 24h avant la fin de la période dans les paramètres App Store."
+                      : "Recurring billing. Cancel anytime at least 24 hours before the end of the current period in App Store Account Settings."}
+                  </p>
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "16px", fontSize: "0.75rem", color: "#A0A0A8" }}>
+                    <a href="https://www.iqxo.ai/terms" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline", color: "inherit" }}>
+                      {pageLang === "fr" ? "Conditions d'utilisation (EULA)" : "Terms of Use (EULA)"}
+                    </a>
+                    <span style={{ opacity: 0.3 }}>•</span>
+                    <a href="https://www.iqxo.ai/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline", color: "inherit" }}>
+                      {pageLang === "fr" ? "Politique de confidentialité" : "Privacy Policy"}
+                    </a>
+                  </div>
                 </div>
               </div>
 
