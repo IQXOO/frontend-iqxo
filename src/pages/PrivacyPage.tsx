@@ -56,8 +56,8 @@ export default function PrivacyPage() {
 
                 <h2 className="text-xl font-semibold mt-8 mb-4">1. Les données que nous collectons</h2>
                 <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
-                  <li>Images téléchargées (ordonnances ou documents)</li>
-                  <li>Données extraites (médicaments, dates, emplois du temps)</li>
+                  <li>Images téléchargées (texte imprimé, emplois du temps ou documents)</li>
+                  <li>Données extraites (dates, tâches, emplois du temps et informations textuelles)</li>
                   <li>Informations de compte (e-mail, données de connexion)</li>
                 </ul>
 
@@ -105,8 +105,8 @@ export default function PrivacyPage() {
 
                 <h2 className="text-xl font-semibold mt-8 mb-4">1. Data We Collect</h2>
                 <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
-                  <li>Uploaded images (prescriptions or documents)</li>
-                  <li>Extracted data (medications, dates, schedules)</li>
+                  <li>Uploaded images (printed text, schedules, or documents)</li>
+                  <li>Extracted data (dates, tasks, schedules, and text-based info)</li>
                   <li>Account information (email, login data)</li>
                 </ul>
 
