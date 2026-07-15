@@ -98,6 +98,8 @@ function AppLayoutContent() {
   const drawerI18n = {
     en: {
       upgradePro: "Upgrade to Pro",
+      subTitleMonthly: "IQXO Premium Monthly",
+      subTitleYearly: "IQXO Premium Yearly",
       monthly: "Monthly",
       yearly: "Yearly",
       monthlyPrice: "€9.99",
@@ -113,6 +115,9 @@ function AppLayoutContent() {
       ctaMonthly: "Upgrade to Calm",
       ctaYearly: "Commit to Calm",
       guarantee: "No questions asked. Full refund within 30 days.",
+      autoRenew: "Recurring billing. Cancel anytime at least 24 hours before the end of the current period in App Store Account Settings.",
+      privacyPolicy: "Privacy Policy",
+      termsOfUse: "Terms of Use (EULA)",
       restore: "Restore Purchases",
       logout: "Sign Out",
       openInApp: "Open in IQXO App",
@@ -120,6 +125,8 @@ function AppLayoutContent() {
     },
     fr: {
       upgradePro: "Améliorez vers Pro",
+      subTitleMonthly: "IQXO Premium Mensuel",
+      subTitleYearly: "IQXO Premium Annuel",
       monthly: "Mensuel",
       yearly: "Annuel",
       monthlyPrice: "9.99 €",
@@ -135,6 +142,9 @@ function AppLayoutContent() {
       ctaMonthly: "Passer au Calme",
       ctaYearly: "S'engager dans le Calme",
       guarantee: "Sans questions. Remboursement sous 30 jours.",
+      autoRenew: "Facturation récurrente. Annulez à tout moment au moins 24h avant la fin de la période dans les paramètres App Store.",
+      privacyPolicy: "Politique de confidentialité",
+      termsOfUse: "Conditions d'utilisation (EULA)",
       restore: "Restaurer les achats",
       logout: "Se déconnecter",
       openInApp: "Ouvrir dans l'application IQXO",
@@ -142,6 +152,8 @@ function AppLayoutContent() {
     },
     ar: {
       upgradePro: "الترقية إلى Pro",
+      subTitleMonthly: "IQXO Premium الشهري",
+      subTitleYearly: "IQXO Premium السنوي",
       monthly: "شهرياً",
       yearly: "سنوياً",
       monthlyPrice: "€9.99",
@@ -157,6 +169,9 @@ function AppLayoutContent() {
       ctaMonthly: "الترقية للاسترخاء",
       ctaYearly: "الالتزام بالهدوء والاسترخاء",
       guarantee: "بدون أي أسئلة. استرداد كامل خلال 30 يوماً.",
+      autoRenew: "يتم تجديد الاشتراك تلقائياً. يمكنك إلغاء الاشتراك في أي وقت من إعدادات حسابك في App Store قبل 24 ساعة على الأقل من نهاية الفترة الحالية.",
+      privacyPolicy: "سياسة الخصوصية",
+      termsOfUse: "شروط الاستخدام (EULA)",
       restore: "استعادة المشتريات",
       logout: "تسجيل الخروج",
       openInApp: "افتح في تطبيق IQXO",
@@ -314,8 +329,11 @@ function AppLayoutContent() {
               </div>
             </div>
 
-            {/* Price Presentation */}
+            {/* Price Presentation & Subscription Name (Required by Apple Guideline 3.1.2) */}
             <div className="text-center mb-6">
+              <div className="text-xs font-semibold uppercase tracking-wider text-[#5BC0DE] mb-1">
+                {paywallCycle === "monthly" ? dt.subTitleMonthly : dt.subTitleYearly}
+              </div>
               <div className="text-3xl font-light text-[#E8E8E8]">
                 {paywallCycle === "monthly" ? dt.monthlyPrice : dt.yearlyPrice}
                 <span className="text-sm text-[#6E6E78] font-normal ml-1">
@@ -373,6 +391,32 @@ function AppLayoutContent() {
                   : "Restoring purchases..."
                 : dt.restore}
             </button>
+
+            {/* Apple Guideline 3.1.2 Legal Disclosure & Mandatory Links */}
+            <div className="mt-4 pt-3 border-t border-white/5 text-center">
+              <p className="text-[10px] text-[#6E6E78] leading-relaxed px-2 mb-2.5">
+                {dt.autoRenew}
+              </p>
+              <div className="flex justify-center items-center gap-4 text-xs text-[#A0A0A8]">
+                <a
+                  href="https://www.iqxo.ai/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-[#5BC0DE] transition-colors"
+                >
+                  {dt.termsOfUse}
+                </a>
+                <span className="text-white/20">•</span>
+                <a
+                  href="https://www.iqxo.ai/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-[#5BC0DE] transition-colors"
+                >
+                  {dt.privacyPolicy}
+                </a>
+              </div>
+            </div>
 
             {/* Logout button */}
             <button

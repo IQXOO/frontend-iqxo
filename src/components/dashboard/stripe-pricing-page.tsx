@@ -606,20 +606,23 @@ export function StripePricingPage({
                 </span>
               </div>
 
-              {isIosNative && (
-                <div className="mt-4 flex flex-col items-center gap-2">
-                  <button onClick={handleRestore} disabled={isPurchasing} className="text-sm text-[#6E6E78] underline transition-colors hover:text-[#E8E8E8] disabled:opacity-50">
-                    {isPurchasing ? t("Processing...", "Traitement...", "جاري المعالجة...") : t("Restore Purchases", "Restaurer les achats", "استعادة المشتريات")}
-                  </button>
-                  <a href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noreferrer" className="text-sm text-[#6E6E78] underline transition-colors hover:text-[#E8E8E8]">
-                    {t("Manage Subscription", "Gérer l'abonnement", "إدارة الاشتراك")}
-                  </a>
-                  <div className="flex gap-4 text-xs text-[#6E6E78] mt-2">
-                    <a href="/terms" target="_blank" className="underline hover:text-[#E8E8E8]">{t("Terms of Service", "Conditions d'utilisation", "شروط الخدمة")}</a>
-                    <a href="/privacy" target="_blank" className="underline hover:text-[#E8E8E8]">{t("Privacy Policy", "Politique de confidentialité", "سياسة الخصوصية")}</a>
-                  </div>
+              <div className="mt-4 flex flex-col items-center gap-2">
+                {isIosNative && (
+                  <>
+                    <button onClick={handleRestore} disabled={isPurchasing} className="text-sm text-[#6E6E78] underline transition-colors hover:text-[#E8E8E8] disabled:opacity-50">
+                      {isPurchasing ? t("Processing...", "Traitement...", "جاري المعالجة...") : t("Restore Purchases", "Restaurer les achats", "استعادة المشتريات")}
+                    </button>
+                    <a href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noreferrer" className="text-sm text-[#6E6E78] underline transition-colors hover:text-[#E8E8E8]">
+                      {t("Manage Subscription", "Gérer l'abonnement", "إدارة الاشتراك")}
+                    </a>
+                  </>
+                )}
+                <div className="flex gap-4 text-xs text-[#6E6E78] mt-2">
+                  <a href="https://www.iqxo.ai/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#E8E8E8]">{t("Terms of Use (EULA)", "Conditions d'utilisation (EULA)", "شروط الاستخدام (EULA)")}</a>
+                  <span>•</span>
+                  <a href="https://www.iqxo.ai/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#E8E8E8]">{t("Privacy Policy", "Politique de confidentialité", "سياسة الخصوصية")}</a>
                 </div>
-              )}
+              </div>
 
             </div>
           </div>
