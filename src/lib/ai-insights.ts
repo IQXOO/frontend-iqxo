@@ -7,7 +7,7 @@ export interface AIInsight {
   priority: number
 }
 
-export function generateAIInsight(event: IQXOEvent): AIInsight | null {
+export function generateAIInsight(event: IQXOEvent, language: string = "en"): AIInsight | null {
   const eventDate = new Date(event.date)
   const now = new Date()
   const daysUntil = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
@@ -16,7 +16,11 @@ export function generateAIInsight(event: IQXOEvent): AIInsight | null {
   if (event.title.toLowerCase().includes("insurance") || event.title.toLowerCase().includes("renewal")) {
     if (daysUntil <= 7 && daysUntil > 0) {
       return {
-        text: `${daysUntil} days left. Check renewal link?`,
+        text: language === "ar"
+          ? `متبقي ${daysUntil} أيام. التحقق من رابط التجديد؟`
+          : language === "fr"
+          ? `${daysUntil} jours restants. Vérifier le lien ?`
+          : `${daysUntil} days left. Check renewal link?`,
         icon: "🔄",
         type: "warning",
         priority: 1,
@@ -28,7 +32,11 @@ export function generateAIInsight(event: IQXOEvent): AIInsight | null {
   if (event.title.toLowerCase().includes("doctor") || event.title.toLowerCase().includes("checkup") || event.title.toLowerCase().includes("appointment")) {
     if (event.notes?.toLowerCase().includes("fasting")) {
       return {
-        text: "Remember to fast before appointment",
+        text: language === "ar"
+          ? "تذكر الصيام قبل الموعد"
+          : language === "fr"
+          ? "N'oubliez pas de jeûner avant le rendez-vous"
+          : "Remember to fast before appointment",
         icon: "🏥",
         type: "warning",
         priority: 1,
@@ -36,7 +44,11 @@ export function generateAIInsight(event: IQXOEvent): AIInsight | null {
     }
     if (event.notes?.toLowerCase().includes("dosage") || event.notes?.toLowerCase().includes("mg")) {
       return {
-        text: "Set a reminder for next dose?",
+        text: language === "ar"
+          ? "ضبط تذكير للجرعة القادمة؟"
+          : language === "fr"
+          ? "Rappel pour la prochaine dose ?"
+          : "Set a reminder for next dose?",
         icon: "💊",
         type: "suggestion",
         priority: 2,
@@ -48,7 +60,11 @@ export function generateAIInsight(event: IQXOEvent): AIInsight | null {
   if (event.title.toLowerCase().includes("visa") || event.title.toLowerCase().includes("passport")) {
     if (daysUntil <= 7 && daysUntil > 0) {
       return {
-        text: `${daysUntil} days left. Check renewal process?`,
+        text: language === "ar"
+          ? `متبقي ${daysUntil} أيام. التحقق من التجديد؟`
+          : language === "fr"
+          ? `${daysUntil} jours restants. Vérifier le renouvellement ?`
+          : `${daysUntil} days left. Check renewal process?`,
         icon: "✈️",
         type: "warning",
         priority: 1,
@@ -60,7 +76,11 @@ export function generateAIInsight(event: IQXOEvent): AIInsight | null {
   if (event.title.toLowerCase().includes("payment") || event.title.toLowerCase().includes("bill")) {
     if (daysUntil <= 3 && daysUntil > 0) {
       return {
-        text: "Payment due soon. Set reminder?",
+        text: language === "ar"
+          ? "موعد الدفع قريب. ضبط تذكير؟"
+          : language === "fr"
+          ? "Paiement bientôt dû. Ajouter un rappel ?"
+          : "Payment due soon. Set reminder?",
         icon: "💳",
         type: "warning",
         priority: 1,
@@ -71,7 +91,11 @@ export function generateAIInsight(event: IQXOEvent): AIInsight | null {
   // General upcoming events
   if (daysUntil <= 1 && daysUntil > 0) {
     return {
-      text: "Happening tomorrow. All set?",
+      text: language === "ar"
+        ? "الحدث غداً. هل كل شيء جاهز؟"
+        : language === "fr"
+        ? "Prévu demain. Tout est prêt ?"
+        : "Happening tomorrow. All set?",
       icon: "📍",
       type: "info",
       priority: 3,
@@ -81,7 +105,7 @@ export function generateAIInsight(event: IQXOEvent): AIInsight | null {
   return null
 }
 
-export function getSmartGreeting(userName: string | undefined, events: IQXOEvent[]): string {
+export function getSmartGreeting(userName: string | undefined, events: IQXOEvent[], language: string = "en"): string {
   const urgentCount = events.filter(e => {
     const eventDate = new Date(e.date)
     const now = new Date()
@@ -90,10 +114,34 @@ export function getSmartGreeting(userName: string | undefined, events: IQXOEvent
   }).length
 
   const flightCount = events.filter(e => e.title.toLowerCase().includes("flight")).length
-  const name = userName?.trim() || "there"
+  const name = userName?.trim() || (language === "ar" ? "صديقي" : language === "fr" ? "l'ami" : "there")
 
   if (urgentCount === 0) {
+    if (language === "ar") {
+      return `مرحباً ${name}، كل شيء جاهز ومنظم لليوم!`
+    }
+    if (language === "fr") {
+      return `Bonjour ${name}, tout est prêt pour aujourd'hui !`
+    }
     return `Hey ${name}, you're all set for today!`
+  }
+
+  if (language === "ar") {
+    let greeting = `مرحباً ${name}، لديك ${urgentCount} مهام عاجلة`
+    if (flightCount > 0) {
+      greeting += ` و ${flightCount} رحلة طيران قادمة`
+    }
+    greeting += ". لقد قمت بترتيب الأولوية لك."
+    return greeting
+  }
+
+  if (language === "fr") {
+    let greeting = `Bonjour ${name}, vous avez ${urgentCount} tâche${urgentCount > 1 ? "s" : ""} urgente${urgentCount > 1 ? "s" : ""}`
+    if (flightCount > 0) {
+      greeting += ` et ${flightCount} vol${flightCount > 1 ? "s" : ""} à venir`
+    }
+    greeting += ". Je les ai priorisées pour vous."
+    return greeting
   }
 
   let greeting = `Hey ${name}, you have ${urgentCount} urgent task${urgentCount > 1 ? "s" : ""}`

@@ -14,7 +14,7 @@ export function StatsCard() {
       (user?.user_metadata as { full_name?: string; name?: string } | undefined)?.full_name?.trim() ||
       (user?.user_metadata as { full_name?: string; name?: string } | undefined)?.name?.trim() ||
       user?.email?.split("@")[0] ||
-      (language === "ar" ? "صديقي" : "there")
+      (language === "ar" ? "صديقي" : language === "fr" ? "l'ami" : "there")
     );
   }, [user, language]);
 
@@ -28,8 +28,8 @@ export function StatsCard() {
   }, [events, getEventsByPriority]);
 
   const smartGreeting = useMemo(() => {
-    return getSmartGreeting(displayName, events);
-  }, [displayName, events]);
+    return getSmartGreeting(displayName, events, language);
+  }, [displayName, events, language]);
 
   // Memoize top 3 critical items for highlighting (filtering and sorting can be heavy)
   const criticalItems = useMemo(() => {
@@ -58,7 +58,7 @@ export function StatsCard() {
               <Brain className="h-4 w-4 text-primary" />
             </div>
             <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">
-              {language === "ar" ? "مساعدك الذكي" : "AI Assistant"}
+              {language === "ar" ? "مساعدك الذكي" : language === "fr" ? "Assistant IA" : "AI Assistant"}
             </span>
           </div>
           
@@ -70,7 +70,11 @@ export function StatsCard() {
           {criticalItems.length > 0 && (
             <div className="space-y-2">
               <p className="text-[10px] text-muted-foreground font-medium">
-                {language === "ar" ? "العناصر التي تحتاج انتباهك:" : "Items that need your attention:"}
+                {language === "ar"
+                  ? "العناصر التي تحتاج انتباهك:"
+                  : language === "fr"
+                  ? "Éléments qui nécessitent votre attention :"
+                  : "Items that need your attention:"}
               </p>
               <div className="flex flex-wrap gap-2">
                 {criticalItems.map((item) => (

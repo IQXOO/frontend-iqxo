@@ -50,10 +50,18 @@ export function FutureExplorerView({ onEventClick }: FutureExplorerViewProps) {
         </div>
         <div className="text-center">
           <h3 className="text-base font-semibold text-foreground">
-            {language === "ar" ? "لا خطط مستقبلية" : "The future is blank"}
+            {language === "ar"
+              ? "لا خطط مستقبلية"
+              : language === "fr"
+              ? "Aucun événement futur"
+              : "The future is blank"}
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            {language === "ar" ? "ابدأ بتخطيط شيء ما" : "Start planning ahead"}
+            {language === "ar"
+              ? "ابدأ بتخطيط شيء ما"
+              : language === "fr"
+              ? "Planifiez vos prochains événements"
+              : "Start planning ahead"}
           </p>
         </div>
       </div>
@@ -106,6 +114,8 @@ export function FutureExplorerView({ onEventClick }: FutureExplorerViewProps) {
         <span>
           {language === "ar"
             ? `${futureEvents.length} مواعيد في الأفق`
+            : language === "fr"
+            ? `${futureEvents.length} événement${futureEvents.length > 1 ? "s" : ""} à venir`
             : `${futureEvents.length} upcoming events`}
         </span>
       </div>

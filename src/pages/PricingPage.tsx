@@ -401,7 +401,15 @@ export default function PricingPage() {
                 letterSpacing: "-0.03em",
                 marginBottom: "32px",
               }}>
-                Your mind doesn't need to<br />hold <em style={{ fontStyle: "italic", color: "#5BC0DE", fontWeight: 300 }}>everything</em> anymore.
+                {pageLang === "fr" ? (
+                  <>
+                    Votre esprit n&apos;a plus besoin de<br />tout <em style={{ fontStyle: "italic", color: "#5BC0DE", fontWeight: 300 }}>retenir</em>.
+                  </>
+                ) : (
+                  <>
+                    Your mind doesn&apos;t need to<br />hold <em style={{ fontStyle: "italic", color: "#5BC0DE", fontWeight: 300 }}>everything</em> anymore.
+                  </>
+                )}
               </h1>
 
               <div style={{

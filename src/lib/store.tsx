@@ -267,6 +267,8 @@ const translations: Record<Language, Record<string, string>> = {
     logout_desc: "You're all set.",
     logout_error: "Something's not right...",
     logging_out: "Signing out...",
+    signOut: "Sign out",
+    signingOut: "Signing out...",
 
     // Tomorrow's Chain
     tomorrowChain: "Tomorrow's Chain",
@@ -474,6 +476,8 @@ const translations: Record<Language, Record<string, string>> = {
     logout_desc: "Tu es déconnecté.",
     logout_error: "Quelque chose cloche...",
     logging_out: "Déconnexion...",
+    signOut: "Se déconnecter",
+    signingOut: "Déconnexion...",
 
     // Tomorrow's Chain
     tomorrowChain: "Chaîne de demain",
@@ -656,6 +660,8 @@ const translations: Record<Language, Record<string, string>> = {
     logout_desc: "أنت جاهز.",
     logout_error: "حدث خطأ ما...",
     logging_out: "جاري تسجيل الخروج...",
+    signOut: "تسجيل الخروج",
+    signingOut: "جاري تسجيل الخروج...",
 
     // Tomorrow's Chain
     tomorrowChain: "خطة الغد",

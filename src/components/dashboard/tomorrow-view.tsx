@@ -37,10 +37,18 @@ export function TomorrowView({ onEventClick }: TomorrowViewProps) {
         </div>
         <div className="text-center">
           <h3 className="text-base font-semibold text-foreground">
-            {language === "ar" ? "لا مواعيد غداً" : "All clear for tomorrow"}
+            {language === "ar"
+              ? "لا مواعيد غداً"
+              : language === "fr"
+              ? "Rien de prévu pour demain"
+              : "All clear for tomorrow"}
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            {language === "ar" ? "استمتع براحتك اليوم" : "Enjoy your peace today"}
+            {language === "ar"
+              ? "استمتع براحتك اليوم"
+              : language === "fr"
+              ? "Profitez de votre journée"
+              : "Enjoy your peace today"}
           </p>
         </div>
       </div>
@@ -49,6 +57,15 @@ export function TomorrowView({ onEventClick }: TomorrowViewProps) {
 
   return (
     <div className="px-5 py-6 space-y-3">
+      <div className="px-2 py-1 flex items-center justify-between text-xs text-muted-foreground">
+        <span>
+          {language === "ar"
+            ? `${tomorrowEvents.length} مواعيد غداً`
+            : language === "fr"
+            ? `${tomorrowEvents.length} événement${tomorrowEvents.length > 1 ? "s" : ""} demain`
+            : `${tomorrowEvents.length} tomorrow event${tomorrowEvents.length > 1 ? "s" : ""}`}
+        </span>
+      </div>
       {tomorrowEvents.map((event, idx) => (
         <motion.div
           key={event.id}
