@@ -186,7 +186,7 @@ function EventGridCard({
   }
 
   // Standard grid card
-  const aiInsight = generateAIInsight(event)
+  const aiInsight = generateAIInsight(event, language)
   
   return (
     <div className="relative">

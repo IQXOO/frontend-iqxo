@@ -87,7 +87,9 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
         className="mt-4 text-[0.9rem] font-light text-[#6E6E78] opacity-0 [transform:translateY(10px)] text-center px-4"
         style={{ animation: `splashIn 0.7s ${ease} 0.5s forwards` }}
       >
-        Your mind doesn't need to hold everything.
+        {typeof window !== "undefined" && (localStorage.getItem("iqxo-pricing-lang") === "fr" || navigator.language?.startsWith("fr"))
+          ? "Votre esprit n'a plus besoin de tout retenir."
+          : "Your mind doesn't need to hold everything."}
       </p>
 
       <div

@@ -45,7 +45,7 @@ export default function ProfilePage() {
     >
       <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b border-border px-5 py-4 flex items-center justify-center relative">
         <h1 className="text-lg font-semibold text-foreground">
-          {language === "ar" ? "ملفي الشخصي" : "My Profile"}
+          {language === "ar" ? "ملفي الشخصي" : language === "fr" ? "Mon Profil" : "My Profile"}
         </h1>
         <motion.button
           onClick={() => navigateToPath("/")}
@@ -85,7 +85,7 @@ export default function ProfilePage() {
                     {language === "ar" ? "ترقية الحساب إلى Pro" : language === "fr" ? "Passer à Pro" : "Upgrade to Pro"}
                   </span>
                 </div>
-                <span className="text-xs text-muted-foreground">{language === "ar" ? "ترقية" : "Upgrade"}</span>
+                <span className="text-xs text-muted-foreground">{language === "ar" ? "ترقية" : language === "fr" ? "Passer à Pro" : "Upgrade"}</span>
               </button>
             )}
 
@@ -151,12 +151,12 @@ export default function ProfilePage() {
             {isSigningOut ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{t("signingOut")}</span>
+                <span>{language === "ar" ? "جاري تسجيل الخروج..." : language === "fr" ? "Déconnexion..." : "Signing out..."}</span>
               </>
             ) : (
               <>
                 <LogOut className="w-4 h-4" strokeWidth={1.5} />
-                <span>{t("signOut")}</span>
+                <span>{language === "ar" ? "تسجيل الخروج" : language === "fr" ? "Se déconnecter" : "Sign out"}</span>
               </>
             )}
           </motion.button>

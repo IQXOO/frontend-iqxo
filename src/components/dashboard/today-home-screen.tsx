@@ -192,7 +192,7 @@ function TodayEventCard({
           {/* Top row: time + badge */}
           <div className={`flex items-center justify-between mb-2 ${isRTL ? "flex-row-reverse" : ""}`}>
             <span className="text-2xl font-bold text-white tabular-nums tracking-tight">
-              {event.time || (language === "ar" ? "طول اليوم" : "All day")}            </span>
+              {event.time || (language === "ar" ? "طول اليوم" : language === "fr" ? "Toute la journée" : "All day")}            </span>
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${styles.badge}`}>
               {styles.badgeText}
             </span>
