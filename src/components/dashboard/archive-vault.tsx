@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Archive, RotateCcw, X } from "lucide-react"
+import { Archive, RotateCcw, Trash2 } from "lucide-react"
 import { useApp } from "@/lib/store"
 import { toLocalDateStr } from "@/lib/store"
 import type { IQXOEvent } from "@/lib/types"
@@ -104,7 +104,7 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: idx * 0.08, duration: 0.4 }}
-          className="group glass rounded-2xl p-4 opacity-60 hover:opacity-100 transition-opacity"
+          className="glass rounded-2xl p-4 opacity-100"
         >
           <div className="flex items-start justify-between gap-3">
             <div
@@ -128,7 +128,7 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex gap-2">
               <button
                 onClick={() => handleRestore(event)}
                 className="flex-shrink-0 p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-all"
@@ -141,7 +141,7 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
                 className="flex-shrink-0 p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
                 title={language === "ar" ? "حذف" : language === "fr" ? "Supprimer" : "Delete"}
               >
-                <X className="w-4 h-4" />
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>

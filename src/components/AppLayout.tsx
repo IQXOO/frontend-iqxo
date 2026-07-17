@@ -6,6 +6,7 @@ import { useApp } from "../lib/store";
 import { navigateToPath } from "../lib/navigation";
 import { EventEditorProvider, useEventEditor } from "../lib/event-editor-context";
 import { shouldAutoOpenBillingRoute } from "../lib/billing-utils";
+import { launchAppWithFallback } from "../lib/auth-urls";
 
 const CommandPalette = React.lazy(() =>
   import("../components/dashboard/command-palette").then((module) => ({
@@ -251,7 +252,7 @@ function AppLayoutContent() {
             <button
               onClick={() => {
                 if (session) {
-                  window.location.href = `com.iqxo.app://auth#access_token=${session.access_token}&refresh_token=${session.refresh_token}`;
+                  launchAppWithFallback(`access_token=${session.access_token}&refresh_token=${session.refresh_token}`);
                 }
               }}
               className="px-3 py-1 bg-[#5BC0DE]/10 hover:bg-[#5BC0DE]/20 border border-[#5BC0DE]/20 text-[#5BC0DE] rounded-full font-medium transition-all cursor-pointer"
