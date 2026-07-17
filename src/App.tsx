@@ -5,9 +5,9 @@ import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/toaster";
 import {
   shouldAutoOpenBillingRoute,
-  shouldShowBillingPopup,
 } from "./lib/billing-utils";
 import "./styles/globals.css";
+import { launchAppWithFallback } from "./lib/auth-urls";
 
 // ── Native app OAuth redirect ─────────────────────────────────────────────────
 // When Google OAuth completes in the external browser, Supabase redirects to
@@ -21,8 +21,8 @@ function useNativeAppOAuthRedirect() {
     const hasIqxoApp = params.get("iqxo_app") === "1" || hash.includes("iqxo_app=1");
 
     if (hasIqxoApp && hash.includes("access_token")) {
-      // Use the scheme registered in AndroidManifest: com.iqxo.app://
-      window.location.href = "com.iqxo.app://auth" + hash;
+      // Use the helper to determine the correct deep link and handle store fallbacks
+      launchAppWithFallback(hash, window.location.href);
     }
   }, []);
 }
@@ -222,7 +222,7 @@ function App() {
     const hasIqxoApp = params.get("iqxo_app") === "1" || hash.includes("iqxo_app=1");
 
     if (hasIqxoApp && hash.includes("access_token")) {
-      window.location.href = "com.iqxo.app://auth" + hash;
+      launchAppWithFallback(hash, window.location.href);
       return null;
     }
   }
