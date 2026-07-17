@@ -23,20 +23,22 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
     const lang = browserLang.startsWith("fr") ? "fr" : "en";
 
     setLanguage(lang);
-    localStorage.setItem("iqxo-lang", lang);
-    localStorage.setItem("iqxo_intro_dismissed", "1");
+    if (typeof window !== "undefined") {
+      localStorage.setItem("iqxo-lang", lang);
+      localStorage.setItem("iqxo_intro_dismissed", "1");
+    }
     void setOnboardingDone(true);
     onDone?.();
 
     const timer = window.setTimeout(() => {
       navigate("/pricing", { replace: true });
-    }, 3300);
+    }, 2300);
 
     return () => window.clearTimeout(timer);
   }, [navigate, onDone, setLanguage, setOnboardingDone]);
 
   return (
-    <div className="fixed inset-0 z-[200] overflow-hidden bg-[#0C0C0E] text-[#E8E8E8] [font-family:'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif]">
+    <div className="fixed inset-0 z-[200] overflow-hidden bg-[#0C0C0E] text-[#E8E8E8] flex flex-col items-center justify-center [font-family:'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif]">
       <style>{`
         .splash-ambient {
           position: fixed;
@@ -63,17 +65,11 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
         @keyframes splashIn {
           to { opacity: 1; transform: scale(1) translateY(0); }
         }
-        @keyframes splashOut {
-          to { opacity: 0; transform: scale(1.1); pointer-events: none; }
-        }
         @keyframes loaderFade {
           to { opacity: 1; }
         }
         @keyframes loaderFill {
           to { transform: translateX(0); }
-        }
-        @keyframes footerFade {
-          to { opacity: 0.15; }
         }
       `}</style>
 
@@ -81,39 +77,29 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
       <div className="splash-ambient splash-ambient-2" />
 
       <div
-        className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#0C0C0E]"
-        style={{ animation: `splashOut 0.8s ${ease} 2.5s forwards` }}
-      >
-        <div
-          className="text-[3.5rem] font-semibold tracking-[-0.02em] opacity-0 [transform:scale(0.8)]"
-          style={{ animation: `splashIn 0.8s ${ease} 0.3s forwards` }}
-        >
-          IQ<span className="text-[#5BC0DE]">X</span>O
-        </div>
-
-        <p
-          className="mt-4 text-[0.9rem] font-light text-[#6E6E78] opacity-0 [transform:translateY(10px)]"
-          style={{ animation: `splashIn 0.8s ${ease} 0.6s forwards` }}
-        >
-          Your mind doesn't need to hold everything.
-        </p>
-
-        <div
-          className="mt-8 h-[2px] w-10 overflow-hidden rounded-[2px] bg-[rgba(255,255,255,0.04)] opacity-0"
-          style={{ animation: `loaderFade 0.5s ${ease} 1s forwards` }}
-        >
-          <div
-            className="h-full w-full bg-[#5BC0DE] [transform:translateX(-100%)]"
-            style={{ animation: `loaderFill 1.5s ${ease} 1s forwards` }}
-          />
-        </div>
-      </div>
-
-      <div
-        className="fixed bottom-6 text-[0.9rem] font-medium text-[#E8E8E8] opacity-0"
-        style={{ animation: `footerFade 0.6s ${ease} 1.5s forwards` }}
+        className="text-[3.5rem] font-semibold tracking-[-0.02em] opacity-0 [transform:scale(0.8)]"
+        style={{ animation: `splashIn 0.7s ${ease} 0.2s forwards` }}
       >
         IQ<span className="text-[#5BC0DE]">X</span>O
+      </div>
+
+      <p
+        className="mt-4 text-[0.9rem] font-light text-[#6E6E78] opacity-0 [transform:translateY(10px)] text-center px-4"
+        style={{ animation: `splashIn 0.7s ${ease} 0.5s forwards` }}
+      >
+        {typeof window !== "undefined" && (localStorage.getItem("iqxo-pricing-lang") === "fr" || navigator.language?.startsWith("fr"))
+          ? "Votre esprit n'a plus besoin de tout retenir."
+          : "Your mind doesn't need to hold everything."}
+      </p>
+
+      <div
+        className="mt-8 h-[2px] w-12 overflow-hidden rounded-[2px] bg-[rgba(255,255,255,0.04)] opacity-0"
+        style={{ animation: `loaderFade 0.4s ${ease} 0.8s forwards` }}
+      >
+        <div
+          className="h-full w-full bg-[#5BC0DE] [transform:translateX(-100%)]"
+          style={{ animation: `loaderFill 1.4s ${ease} 0.8s forwards` }}
+        />
       </div>
     </div>
   );

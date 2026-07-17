@@ -56,9 +56,24 @@ function AppLayoutContent() {
         setPaywallOpen(true);
       }
     };
+    const handleNativeIap = (e: any) => {
+      const detail = e?.detail;
+      if (detail?.success) {
+        if (detail.isRestore) {
+          alert(language === "ar" ? "تم استعادة المشتريات بنجاح!" : "Purchases restored successfully!");
+        }
+        setPaywallOpen(false);
+      } else if (detail?.error && detail.isRestore) {
+        alert((language === "ar" ? "فشل استعادة المشتريات: " : "Restore failed: ") + detail.error);
+      }
+    };
     window.addEventListener("trigger-paywall", handleTrigger);
-    return () => window.removeEventListener("trigger-paywall", handleTrigger);
-  }, [shouldShowPaywall]);
+    window.addEventListener("nativeIapResult", handleNativeIap);
+    return () => {
+      window.removeEventListener("trigger-paywall", handleTrigger);
+      window.removeEventListener("nativeIapResult", handleNativeIap);
+    };
+  }, [shouldShowPaywall, language]);
 
   const handleClosePaywall = () => {
     setPaywallOpen(false);
@@ -84,6 +99,8 @@ function AppLayoutContent() {
   const drawerI18n = {
     en: {
       upgradePro: "Upgrade to Pro",
+      subTitleMonthly: "IQXO Premium Monthly",
+      subTitleYearly: "IQXO Premium Yearly",
       monthly: "Monthly",
       yearly: "Yearly",
       monthlyPrice: "€9.99",
@@ -96,15 +113,21 @@ function AppLayoutContent() {
       feature2: "All features unlocked",
       feature3: "Cancel anytime",
       feature4: "30-day money-back guarantee",
-      ctaMonthly: "Upgrade to Calm",
-      ctaYearly: "Commit to Calm",
+      ctaMonthly: "Upgrade to Pro",
+      ctaYearly: "Commit to Pro",
       guarantee: "No questions asked. Full refund within 30 days.",
+      autoRenew: "Recurring billing. Cancel anytime at least 24 hours before the end of the current period in App Store Account Settings.",
+      privacyPolicy: "Privacy Policy",
+      termsOfUse: "Terms of Use (EULA)",
+      restore: "Restore Purchases",
       logout: "Sign Out",
       openInApp: "Open in IQXO App",
       launch: "Launch App",
     },
     fr: {
       upgradePro: "Améliorez vers Pro",
+      subTitleMonthly: "IQXO Premium Mensuel",
+      subTitleYearly: "IQXO Premium Annuel",
       monthly: "Mensuel",
       yearly: "Annuel",
       monthlyPrice: "9.99 €",
@@ -117,15 +140,21 @@ function AppLayoutContent() {
       feature2: "Fonctionnalités débloquées",
       feature3: "Annuler à tout moment",
       feature4: "Garantie de remboursement 30j",
-      ctaMonthly: "Passer au Calme",
-      ctaYearly: "S'engager dans le Calme",
+      ctaMonthly: "Passer au Pro",
+      ctaYearly: "S'engager au Pro",
       guarantee: "Sans questions. Remboursement sous 30 jours.",
+      autoRenew: "Facturation récurrente. Annulez à tout moment au moins 24h avant la fin de la période dans les paramètres App Store.",
+      privacyPolicy: "Politique de confidentialité",
+      termsOfUse: "Conditions d'utilisation (EULA)",
+      restore: "Restaurer les achats",
       logout: "Se déconnecter",
       openInApp: "Ouvrir dans l'application IQXO",
       launch: "Lancer",
     },
     ar: {
       upgradePro: "الترقية إلى Pro",
+      subTitleMonthly: "IQXO Premium الشهري",
+      subTitleYearly: "IQXO Premium السنوي",
       monthly: "شهرياً",
       yearly: "سنوياً",
       monthlyPrice: "€9.99",
@@ -138,9 +167,13 @@ function AppLayoutContent() {
       feature2: "فتح جميع الميزات بلا قيود",
       feature3: "إلغاء الاشتراك في أي وقت",
       feature4: "ضمان استرداد الأموال خلال 30 يوماً",
-      ctaMonthly: "الترقية للاسترخاء",
-      ctaYearly: "الالتزام بالهدوء والاسترخاء",
+      ctaMonthly: "الترقية إلى Pro",
+      ctaYearly: "الاشتراك السنوي في Pro",
       guarantee: "بدون أي أسئلة. استرداد كامل خلال 30 يوماً.",
+      autoRenew: "يتم تجديد الاشتراك تلقائياً. يمكنك إلغاء الاشتراك في أي وقت من إعدادات حسابك في App Store قبل 24 ساعة على الأقل من نهاية الفترة الحالية.",
+      privacyPolicy: "سياسة الخصوصية",
+      termsOfUse: "شروط الاستخدام (EULA)",
+      restore: "استعادة المشتريات",
       logout: "تسجيل الخروج",
       openInApp: "افتح في تطبيق IQXO",
       launch: "تشغيل التطبيق",
@@ -186,6 +219,25 @@ function AppLayoutContent() {
     window.location.href = url;
   };
 
+  const [isRestoring, setIsRestoring] = React.useState(false);
+
+  const handleRestorePurchases = () => {
+    if (isRestoring) return;
+    setIsRestoring(true);
+
+    // @ts-expect-error - injected by native
+    const isNative = typeof window !== "undefined" && (window.__IQXO_IS_NATIVE === true || !!window.ReactNativeWebView);
+    if (isNative) {
+      // @ts-expect-error - injected by native
+      const postMsg = window.__IQXO_postMessage || window.ReactNativeWebView?.postMessage?.bind(window.ReactNativeWebView);
+      if (postMsg) {
+        postMsg(JSON.stringify({ type: "restore_iap" }));
+      }
+    } else {
+      alert(language === "ar" ? "يرجى استعادة المشتريات مباشرة من تطبيق الهاتف (App Store)." : "Please restore purchases directly from the iOS App.");
+    }
+    setTimeout(() => setIsRestoring(false), 4000);
+  };
 
   return (
     <div className={`min-h-screen max-w-md mx-auto bg-background text-foreground relative ${isRTL ? "dir-rtl" : ""}`}>
@@ -278,8 +330,11 @@ function AppLayoutContent() {
               </div>
             </div>
 
-            {/* Price Presentation */}
+            {/* Price Presentation & Subscription Name (Required by Apple Guideline 3.1.2) */}
             <div className="text-center mb-6">
+              <div className="text-xs font-semibold uppercase tracking-wider text-[#5BC0DE] mb-1">
+                {paywallCycle === "monthly" ? dt.subTitleMonthly : dt.subTitleYearly}
+              </div>
               <div className="text-3xl font-light text-[#E8E8E8]">
                 {paywallCycle === "monthly" ? dt.monthlyPrice : dt.yearlyPrice}
                 <span className="text-sm text-[#6E6E78] font-normal ml-1">
@@ -325,12 +380,51 @@ function AppLayoutContent() {
               {dt.guarantee}
             </div>
 
+            {/* Restore Purchases Button (Required by Apple Guideline 3.1.1) */}
+            <button
+              onClick={handleRestorePurchases}
+              disabled={isRestoring}
+              className="w-full text-center text-xs text-[#A0A0A8] hover:text-[#5BC0DE] transition-all mt-4 block bg-none border-none cursor-pointer underline underline-offset-4"
+            >
+              {isRestoring
+                ? language === "ar"
+                  ? "جاري استعادة المشتريات..."
+                  : "Restoring purchases..."
+                : dt.restore}
+            </button>
+
+            {/* Apple Guideline 3.1.2 Legal Disclosure & Mandatory Links */}
+            <div className="mt-4 pt-3 border-t border-white/5 text-center">
+              <p className="text-[10px] text-[#6E6E78] leading-relaxed px-2 mb-2.5">
+                {dt.autoRenew}
+              </p>
+              <div className="flex justify-center items-center gap-4 text-xs text-[#A0A0A8]">
+                <a
+                  href="https://www.iqxo.ai/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-[#5BC0DE] transition-colors"
+                >
+                  {dt.termsOfUse}
+                </a>
+                <span className="text-white/20">•</span>
+                <a
+                  href="https://www.iqxo.ai/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-[#5BC0DE] transition-colors"
+                >
+                  {dt.privacyPolicy}
+                </a>
+              </div>
+            </div>
+
             {/* Logout button */}
             <button
               onClick={async () => {
                 await signOut();
               }}
-              className="w-full text-center text-xs text-[#6E6E78] hover:text-white transition-all mt-4 block bg-none border-none cursor-pointer"
+              className="w-full text-center text-xs text-[#6E6E78] hover:text-white transition-all mt-3 block bg-none border-none cursor-pointer"
             >
               {dt.logout}
             </button>

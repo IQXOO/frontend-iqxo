@@ -3,7 +3,7 @@
 import { useApp } from "@/lib/store"
 
 export function BentoChart() {
-  const { events } = useApp()
+  const { events, language } = useApp()
 
   // Calculate statistics for the current week
   const now = new Date()
@@ -51,25 +51,25 @@ export function BentoChart() {
 
   const chartItems = [
     {
-      label: "Documents",
+      label: language === "ar" ? "المستندات" : language === "fr" ? "Documents" : "Documents",
       value: categories.documents,
       color: "from-blue-500/40 to-blue-600/20",
       icon: "📋",
     },
     {
-      label: "Health",
+      label: language === "ar" ? "الصحة" : language === "fr" ? "Santé" : "Health",
       value: categories.health,
       color: "from-red-500/40 to-red-600/20",
       icon: "🏥",
     },
     {
-      label: "Personal",
+      label: language === "ar" ? "شخصي" : language === "fr" ? "Personnel" : "Personal",
       value: categories.personal,
       color: "from-purple-500/40 to-purple-600/20",
       icon: "👤",
     },
     {
-      label: "Other",
+      label: language === "ar" ? "أخرى" : language === "fr" ? "Autre" : "Other",
       value: categories.other,
       color: "from-emerald-500/40 to-emerald-600/20",
       icon: "📌",
@@ -79,8 +79,12 @@ export function BentoChart() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-foreground mb-4">Organization Progress</h3>
-        <p className="text-xs text-muted-foreground mb-4">Tasks by category this week</p>
+        <h3 className="text-sm font-semibold text-foreground mb-4">
+          {language === "ar" ? "تقدم التنظيم" : language === "fr" ? "Progrès d'organisation" : "Organization Progress"}
+        </h3>
+        <p className="text-xs text-muted-foreground mb-4">
+          {language === "ar" ? "المهام حسب الفئة هذا الأسبوع" : language === "fr" ? "Tâches par catégorie cette semaine" : "Tasks by category this week"}
+        </p>
       </div>
 
       <div className="space-y-4">
@@ -112,11 +116,15 @@ export function BentoChart() {
       <div className="mt-6 pt-4 border-t border-border/50">
         <div className="grid grid-cols-2 gap-4">
           <div className="p-3 rounded-lg bg-secondary/30 backdrop-blur-sm border border-border/50">
-            <p className="text-xs text-muted-foreground mb-1">Total Tasks</p>
+            <p className="text-xs text-muted-foreground mb-1">
+              {language === "ar" ? "إجمالي المهام" : language === "fr" ? "Total des tâches" : "Total Tasks"}
+            </p>
             <p className="text-2xl font-bold text-foreground">{events.length}</p>
           </div>
           <div className="p-3 rounded-lg bg-secondary/30 backdrop-blur-sm border border-border/50">
-            <p className="text-xs text-muted-foreground mb-1">This Week</p>
+            <p className="text-xs text-muted-foreground mb-1">
+              {language === "ar" ? "هذا الأسبوع" : language === "fr" ? "Cette semaine" : "This Week"}
+            </p>
             <p className="text-2xl font-bold text-foreground">{thisWeekEvents.length}</p>
           </div>
         </div>

@@ -65,11 +65,17 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
         </div>
         <div className="text-center">
           <h3 className="text-base font-semibold text-foreground">
-            {language === "ar" ? "الأرشيف فارغ" : "Memory Vault is empty"}
+            {language === "ar"
+              ? "الأرشيف فارغ"
+              : language === "fr"
+              ? "L'archive est vide"
+              : "Memory Vault is empty"}
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
             {language === "ar"
               ? "الأحداث السابقة ستظهر هنا"
+              : language === "fr"
+              ? "Les événements passés apparaîtront ici"
               : "Past events will appear here"}
           </p>
         </div>
@@ -87,6 +93,8 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
       <p className="text-xs text-muted-foreground px-2 mb-4">
         {language === "ar"
           ? `${pastEvents.length} ذكريات محفوظة`
+          : language === "fr"
+          ? `${pastEvents.length} souvenir${pastEvents.length > 1 ? "s" : ""} enregistré${pastEvents.length > 1 ? "s" : ""}`
           : `${pastEvents.length} memories saved`}
       </p>
 
@@ -124,14 +132,14 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
               <button
                 onClick={() => handleRestore(event)}
                 className="flex-shrink-0 p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-all"
-                title={language === "ar" ? "استعادة" : "Restore"}
+                title={language === "ar" ? "استعادة" : language === "fr" ? "Restaurer" : "Restore"}
               >
                 <RotateCcw className="w-4 h-4" />
               </button>
               <button
                 onClick={() => deleteEvent(event.id)}
                 className="flex-shrink-0 p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
-                title={language === "ar" ? "حذف" : "Delete"}
+                title={language === "ar" ? "حذف" : language === "fr" ? "Supprimer" : "Delete"}
               >
                 <Trash2 className="w-4 h-4" />
               </button>

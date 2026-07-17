@@ -16,7 +16,7 @@ export function SmartActionsCard() {
 
   // Determine status and colors
   let statusColor = "blue"
-  let statusLabel = language === "ar" ? "استخدام صحي" : "Healthy usage"
+  let statusLabel = language === "ar" ? "استخدام صحي" : language === "fr" ? "Utilisation saine" : "Healthy usage"
   let glow = "from-blue-500/20 to-blue-500/5"
   let barGradient = "bg-gradient-to-r from-blue-500 to-cyan-500"
   let iconBg = "bg-blue-500/10"
@@ -25,7 +25,7 @@ export function SmartActionsCard() {
 
   if (isExceeded) {
     statusColor = "red"
-    statusLabel = language === "ar" ? "تم الوصول إلى الحد الأقصى" : "Monthly limit reached"
+    statusLabel = language === "ar" ? "تم الوصول إلى الحد الأقصى" : language === "fr" ? "Limite mensuelle atteinte" : "Monthly limit reached"
     glow = "from-red-500/20 to-red-500/5"
     barGradient = "bg-gradient-to-r from-red-500 to-rose-500"
     iconBg = "bg-red-500/10"
@@ -33,7 +33,7 @@ export function SmartActionsCard() {
     borderColor = "border-red-500/30 bg-red-500/5"
   } else if (isNear) {
     statusColor = "amber"
-    statusLabel = language === "ar" ? "استخدام معتدل" : "Moderate usage"
+    statusLabel = language === "ar" ? "استخدام معتدل" : language === "fr" ? "Utilisation modérée" : "Moderate usage"
     glow = "from-amber-500/20 to-amber-500/5"
     barGradient = "bg-gradient-to-r from-amber-500 to-orange-500"
     iconBg = "bg-amber-500/10"
@@ -70,10 +70,10 @@ export function SmartActionsCard() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground">
-                  {language === "ar" ? "الإجراءات الذكية المتبقية" : "Smart Actions Remaining"}
+                  {language === "ar" ? "الإجراءات الذكية المتبقية" : language === "fr" ? "Actions intelligentes restantes" : "Smart Actions Remaining"}
                 </h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {language === "ar" ? "ميزانية معالجة الذكاء الاصطناعي المتاحة هذا الشهر" : "AI processing budget available this month"}
+                  {language === "ar" ? "ميزانية معالجة الذكاء الاصطناعي المتاحة هذا الشهر" : language === "fr" ? "Budget de traitement IA disponible ce mois-ci" : "AI processing budget available this month"}
                 </p>
               </div>
             </div>
@@ -93,7 +93,7 @@ export function SmartActionsCard() {
             {/* Actions Count */}
             <div className="flex items-baseline gap-1">
               <span className="text-3xl font-bold text-foreground">{remaining}</span>
-              <span className="text-sm text-muted-foreground/70">/ 1000 Actions</span>
+              <span className="text-sm text-muted-foreground/70">{language === "ar" ? "/ 1000 إجراء" : language === "fr" ? "/ 1000 Actions" : "/ 1000 Actions"}</span>
             </div>
 
             {/* Status message */}
@@ -119,7 +119,7 @@ export function SmartActionsCard() {
           {/* Label and percentage */}
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-muted-foreground/70">
-              {language === "ar" ? "استخدام هذا الشهر" : "Usage this month"}
+              {language === "ar" ? "استخدام هذا الشهر" : language === "fr" ? "Utilisation ce mois-ci" : "Usage this month"}
             </span>
             <span className={`text-xs font-semibold ${
               statusColor === "red" ? "text-red-400" :
@@ -157,18 +157,24 @@ export function SmartActionsCard() {
               <div className="text-xs text-red-400/80 leading-relaxed">
                 {language === "ar"
                   ? "لقد وصلت إلى حد الميزانية الشهري. يرجى ترقية خطتك أو الانتظار حتى الشهر القادم."
+                  : language === "fr"
+                  ? "Vous avez atteint votre limite mensuelle. Veuillez mettre à niveau votre plan ou attendre le mois prochain."
                   : "You've reached your monthly budget limit. Please upgrade your plan or wait until next month."}
               </div>
             ) : isNear ? (
               <div className="text-xs text-amber-400/80 leading-relaxed">
                 {language === "ar"
                   ? `متبقي ${remaining} إجراء فقط. استخدم بحكمة أو فكر في الترقية.`
+                  : language === "fr"
+                  ? `Plus que ${remaining} actions restantes. Utilisez-les judicieusement ou pensez à passer à Pro.`
                   : `Only ${remaining} actions left. Use wisely or consider upgrading.`}
               </div>
             ) : (
               <div className="text-xs text-emerald-400/80 leading-relaxed">
                 {language === "ar"
                   ? "لديك متسع كبير. استمتع بمعالجة الذكاء الاصطناعي غير المحدودة!"
+                  : language === "fr"
+                  ? `Vous avez largement de la place. Profitez du traitement IA illimité !`
                   : "You have plenty of room. Enjoy unlimited AI processing!"}
               </div>
             )}

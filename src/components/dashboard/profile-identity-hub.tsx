@@ -82,8 +82,8 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
 
     if (!file.type.startsWith("image/")) {
       toast({
-        title: language === "ar" ? "ملف غير صالح" : "Invalid file type",
-        description: language === "ar" ? "يرجى اختيار صورة صالحة." : "Please select a valid image file.",
+        title: language === "ar" ? "ملف غير صالح" : language === "fr" ? "Type de fichier invalide" : "Invalid file type",
+        description: language === "ar" ? "يرجى اختيار صورة صالحة." : language === "fr" ? "Veuillez sélectionner un fichier image valide." : "Please select a valid image file.",
         variant: "destructive"
       })
       return
@@ -145,15 +145,15 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
 
       setProfileAvatarUrl(publicUrl)
       toast({
-        title: language === "ar" ? "تم تحديث الصورة الشخصية" : "Avatar updated",
-        description: language === "ar" ? "تم حفظ صورتك الشخصية بنجاح." : "Your profile picture has been updated.",
+        title: language === "ar" ? "تم تحديث الصورة الشخصية" : language === "fr" ? "Photo de profil mise à jour" : "Avatar updated",
+        description: language === "ar" ? "تم حفظ صورتك الشخصية بنجاح." : language === "fr" ? "Votre photo de profil a été mise à jour." : "Your profile picture has been updated.",
         variant: "default"
       })
     } catch (err) {
       console.error("Failed to upload avatar", err)
       toast({
-        title: language === "ar" ? "فشل الرفع" : "Upload failed",
-        description: err instanceof Error ? err.message : (language === "ar" ? "عذراً حدث خطأ ما." : "Could not upload your avatar."),
+        title: language === "ar" ? "فشل الرفع" : language === "fr" ? "Échec du téléchargement" : "Upload failed",
+        description: err instanceof Error ? err.message : (language === "ar" ? "عذراً حدث خطأ ما." : language === "fr" ? "Impossible de télécharger votre avatar." : "Could not upload your avatar."),
         variant: "destructive"
       })
     } finally {
@@ -172,38 +172,38 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
 
   // Get dynamic title based on engagement
   const getTitle = () => {
-    if (totalEvents >= 50) return language === "ar" ? "سيد الاستراتيجية" : "Strategy Master"
-    if (totalEvents >= 25) return language === "ar" ? "خبير التنظيم" : "Organization Expert"
-    if (totalEvents >= 10) return language === "ar" ? "مخطط بارع" : "Skilled Planner"
-    return language === "ar" ? "مستكشف جديد" : "Rising Star"
+    if (totalEvents >= 50) return language === "ar" ? "سيد الاستراتيجية" : language === "fr" ? "Maître Stratège" : "Strategy Master"
+    if (totalEvents >= 25) return language === "ar" ? "خبير التنظيم" : language === "fr" ? "Expert Organisation" : "Organization Expert"
+    if (totalEvents >= 10) return language === "ar" ? "مخطط بارع" : language === "fr" ? "Planificateur Qualifié" : "Skilled Planner"
+    return language === "ar" ? "مستكشف جديد" : language === "fr" ? "Étoile Montante" : "Rising Star"
   }
 
   // Life Stats grid
   const lifeStats = [
     {
       icon: Archive,
-      label: language === "ar" ? "وثائق معالجة" : "Documents Processed",
+      label: language === "ar" ? "وثائق معالجة" : language === "fr" ? "Documents Traités" : "Documents Processed",
       value: totalEvents,
       color: "from-blue-500/20 to-blue-500/5",
       iconColor: "text-blue-400",
     },
     {
       icon: CalendarCheck,
-      label: language === "ar" ? "أحداث مستقبلية" : "Future Events",
+      label: language === "ar" ? "أحداث مستقبلية" : language === "fr" ? "Événements Futurs" : "Future Events",
       value: upcomingEvents,
       color: "from-purple-500/20 to-purple-500/5",
       iconColor: "text-purple-400",
     },
     {
       icon: Clock,
-      label: language === "ar" ? "ذكريات محفوظة" : "Archived Memories",
+      label: language === "ar" ? "ذكريات محفوظة" : language === "fr" ? "Souvenirs Archivés" : "Archived Memories",
       value: completedEvents,
       color: "from-amber-500/20 to-amber-500/5",
       iconColor: "text-amber-400",
     },
     {
       icon: TrendingUp,
-      label: language === "ar" ? "ساعات موفرة" : "Hours Saved",
+      label: language === "ar" ? "ساعات موفرة" : language === "fr" ? "Heures Économisées" : "Hours Saved",
       value: `${hoursSaved}h`,
       color: "from-emerald-500/20 to-emerald-500/5",
       iconColor: "text-emerald-400",
@@ -215,15 +215,21 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
     if (hoursSaved >= 5) {
       return language === "ar" 
         ? `لقد وفرت ${hoursSaved} ساعات هذا الأسبوع. أنت رائع!` 
+        : language === "fr"
+        ? `Vous avez économisé ${hoursSaved} heures cette semaine. Excellent travail !`
         : `You've saved ${hoursSaved} hours this week. Great job!`
     }
     if (totalEvents >= 10) {
       return language === "ar" 
         ? `${totalEvents} لحظة من حياتك منظمة بعناية. استمر!` 
+        : language === "fr"
+        ? `${totalEvents} moments de votre vie, parfaitement organisés. Continuez !`
         : `${totalEvents} moments of your life, beautifully organized. Keep going!`
     }
     return language === "ar" 
       ? `أنت تبني شيئاً مميزاً هنا، يا ${firstName}.` 
+      : language === "fr"
+      ? `Vous construisez quelque chose de spécial ici, ${firstName}.`
       : `You're building something special here, ${firstName}.`
   }
 
@@ -388,10 +394,10 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
 
           {/* Contact row: email (non-editable) */}
           <div className="relative z-10 mt-3">
-            <p className="text-xs text-muted-foreground">{language === "ar" ? "البريد الإلكتروني" : "Email"}</p>
+            <p className="text-xs text-muted-foreground">{language === "ar" ? "البريد الإلكتروني" : language === "fr" ? "E-mail" : "Email"}</p>
             <div className="mt-1 flex items-center justify-between">
               <div className="text-sm text-foreground/90">{profileEmail ?? user?.email}</div>
-              <div className="text-[11px] text-muted-foreground">{user?.email ? "Verified" : "Unverified"}</div>
+              <div className="text-[11px] text-muted-foreground">{user?.email ? (language === "ar" ? "مؤكد" : language === "fr" ? "Vérifié" : "Verified") : (language === "ar" ? "غير مؤكد" : language === "fr" ? "Non vérifié" : "Unverified")}</div>
             </div>
           </div>
 
@@ -399,7 +405,7 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
           <div className="relative z-10 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">
-                {language === "ar" ? "معدل التنظيم" : "Organization Score"}
+                {language === "ar" ? "معدل التنظيم" : language === "fr" ? "Score d'organisation" : "Organization Score"}
               </span>
               <span className="font-semibold text-blue-400">{organizationScore}%</span>
             </div>
@@ -449,10 +455,10 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
           </div>
           <div>
             <h3 className="text-sm font-semibold text-foreground">
-              {language === "ar" ? "تحليلات الإنتاجية" : "Productivity Analytics"}
+              {language === "ar" ? "تحليلات الإنتاجية" : language === "fr" ? "Analyses de productivité" : "Productivity Analytics"}
             </h3>
             <p className="text-[10px] text-muted-foreground">
-              {language === "ar" ? "نظرة عامة على حياتك المنظمة" : "Overview of your organized life"}
+              {language === "ar" ? "نظرة عامة على حياتك المنظمة" : language === "fr" ? "Aperçu de votre vie organisée" : "Overview of your organized life"}
             </p>
           </div>
         </div>
@@ -477,21 +483,23 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
               <div>
                 <p className="text-sm font-semibold text-foreground">
                   {planStatus === "pro"
-                    ? (language === "ar" ? "Pro" : "Pro Plan")
+                    ? (language === "ar" ? "Pro" : language === "fr" ? "Plan Pro" : "Pro Plan")
                     : planStatus === "free_trial"
-                    ? (language === "ar" ? "تجربة مجانية" : "Free Trial")
+                    ? (language === "ar" ? "تجربة مجانية" : language === "fr" ? "Essai gratuit" : "Free Trial")
                     : planStatus === "expired"
-                    ? (language === "ar" ? "التجربة انتهت" : "Trial Expired")
-                    : (language === "ar" ? "لا توجد خطة" : "No Plan")}
+                    ? (language === "ar" ? "التجربة انتهت" : language === "fr" ? "Essai expiré" : "Trial Expired")
+                    : (language === "ar" ? "لا توجد خطة" : language === "fr" ? "Aucun plan" : "No Plan")}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
                   {planStatus === "free_trial" && trialEndsAt
                     ? (language === "ar"
                         ? `تنتهي ${new Date(trialEndsAt).toLocaleDateString("ar")}`
+                        : language === "fr"
+                        ? `Expire le ${new Date(trialEndsAt).toLocaleDateString("fr-FR")}`
                         : `Ends ${new Date(trialEndsAt).toLocaleDateString()}`)
                     : planStatus === "pro"
-                    ? (language === "ar" ? "وصول كامل" : "Full access")
-                    : (language === "ar" ? "اختر خطة للمتابعة" : "Choose a plan to continue")}
+                    ? (language === "ar" ? "وصول كامل" : language === "fr" ? "Accès complet" : "Full access")
+                    : (language === "ar" ? "اختر خطة للمتابعة" : language === "fr" ? "Choisissez un plan pour continuer" : "Choose a plan to continue")}
                 </p>
               </div>
             </div>
@@ -502,7 +510,7 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
                 ? "bg-blue-500/20 text-blue-400"
                 : "bg-rose-500/20 text-rose-400"
             }`}>
-              {planStatus === "pro" ? "✓ Active" : planStatus === "free_trial" ? "Trial" : "Inactive"}
+              {planStatus === "pro" ? (language === "ar" ? "✓ نشط" : language === "fr" ? "✓ Actif" : "✓ Active") : planStatus === "free_trial" ? (language === "ar" ? "تجربة" : language === "fr" ? "Essai" : "Trial") : (language === "ar" ? "غير نشط" : language === "fr" ? "Inactif" : "Inactive")}
             </div>
           </div>
 
@@ -514,7 +522,7 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
               className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-semibold hover:from-amber-600 hover:to-amber-700 transition-colors shadow-lg shadow-amber-500/10 flex items-center justify-center gap-1.5"
             >
               <Crown className="w-3.5 h-3.5" />
-              <span>{language === "ar" ? "ترقية الحساب إلى Pro" : "Upgrade to Pro"}</span>
+              <span>{language === "ar" ? "ترقية الحساب إلى Pro" : language === "fr" ? "Passer à Pro" : "Upgrade to Pro"}</span>
             </motion.button>
           )}
         </div>
@@ -533,10 +541,10 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
           </div>
           <div>
             <h3 className="text-sm font-semibold text-foreground">
-              {language === "ar" ? "النسخ الاحتياطي الآمن" : "Secure Backup"}
+              {language === "ar" ? "النسخ الاحتياطي الآمن" : language === "fr" ? "Sauvegarde sécurisée" : "Secure Backup"}
             </h3>
             <p className="text-[10px] text-muted-foreground">
-              {language === "ar" ? "تصدير سجلاتك بأمان" : "Export your records securely"}
+              {language === "ar" ? "تصدير سجلاتك بأمان" : language === "fr" ? "Exportez vos dossiers en toute sécurité" : "Export your records securely"}
             </p>
           </div>
         </div>
@@ -550,11 +558,13 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-emerald-500/20 to-blue-500/20 border border-emerald-500/30 text-emerald-400 text-sm font-medium hover:from-emerald-500/30 hover:to-blue-500/30 transition-all"
         >
           <Download className="w-4 h-4" />
-          <span>{language === "ar" ? "تصدير كـ PDF" : "Export as PDF"}</span>
+          <span>{language === "ar" ? "تصدير كـ PDF" : language === "fr" ? "Exporter en PDF" : "Export as PDF"}</span>
         </motion.button>
         <p className="text-[10px] text-muted-foreground text-center mt-3">
           {language === "ar" 
             ? "يتم تنزيل جميع البيانات محليًا، بدون مشاركة خارجية" 
+            : language === "fr"
+            ? "Toutes les données sont téléchargées localement. Aucun partage externe."
             : "All data is downloaded locally. No external sharing."}
         </p>
       </motion.div>
@@ -568,10 +578,10 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-foreground">
-            {language === "ar" ? "الإنجازات القادمة" : "Achievements Coming Soon"}
+            {language === "ar" ? "الإنجازات القادمة" : language === "fr" ? "Succès à venir" : "Achievements Coming Soon"}
           </h3>
           <span className="text-[10px] text-muted-foreground px-2 py-1 rounded-full bg-secondary/50">
-            {language === "ar" ? "قريباً" : "Soon"}
+            {language === "ar" ? "قريباً" : language === "fr" ? "Bientôt" : "Soon"}
           </span>
         </div>
         <div className="flex gap-2">
