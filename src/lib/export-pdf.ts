@@ -7,25 +7,18 @@ export async function exportEventsToPDF(events: IQXOEvent[], userName: string | 
   const doc = createPDFContent(events, userName)
 
   // ── Native App (React Native WebView) ────────────────────────────────────────
-  // window.open() is blocked inside WebView. Instead, we download the HTML file
-  // directly via a Blob <a download> link which WebView handles correctly.
+  // window.open() and blob URLs are blocked inside WebView.
+  // Instead, send the HTML content via postMessage so the native app
+  // can open the system Share Sheet with the exported content.
   const isNativeApp =
     typeof window !== "undefined" &&
     ((window as any).isNativeApp === true || (window as any).__IQXO_IS_NATIVE === true)
 
   if (isNativeApp) {
     try {
-      const blob = new Blob([doc], { type: "text/html;charset=utf-8" })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `IQXO-Events-${new Date().toISOString().split("T")[0]}.html`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(url), 5000)
+      ;(window as any).__IQXO_postMessage(JSON.stringify({ type: "exportPDF", html: doc }))
     } catch (err) {
-      console.error("Native export failed:", err)
+      console.error("Native export postMessage failed:", err)
     }
     return
   }
