@@ -731,6 +731,12 @@ export function toLocalDateStr(d: Date = new Date()): string {
   return `${y}-${m}-${day}`;
 }
 
+// Return the last day of the current month as a YYYY-MM-DD string (local time).
+export function toEndOfMonthStr(d: Date = new Date()): string {
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  return toLocalDateStr(lastDay);
+}
+
 // Parse a YYYY-MM-DD string as LOCAL midnight (not UTC) so comparisons are
 // always relative to the user's clock.
 export function parseLocalDate(dateStr: string): Date {
@@ -928,6 +934,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setActiveLoading(true);
     try {
       const todayStr = toLocalDateStr();
+      const endOfMonthStr = toEndOfMonthStr();
       const from = pageNum * PAGE_SIZE;
       const to = (pageNum + 1) * PAGE_SIZE - 1;
 
@@ -939,6 +946,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         )
         .eq("user_id", uid)
         .gte("date", todayStr)
+        .lte("date", endOfMonthStr)
         .order("date", { ascending: true })
         .range(from, to);
 
@@ -1043,6 +1051,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           )
           .eq("user_id", uid)
           .gte("date", toLocalDateStr())
+          .lte("date", toEndOfMonthStr())
           .order("date", { ascending: true })
           .range(0, PAGE_SIZE - 1),
         supabase

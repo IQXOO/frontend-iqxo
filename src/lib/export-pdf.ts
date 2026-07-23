@@ -3,10 +3,34 @@ import type { IQXOEvent } from "./types"
 export async function exportEventsToPDF(events: IQXOEvent[], userName: string | undefined) {
   // Since we don't have access to pdf libraries, we'll create a structured HTML document
   // that can be printed to PDF using browser's print functionality
-  
+
   const doc = createPDFContent(events, userName)
-  
-  // Trigger print dialog
+
+  // ── Native App (React Native WebView) ────────────────────────────────────────
+  // window.open() is blocked inside WebView. Instead, we download the HTML file
+  // directly via a Blob <a download> link which WebView handles correctly.
+  const isNativeApp =
+    typeof window !== "undefined" &&
+    ((window as any).isNativeApp === true || (window as any).__IQXO_IS_NATIVE === true)
+
+  if (isNativeApp) {
+    try {
+      const blob = new Blob([doc], { type: "text/html;charset=utf-8" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `IQXO-Events-${new Date().toISOString().split("T")[0]}.html`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
+    } catch (err) {
+      console.error("Native export failed:", err)
+    }
+    return
+  }
+
+  // ── Web browser: open in new window and trigger print dialog ─────────────────
   const printWindow = window.open("", "", "height=600,width=800")
   if (!printWindow) {
     console.error("Could not open print window")

@@ -158,7 +158,13 @@ interface NativeCalendarPreviewProps {
 }
 
 function NativeCalendarPreview({ events: initialEvents, language, onClose, onImport }: NativeCalendarPreviewProps) {
-  const [items, setItems] = useState<ParsedCalEvent[]>(initialEvents);
+  const [items, setItems] = useState<ParsedCalEvent[]>(
+    [...initialEvents].sort((a, b) => {
+      const dateA = a.date + (a.time ? 'T' + a.time : 'T00:00');
+      const dateB = b.date + (b.time ? 'T' + b.time : 'T00:00');
+      return dateA.localeCompare(dateB);
+    })
+  );
   const [importing, setImporting] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -705,7 +711,7 @@ export const BottomNav = memo(function BottomNav({
   onComposerOpenChange,
   onImportEvents,
 }: BottomNavProps) {
-  const { language, addEvent, user: _user } = useApp();
+  const { language, addEvent, user: _user, planStatus } = useApp();
   const isRTL = language === "ar";
   const [internalMenuOpen, setInternalMenuOpen] = useState(false);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
@@ -824,6 +830,13 @@ export const BottomNav = memo(function BottomNav({
   };
 
   const handleCalendarImport = () => {
+    // Calendar import is a Pro-only feature
+    if (planStatus !== "pro" && planStatus !== "free_trial") {
+      setMenuOpen(false);
+      setShowPhotoOptions(false);
+      window.dispatchEvent(new Event("trigger-paywall"));
+      return;
+    }
     setShowPhotoOptions(false);
     setShowCalendarOptions(true);
   };
@@ -872,9 +885,15 @@ export const BottomNav = memo(function BottomNav({
         notes: e.notes || '',
         selected: true,
       }));
-      // Filter future + next 12 months
+      // Filter future + next 12 months, then sort chronologically
       const today = new Date(); today.setHours(0,0,0,0);
-      const filtered = mapped.filter(e => new Date(e.date) >= today);
+      const filtered = mapped
+        .filter(e => new Date(e.date) >= today)
+        .sort((a, b) => {
+          const dateA = a.date + (a.time ? 'T' + a.time : 'T00:00');
+          const dateB = b.date + (b.time ? 'T' + b.time : 'T00:00');
+          return dateA.localeCompare(dateB);
+        });
       setNativeCalEvents(filtered);
       setNativeCalLoading(false);
     };
@@ -1029,7 +1048,7 @@ export const BottomNav = memo(function BottomNav({
                         </div>
                       </motion.button>
 
-                      {/* Import from Calendar — opens sub-menu */}
+                      {/* Import from Calendar — Pro only — opens sub-menu */}
                       <motion.button
                         onClick={handleCalendarImport}
                         className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-secondary/60 transition-colors text-left group"
@@ -1039,7 +1058,7 @@ export const BottomNav = memo(function BottomNav({
                           <Calendar className="w-5 h-5 text-emerald-500" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">
+                          <p className="text-sm font-medium text-foreground flex items-center gap-2">
                             {language === "ar" ? "استيراد من التقويم" : language === "fr" ? "Importer depuis Calendrier" : "Import from Calendar"}
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">

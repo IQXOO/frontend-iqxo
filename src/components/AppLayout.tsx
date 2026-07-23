@@ -5,7 +5,7 @@ import { BottomNav } from "../components/dashboard/bottom-nav";
 import { useApp } from "../lib/store";
 import { navigateToPath } from "../lib/navigation";
 import { EventEditorProvider, useEventEditor } from "../lib/event-editor-context";
-import { shouldAutoOpenBillingRoute } from "../lib/billing-utils";
+import { shouldAutoOpenBillingRoute, normalizeBillingPlanStatus } from "../lib/billing-utils";
 import { launchAppWithFallback } from "../lib/auth-urls";
 
 const CommandPalette = React.lazy(() =>
@@ -23,23 +23,36 @@ function AppLayoutContent() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   const isRTL = language === "ar";
-  const shouldShowPaywall = user && planStatus !== "pro";
-  const shouldBlockAI = user && shouldAutoOpenBillingRoute(planResolved, planStatus, trialEndsAt);
+  const normalizedPlan = normalizeBillingPlanStatus(planStatus);
+  const shouldShowPaywall = Boolean(user && planResolved && normalizedPlan !== "pro");
+  const shouldBlockAI = Boolean(user && shouldAutoOpenBillingRoute(planResolved, planStatus, trialEndsAt));
 
   const isMobileDevice = typeof window !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   const showNativeAppBanner = typeof window !== "undefined" && !(window as unknown as { isNativeApp?: boolean }).isNativeApp && isMobileDevice && !!session && !bannerDismissed;
 
-  const [paywallOpen, setPaywallOpen] = useState(() => {
+  const [paywallOpen, setPaywallOpen] = useState(false);
+
+  // Sync paywall trigger only AFTER user plan data is fully verified from backend
+  React.useEffect(() => {
+    if (!user || !planResolved) return;
+
+    if (normalizedPlan === "pro") {
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("iqxo_just_signed_in");
+      }
+      setPaywallOpen(false);
+      return;
+    }
+
+    // For non-Pro users, check if they just signed in
     if (typeof window !== "undefined") {
       const justSignedIn = sessionStorage.getItem("iqxo_just_signed_in") === "1";
-      const sessionActive = sessionStorage.getItem("iqxo_session_active") === "1";
-      if (justSignedIn || !sessionActive) {
-        sessionStorage.setItem("iqxo_session_active", "1");
-        return true;
+      if (justSignedIn) {
+        sessionStorage.removeItem("iqxo_just_signed_in");
+        setPaywallOpen(true);
       }
     }
-    return false;
-  });
+  }, [user, planResolved, normalizedPlan]);
 
   React.useEffect(() => {
     if (shouldBlockAI) {
