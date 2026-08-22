@@ -8,6 +8,12 @@ export interface IQXOEvent {
   notes: string;
   date: string;
   time: string;
+  start_time?: string;
+  end_time?: string;
+  color?: string;
+  recurrence_rule?: string;
+  recurrence_end_date?: string;
+  reminders?: { minutes_before: number }[];
   phone?: string;
   location?: string;
   email?: string;
@@ -17,6 +23,7 @@ export interface IQXOEvent {
   updatedAt: string;
   source: string;
   is_done: boolean;
+  native_event_id?: string;
 }
 
 export interface AppState {

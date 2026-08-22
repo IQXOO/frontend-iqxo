@@ -5,6 +5,7 @@ import { useApp } from "../../lib/store"
 import { generateAIInsight } from "../../lib/ai-insights"
 import type { IQXOEvent, Priority } from "../../lib/types"
 import { format, isToday, isTomorrow } from "../../lib/date-utils"
+import { getNextOccurrence } from "../../lib/recurrence"
 
 interface EventListProps {
   priority: Priority
@@ -124,7 +125,8 @@ function EventGridCard({
   isFeature: boolean
   onDelete?: (id: string) => void
 }) {
-  const eventDate = new Date(event.date)
+  const nextOcc = getNextOccurrence(event)
+  const eventDate = nextOcc || new Date(event.date)
   const { t, language } = useApp()
   const isRTL = language === "ar"
   const config = priorityConfig[priority] || priorityConfig.upcoming    
@@ -163,9 +165,17 @@ function EventGridCard({
         </div>
 
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold text-foreground truncate">
-            {event.title}
-          </h3>
+          <div className={`flex items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
+            {event.color && (
+              <div 
+                className="w-2.5 h-2.5 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.1)] border border-white/10" 
+                style={{ backgroundColor: event.color }} 
+              />
+            )}
+            <h3 className="text-lg font-semibold text-foreground truncate">
+              {event.title}
+            </h3>
+          </div>
           <div className={`flex items-center gap-1.5 mt-1 ${isRTL ? "flex-row-reverse" : ""}`}>
             <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
             <span className="text-xs text-muted-foreground">
@@ -204,9 +214,17 @@ function EventGridCard({
                 {format(eventDate, "d")}
               </span>
             </div>
-            {event.phone && (
-              <Phone className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-            )}
+            <div className={`flex items-center gap-1.5 ${isRTL ? "flex-row-reverse" : ""}`}>
+              {event.color && (
+                <div 
+                  className="w-2 h-2 rounded-full shrink-0 shadow-[0_0_6px_rgba(0,0,0,0.1)] border border-white/10" 
+                  style={{ backgroundColor: event.color }} 
+                />
+              )}
+              {event.phone && (
+                <Phone className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+              )}
+            </div>
           </div>
           <h3 className="text-[12.5px] font-semibold text-foreground leading-snug line-clamp-2">
             {event.title}

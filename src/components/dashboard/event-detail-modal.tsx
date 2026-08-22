@@ -32,6 +32,7 @@ import { parseLocalDate } from "@/lib/store";
 import { ImageLightbox } from "./image-lightbox";
 import type { IQXOEvent } from "@/lib/types";
 import { format, isToday, isTomorrow } from "@/lib/date-utils";
+import { getNextOccurrence } from "@/lib/recurrence";
 
 interface EventDetailModalProps {
   open: boolean;
@@ -155,7 +156,7 @@ export function EventDetailModal({
   if (!event) return null;
 
   const _priority = computePriority(event.date);
-  const localDate = parseLocalDate(event.date);
+  const localDate = getNextOccurrence(event) || parseLocalDate(event.date);
   const dateStr = format(localDate, "EEEE, MMMM d, yyyy");
   const isEventToday = isToday(localDate);
   const isEventTomorrow = isTomorrow(localDate);
@@ -387,8 +388,63 @@ ${origin}`;
                       : "TIME"
                 }
               >
-                {event.time || "—"}
+                {(() => {
+                   const start = event.start_time || event.time;
+                   const end = event.end_time;
+                   if (start && end) return `${start} - ${end}`;
+                   if (start) return start;
+                   return "—";
+                })()}
               </InfoCard>
+
+              {/* Color */}
+              {event.color && event.color !== "#3b82f6" && (
+                <InfoCard
+                  iconEmoji="🎨"
+                  iconBg="bg-orange-500/10"
+                  label={language === "ar" ? "اللون" : language === "fr" ? "COULEUR" : "COLOR"}
+                >
+                  <div className="w-5 h-5 rounded-full border border-border" style={{ backgroundColor: event.color }} />
+                </InfoCard>
+              )}
+
+              {/* Repeat */}
+              {event.recurrence_rule && (
+                <InfoCard
+                  iconEmoji="🔄"
+                  iconBg="bg-blue-500/10"
+                  label={language === "ar" ? "تكرار" : language === "fr" ? "RÉPÉTER" : "REPEAT"}
+                >
+                  {(() => {
+                    const rule = event.recurrence_rule;
+                    if (rule.includes("DAILY")) return language === "ar" ? "يومياً" : "Daily";
+                    if (rule.includes("WEEKLY")) return language === "ar" ? "أسبوعياً" : "Weekly";
+                    if (rule.includes("MONTHLY")) return language === "ar" ? "شهرياً" : "Monthly";
+                    if (rule.includes("YEARLY")) return language === "ar" ? "سنوياً" : "Yearly";
+                    return rule;
+                  })()}
+                </InfoCard>
+              )}
+
+              {/* Reminder */}
+              {event.reminders && event.reminders.length > 0 && (
+                <InfoCard
+                  iconEmoji="🔔"
+                  iconBg="bg-pink-500/10"
+                  label={language === "ar" ? "تذكير" : language === "fr" ? "RAPPEL" : "REMINDER"}
+                >
+                  {(() => {
+                    const mins = event.reminders![0].minutes_before;
+                    if (mins === 0) return language === "ar" ? "في وقت الحدث" : "At time of event";
+                    if (mins === 5) return language === "ar" ? "قبل 5 دقائق" : "5 minutes before";
+                    if (mins === 15) return language === "ar" ? "قبل 15 دقيقة" : "15 minutes before";
+                    if (mins === 30) return language === "ar" ? "قبل 30 دقيقة" : "30 minutes before";
+                    if (mins === 60) return language === "ar" ? "قبل 1 ساعة" : "1 hour before";
+                    if (mins === 1440) return language === "ar" ? "قبل يوم واحد" : "1 day before";
+                    return `${mins} min before`;
+                  })()}
+                </InfoCard>
+              )}
 
               {/* Location */}
               {event.location && (

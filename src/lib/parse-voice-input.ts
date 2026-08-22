@@ -7,8 +7,14 @@ export interface ParsedEvent {
   title: string
   date?: string
   time?: string
+  start_time?: string
+  end_time?: string
   location?: string
   phone?: string
+  notes?: string
+  color?: string
+  recurrence_rule?: string
+  reminders?: { minutes_before: number }[]
 }
 
 export function parseVoiceInput(text: string): ParsedEvent {
