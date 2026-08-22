@@ -41,6 +41,10 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
   const [title, setTitle]       = useState("");
   const [date, setDate]         = useState("");
   const [time, setTime]         = useState("");
+  const [endTime, setEndTime]   = useState("");
+  const [color, setColor]       = useState("#3b82f6");
+  const [recurrence, setRecurrence] = useState("");
+  const [reminders, setReminders] = useState<{minutes_before: number}[]>([]);
   const [phone, setPhone]       = useState("");
   const [email, setEmail]       = useState("");
   const [location, setLocation] = useState("");
@@ -90,23 +94,32 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
       devWarn('EventForm', 'work_schedules fetch skipped: no authenticated user')
     }
     if (editEvent) {
-      setTitle(editEvent.title); setDate(editEvent.date); setTime(editEvent.time);
+      setTitle(editEvent.title); setDate(editEvent.date); setTime(editEvent.start_time || editEvent.time || ""); setEndTime(editEvent.end_time || "");
+      setColor(editEvent.color || "#3b82f6"); setRecurrence(editEvent.recurrence_rule || ""); setReminders(editEvent.reminders || []);
       setPhone(editEvent.phone || ""); setEmail(editEvent.email || ""); setLocation(editEvent.location || ""); setNotes(editEvent.notes || "");
       setImagePreview(editEvent.image_url || null); setImageFile(null);
       setExistingPdfUrl(editEvent.pdf_url || null); setPdfFile(null);
       setPdfName(editEvent.pdf_url ? decodeURIComponent(editEvent.pdf_url.split("/").pop() ?? "document.pdf") : null);
     } else if (prefillData) {
-      setTitle(prefillData.title || ""); setDate(prefillData.date || ""); setTime(prefillData.time || "");
-      setPhone(prefillData.phone || ""); setLocation(prefillData.location || ""); setNotes("");
+      setTitle(prefillData.title || ""); setDate(prefillData.date || ""); setTime(prefillData.start_time || prefillData.time || ""); setEndTime(prefillData.end_time || "");
+      setColor(prefillData.color || "#3b82f6"); setRecurrence(prefillData.recurrence_rule || ""); setReminders(prefillData.reminders || []);
+      setPhone(prefillData.phone || ""); setLocation(prefillData.location || ""); setNotes(prefillData.notes || "");
       setImagePreview(prefillImageUrl || null); setImageFile(null); setPdfFile(null); setPdfName(null); setExistingPdfUrl(null);
     } else {
-      setTitle(""); setDate(""); setTime(""); setPhone(""); setLocation(""); setNotes("");
+      setTitle(""); setDate(""); setTime(""); setEndTime(""); setColor("#3b82f6"); setRecurrence(""); setReminders([]); setPhone(""); setLocation(""); setNotes("");
       setImagePreview(null); setImageFile(null); setPdfFile(null); setPdfName(null); setExistingPdfUrl(null);
     }
   }, [open, editEvent, prefillData, prefillImageUrl]);
 
   useEffect(() => {
-    if (voiceData) { setTitle(voiceData.title || ""); setDate(voiceData.date || ""); setTime(voiceData.time || ""); setLocation(voiceData.location || ""); setPhone(voiceData.phone || ""); }
+    if (voiceData) { 
+      setTitle(voiceData.title || ""); setDate(voiceData.date || ""); 
+      setTime(voiceData.start_time || voiceData.time || ""); setEndTime(voiceData.end_time || "");
+      if (voiceData.color) setColor(voiceData.color);
+      if (voiceData.recurrence_rule) setRecurrence(voiceData.recurrence_rule);
+      if (voiceData.reminders) setReminders(voiceData.reminders);
+      setLocation(voiceData.location || ""); setPhone(voiceData.phone || ""); 
+    }
   }, [voiceData]);
 
   // ── Task 3: Conflict / Duplicate check ─────────────────────────────────────
@@ -224,7 +237,22 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
 
   // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = async () => {
-    if (!title.trim() || !date || !user) return;
+    if (!title.trim() && !date) {
+      toast({ title: "Validation Error", description: "Title and Date are required.", variant: "destructive" });
+      return;
+    }
+    if (!title.trim()) {
+      toast({ title: "Validation Error", description: `Title is empty! Value is: "${title}"`, variant: "destructive" });
+      return;
+    }
+    if (!date) {
+      toast({ title: "Validation Error", description: `Date is empty! Value is: "${date}"`, variant: "destructive" });
+      return;
+    }
+    if (!user) {
+      toast({ title: "Auth Error", description: "You must be logged in.", variant: "destructive" });
+      return;
+    }
     setIsUploading(true); setUploadError(null);
     try {
       let finalImageUrl: string | undefined = imageFile ? undefined : (imagePreview ?? undefined);
@@ -232,7 +260,8 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
       let finalPdfUrl: string | undefined = pdfFile ? undefined : (existingPdfUrl ?? undefined);
       if (pdfFile) finalPdfUrl = await uploadToStorage(pdfFile, user.id, "event-pdfs");
       const payload = {
-        title: title.trim(), date, time,
+        title: title.trim(), date, time, start_time: time, end_time: endTime || undefined,
+        color, recurrence_rule: recurrence || undefined, reminders,
         phone: phone.trim() || undefined, email: email.trim() || undefined, location: location.trim() || undefined,
         notes: notes.trim(), image_url: finalImageUrl, pdf_url: finalPdfUrl,
         source: "manual", is_done: false,
@@ -384,11 +413,76 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
               </div>
             </div>
             <div className="flex flex-col min-w-0">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{t("eventTime")}</label>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{language === "ar" ? "وقت البدء" : language === "fr" ? "Heure de début" : "Start Time"}</label>
               <div className="w-full rounded-[20px] border border-border bg-secondary/40 transition-all duration-300 focus-within:border-[#5BC0DE] focus-within:ring-4 focus-within:ring-[#5BC0DE]/15 overflow-hidden flex items-center">
                 <input type="time" value={time} onChange={e => handleTimeChange(e.target.value)}
                   className={`w-full bg-transparent border-none outline-none px-3 sm:px-4 py-3.5 text-sm sm:text-base text-foreground min-w-0 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
               </div>
+            </div>
+            <div className="flex flex-col min-w-0">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{language === "ar" ? "وقت الانتهاء" : language === "fr" ? "Heure de fin" : "End Time"}</label>
+              <div className="w-full rounded-[20px] border border-border bg-secondary/40 transition-all duration-300 focus-within:border-[#5BC0DE] focus-within:ring-4 focus-within:ring-[#5BC0DE]/15 overflow-hidden flex items-center">
+                <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
+                  className={`w-full bg-transparent border-none outline-none px-3 sm:px-4 py-3.5 text-sm sm:text-base text-foreground min-w-0 ${theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"}`} />
+              </div>
+            </div>
+            <div className="flex flex-col min-w-0 col-span-2">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{language === "ar" ? "اللون" : language === "fr" ? "Couleur" : "Color"}</label>
+              <div className="grid grid-cols-5 gap-3 bg-secondary/20 p-4 rounded-[20px] border border-border justify-items-center">
+                {[
+                  "#007AFF", // Blue
+                  "#FF3B30", // Red
+                  "#34C759", // Green
+                  "#FF9500", // Orange
+                  "#AF52DE", // Purple
+                  "#FF2D55", // Pink
+                  "#06B6D4", // Cyan
+                  "#EAB308", // Yellow
+                  "#5856D6", // Indigo
+                  "#14B8A6"  // Teal
+                ].map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c)}
+                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full transition-all duration-300 flex items-center justify-center ${color === c ? 'scale-110 ring-2 ring-offset-2 ring-offset-background shadow-[0_0_15px_rgba(255,255,255,0.15)]' : 'hover:scale-110 opacity-70 hover:opacity-100 shadow-sm hover:shadow-md'}`}
+                    style={{ backgroundColor: c, '--tw-ring-color': c } as React.CSSProperties}
+                    aria-label={`Select color ${c}`}
+                  >
+                    {color === c && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-white/90 shadow-sm" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          {/* ── Recurrence & Reminders ───────────────────────────────────────── */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col min-w-0">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{language === "ar" ? "التكرار" : language === "fr" ? "Répétition" : "Repeat"}</label>
+              <select value={recurrence} onChange={e => setRecurrence(e.target.value)}
+                className="w-full px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15">
+                <option value="">{language === "ar" ? "بدون تكرار" : "Never"}</option>
+                <option value="FREQ=DAILY">{language === "ar" ? "يومياً" : "Daily"}</option>
+                <option value="FREQ=WEEKLY">{language === "ar" ? "أسبوعياً" : "Weekly"}</option>
+                <option value="FREQ=MONTHLY">{language === "ar" ? "شهرياً" : "Monthly"}</option>
+              </select>
+            </div>
+            <div className="flex flex-col min-w-0">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block">{language === "ar" ? "تذكير" : language === "fr" ? "Rappel" : "Reminder"}</label>
+              <select 
+                value={reminders.length > 0 ? String(reminders[0].minutes_before) : ""} 
+                onChange={e => setReminders(e.target.value ? [{minutes_before: parseInt(e.target.value)}] : [])}
+                className="w-full px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15">
+                <option value="">{language === "ar" ? "بدون تذكير" : "None"}</option>
+                <option value="0">{language === "ar" ? "في وقت الحدث" : "At time of event"}</option>
+                <option value="10">{language === "ar" ? "قبل 10 دقائق" : "10 min before"}</option>
+                <option value="30">{language === "ar" ? "قبل 30 دقيقة" : "30 min before"}</option>
+                <option value="60">{language === "ar" ? "قبل ساعة" : "1 hour before"}</option>
+                <option value="1440">{language === "ar" ? "قبل يوم" : "1 day before"}</option>
+              </select>
             </div>
           </div>
 
@@ -468,7 +562,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
         <div className="border-t border-border px-5 py-4 shrink-0 bg-background">
           <button
             onClick={handleSave}
-            disabled={!isValid || isUploading}
+            disabled={isUploading}
             className="w-full py-4 rounded-[20px] font-semibold text-black transition-all duration-300 bg-[#5BC0DE] hover:bg-[#45B8D8] hover:shadow-[0_8px_24px_rgba(91,192,222,0.25)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
           >
             {isUploading ? lbl.uploading : (language === "ar" ? "حفظ الحدث" : "Save Event")}

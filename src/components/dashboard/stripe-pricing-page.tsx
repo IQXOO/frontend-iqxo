@@ -246,9 +246,9 @@ export function StripePricingPage({
       toast({
         title: t("Your free trial is active", "Votre essai gratuit est actif", "تجربتك المجانية نشطة"),
         description: t(
-          "You already have an active 7-day free trial. Enjoy all features!",
-          "Vous avez déjà un essai gratuit de 7 jours actif. Profitez de toutes les fonctionnalités !",
-          "لديك تجربة مجانية لمدة 7 أيام نشطة بالفعل. استمتع بجميع الميزات!",
+          "You already have an active 14-day free trial. Enjoy all features!",
+          "Vous avez déjà un essai gratuit de 14 jours actif. Profitez de toutes les fonctionnalités !",
+          "لديك تجربة مجانية لمدة 14 يوم نشطة بالفعل. استمتع بجميع الميزات!",
         ),
       });
       onClose?.();
@@ -277,7 +277,7 @@ export function StripePricingPage({
       }
 
       const now = new Date();
-      const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const trialEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
       const { error } = await supabase.from("user_plans").upsert(
         {
@@ -299,9 +299,9 @@ export function StripePricingPage({
       toast({
         title: t("Free trial activated! 🎉", "Essai gratuit activé ! 🎉", "تم تفعيل التجربة المجانية! 🎉"),
         description: t(
-          "Your 7-day free trial has started. Enjoy all features!",
-          "Votre essai gratuit de 7 jours a commencé. Profitez de toutes les fonctionnalités !",
-          "بدأت تجربتك المجانية لمدة 7 أيام. استمتع بجميع الميزات!",
+          "Your 14-day free trial has started. Enjoy all features!",
+          "Votre essai gratuit de 14 jours a commencé. Profitez de toutes les fonctionnalités !",
+          "بدأت تجربتك المجانية لمدة 14 يوم. استمتع بجميع الميزات!",
         ),
       });
       onClose?.();
@@ -377,7 +377,7 @@ export function StripePricingPage({
 
                 <div className="mt-10 inline-flex items-center gap-2 rounded-full border border-[rgba(91,192,222,0.12)] bg-[rgba(91,192,222,0.08)] px-5 py-2 text-[0.8rem] font-normal text-[var(--cyan)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[var(--cyan)]" />
-                  {t("7 Days of Calm — Free", "7 jours de calme — Gratuit", "7 أيام من الهدوء — مجاناً")}
+                  {t("14 Days of Calm — Free", "14 jours de calme — Gratuit", "14 يوم من الهدوء — مجاناً")}
                 </div>
 
                 <h2 className="mt-8 text-[clamp(1.5rem,4vw,2.15rem)] font-normal leading-[1.25] tracking-[-0.03em] text-[#E8E8E8]">
@@ -406,7 +406,7 @@ export function StripePricingPage({
                 >
                   <div className="absolute inset-x-0 top-0 h-[2px] bg-[linear-gradient(90deg,transparent,var(--cyan),transparent)] opacity-30" />
                   <div className="text-[0.65rem] uppercase tracking-[0.3em] text-[var(--cyan)] opacity-80">
-                    {t("7 Days of Calm", "7 jours de calme", "7 أيام من الهدوء")}
+                    {t("14 Days of Calm", "14 jours de calme", "14 يوم من الهدوء")}
                   </div>
                   <h3 className="mt-5 text-[1.5rem] font-normal tracking-[-0.02em] text-[#E8E8E8]">
                     {t("Free Trial", "Essai gratuit", "تجربة مجانية")}
@@ -418,7 +418,7 @@ export function StripePricingPage({
                   <div className="mt-8 grid grid-cols-2 gap-3 text-left">
                     {[
                       ["30", t("Total captures", "Captures totales", "إجمالي الالتقاطات")],
-                      ["7", t("Days", "Jours", "أيام")],
+                      ["14", t("Days", "Jours", "يوم")],
                       ["All", t("Features", "Fonctionnalités", "الميزات")],
                       ["0", t("Card needed", "Carte requise", "لا حاجة لبطاقة")],
                     ].map(([num, label]) => (
@@ -583,9 +583,9 @@ export function StripePricingPage({
                 <div className="md:col-span-3 mx-auto mt-6 max-w-[600px] rounded-[16px] border border-[var(--border)] bg-[var(--bg-card)] px-5 py-5 text-center">
                   <p className="text-[0.85rem] leading-6 text-[#A0A0A8]">
                     {t(
-                      "After your 7-day trial, continue Free with 10 captures/month.",
-                      "Après votre essai de 7 jours, continuez gratuitement avec 10 captures/mois.",
-                      "بعد تجربتك لمدة 7 أيام، يمكنك المتابعة مجانًا مع 10 عمليات التقاط شهريًا.",
+                      "After your 14-day trial, continue Free with 10 captures/month.",
+                      "Après votre essai de 14 jours, continuez gratuitement avec 10 captures/mois.",
+                      "بعد تجربتك لمدة 14 يوم، يمكنك المتابعة مجانًا مع 10 عمليات التقاط شهريًا.",
                     )}{" "}
                     <strong className="font-medium text-[#E8E8E8]">
                       {t("No credit card required.", "Aucune carte requise.", "لا حاجة لبطاقة ائتمان.")}

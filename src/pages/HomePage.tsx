@@ -7,8 +7,9 @@ import { StatsCard } from "../components/dashboard/stats-card";
 import { UrgentCards } from "../components/dashboard/attention-cards";
 import { EventList } from "../components/dashboard/event-list";
 import { BottomNav, type NavTab } from "../components/dashboard/bottom-nav";
-import { useApp, computePriority } from "../lib/store";
+import { useApp } from "../lib/store";
 import { shouldAutoOpenBillingRoute } from "../lib/billing-utils";
+import { computeEventPriority, getNextOccurrence } from "../lib/recurrence";
 import { type ParsedEvent } from "../lib/parse-voice-input";
 import { useEventNotifications } from "../hooks/use-event-notifications";
 import type { IQXOEvent } from "../lib/types";
@@ -99,39 +100,34 @@ export default function Page() {
     );
   }, [events, searchQuery]);
 
+
+
+  const computeNextPriority = useCallback((e: IQXOEvent) => {
+    return computeEventPriority(e);
+  }, []);
+
   // Group by priority (exclude past from home view)
   const urgentEvents = useMemo(
     () =>
       filteredEvents
-        .filter((e) => computePriority(e.date) === "urgent")
-        .sort(
-          (a, b) =>
-            new Date(`${a.date}T${a.time || "00:00"}`).getTime() -
-            new Date(`${b.date}T${b.time || "00:00"}`).getTime(),
-        ),
-    [filteredEvents],
+        .filter((e) => computeNextPriority(e) === "urgent")
+        .sort((a, b) => {
+          const occA = getNextOccurrence(a) || new Date(`${a.date}T${a.start_time || a.time || "00:00"}`);
+          const occB = getNextOccurrence(b) || new Date(`${b.date}T${b.start_time || b.time || "00:00"}`);
+          return occA.getTime() - occB.getTime();
+        }),
+    [filteredEvents, computeNextPriority],
   );
   const upcomingEvents = useMemo(
     () =>
       filteredEvents
-        .filter((e) => computePriority(e.date) === "upcoming")
-        .sort(
-          (a, b) =>
-            new Date(`${a.date}T${a.time || "00:00"}`).getTime() -
-            new Date(`${b.date}T${b.time || "00:00"}`).getTime(),
-        ),
-    [filteredEvents],
-  );
-  const laterEvents = useMemo(
-    () =>
-      filteredEvents
-        .filter((e) => computePriority(e.date) === "later")
-        .sort(
-          (a, b) =>
-            new Date(`${a.date}T${a.time || "00:00"}`).getTime() -
-            new Date(`${b.date}T${b.time || "00:00"}`).getTime(),
-        ),
-    [filteredEvents],
+        .filter((e) => computeNextPriority(e) === "upcoming")
+        .sort((a, b) => {
+          const occA = getNextOccurrence(a) || new Date(`${a.date}T${a.start_time || a.time || "00:00"}`);
+          const occB = getNextOccurrence(b) || new Date(`${b.date}T${b.start_time || b.time || "00:00"}`);
+          return occA.getTime() - occB.getTime();
+        }),
+    [filteredEvents, computeNextPriority],
   );
 
   const handleEventClick = useCallback(
@@ -145,7 +141,7 @@ export default function Page() {
     openEventForm(null);
   }, [openEventForm]);
 
-  const handleUploadClick = useCallback(({ autoOpenPicker = true, file = null } = {}) => {
+  const handleUploadClick = useCallback(({ autoOpenPicker = true, file = null }: { autoOpenPicker?: boolean, file?: File | null } = {}) => {
     if (shouldBlockAI) {
       window.dispatchEvent(new CustomEvent("trigger-paywall"));
     } else {
@@ -156,16 +152,22 @@ export default function Page() {
   }, [shouldBlockAI]);
 
   const handleVoiceResult = useCallback(
-    (data: string | { title?: string; date?: string; time?: string; location?: string; notes?: string }) => {
+    (data: any) => {
       const parsed: ParsedEvent =
         typeof data === "string"
           ? { title: data }
           : {
               title: data.title || "",
-              date: data.date || "",
-              time: data.time || "",
+              date: data.date || undefined,
+              time: data.time || undefined,
+              start_time: data.start_time || undefined,
+              end_time: data.end_time || undefined,
               location: data.location || undefined,
               phone: data.phone || undefined,
+              notes: data.notes || undefined,
+              color: data.color || undefined,
+              recurrence_rule: data.recurrence_rule || undefined,
+              reminders: data.reminders || undefined,
             };
       openEventForm(null, { prefillData: parsed });
     },
@@ -213,10 +215,10 @@ export default function Page() {
   }, []);
 
   // Count non-past events for empty state
-  const activeEvents = events.filter((e) => computePriority(e.date) !== "past");
+  const activeEvents = events.filter((e) => computeNextPriority(e) !== "past");
   const hasAnyActiveEvents = activeEvents.length > 0;
   const hasSearchResults =
-    filteredEvents.filter((e) => computePriority(e.date) !== "past").length > 0;
+    filteredEvents.filter((e) => computeEventPriority(e) !== "past").length > 0;
 
   return (
     <div className="relative min-h-screen max-w-md mx-auto bg-background overflow-hidden">
@@ -276,11 +278,6 @@ export default function Page() {
                 <EventList
                   priority="upcoming"
                   events={upcomingEvents}
-                  onEventClick={handleEventClick}
-                />
-                <EventList
-                  priority="later"
-                  events={laterEvents}
                   onEventClick={handleEventClick}
                 />
                 <InfiniteScroll

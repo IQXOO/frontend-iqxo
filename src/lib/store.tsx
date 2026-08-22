@@ -31,6 +31,12 @@ export interface IQXOEvent {
   notes: string;
   date: string;
   time: string;
+  start_time?: string;
+  end_time?: string;
+  color?: string;
+  recurrence_rule?: string;
+  recurrence_end_date?: string;
+  reminders?: { minutes_before: number }[];
   phone?: string;
   location?: string;
   email?: string;
@@ -38,6 +44,7 @@ export interface IQXOEvent {
   image_url?: string;
   pdf_url?: string;
   is_done: boolean;
+  native_event_id?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -740,8 +747,10 @@ export function toEndOfMonthStr(d: Date = new Date()): string {
 // Parse a YYYY-MM-DD string as LOCAL midnight (not UTC) so comparisons are
 // always relative to the user's clock.
 export function parseLocalDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(y, m - 1, d);
+  if (!dateStr || typeof dateStr !== "string") return new Date(0);
+  const parts = dateStr.split("-").map(Number);
+  if (parts.length < 3) return new Date(0);
+  return new Date(parts[0], parts[1] - 1, parts[2]);
 }
 
 // ─── Priority helper ──────────────────────────────────────────────────────────
@@ -762,7 +771,7 @@ export function computePriority(dateStr: string): Priority {
 }
 
 // ─── Map Supabase row → IQXOEvent ─────────────────────────────────────────────
-function rowToEvent(row: Record<string, string | boolean | null | undefined>): IQXOEvent {
+function rowToEvent(row: Record<string, any>): IQXOEvent {
   return {
     id: row.id as string,
     user_id: row.user_id as string,
@@ -770,6 +779,12 @@ function rowToEvent(row: Record<string, string | boolean | null | undefined>): I
     notes: (row.notes as string) ?? "",
     date: row.date as string,
     time: (row.time as string) ?? "",
+    start_time: (row.start_time as string) ?? undefined,
+    end_time: (row.end_time as string) ?? undefined,
+    color: (row.color as string) ?? undefined,
+    recurrence_rule: (row.recurrence_rule as string) ?? undefined,
+    recurrence_end_date: (row.recurrence_end_date as string) ?? undefined,
+    reminders: row.reminders ?? undefined,
     phone: (row.phone as string) ?? undefined,
     location: (row.location as string) ?? undefined,
     email: (row.email as string) ?? undefined,
@@ -777,6 +792,7 @@ function rowToEvent(row: Record<string, string | boolean | null | undefined>): I
     image_url: (row.image_url as string) ?? undefined,
     pdf_url: (row.pdf_url as string) ?? undefined,
     is_done: (row.is_done as boolean) ?? false,
+    native_event_id: (row.native_event_id as string) ?? undefined,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -902,7 +918,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
     );
 
-    return () => listener.subscription.unsubscribe();
+    // Global listener for Native Event Creation (returns native_event_id)
+    const handleNativeEventCreated = async (e: any) => {
+      const { reqId, native_event_id, error } = e.detail || {};
+      if (native_event_id && reqId) {
+        try {
+          await supabase.from("events").update({ native_event_id }).eq("id", reqId);
+        } catch (err) {
+          console.warn("Failed to link native_event_id", err);
+        }
+      }
+    };
+    window.addEventListener("nativeEventCreated", handleNativeEventCreated);
+
+    return () => {
+      listener.subscription.unsubscribe();
+      window.removeEventListener("nativeEventCreated", handleNativeEventCreated);
+    };
   }, []);
 
   // ── Load preferences from localStorage ──────────────────────────────────────
@@ -941,12 +973,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const { data, count, error } = await supabase
         .from("events")
         .select(
-          "id,user_id,title,notes,date,time,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
+          "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
           { count: "exact" }
         )
         .eq("user_id", uid)
-        .gte("date", todayStr)
-        .lte("date", endOfMonthStr)
+        .or(`date.gte.${todayStr},recurrence_rule.not.is.null`)
         .order("date", { ascending: true })
         .range(from, to);
 
@@ -986,11 +1017,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const { data, count, error } = await supabase
         .from("events")
         .select(
-          "id,user_id,title,notes,date,time,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
+          "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
           { count: "exact" }
         )
         .eq("user_id", uid)
         .lt("date", todayStr)
+        .is("recurrence_rule", null)
         .order("date", { ascending: false })
         .range(from, to);
 
@@ -1046,12 +1078,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         supabase
           .from("events")
           .select(
-            "id,user_id,title,notes,date,time,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
+            "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
             { count: "exact" }
           )
           .eq("user_id", uid)
-          .gte("date", toLocalDateStr())
-          .lte("date", toEndOfMonthStr())
+          .or(`date.gte.${toLocalDateStr()},recurrence_rule.not.is.null`)
           .order("date", { ascending: true })
           .range(0, PAGE_SIZE - 1),
         supabase
@@ -1527,6 +1558,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           notes: data.notes,
           date: data.date,
           time: data.time,
+          start_time: data.start_time ?? null,
+          end_time: data.end_time ?? null,
+          color: data.color ?? null,
+          recurrence_rule: data.recurrence_rule ?? null,
+          recurrence_end_date: data.recurrence_end_date ?? null,
+          reminders: data.reminders ?? null,
           phone: data.phone ?? null,
           location: data.location ?? null,
           email: data.email ?? null,
@@ -1534,6 +1571,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           image_url: data.image_url ?? null,
           pdf_url: data.pdf_url ?? null,
           is_done: data.is_done,
+          native_event_id: data.native_event_id ?? null,
         })
         .select()
         .single();
@@ -1542,7 +1580,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error("addEvent:", error);
         throw error;
       }
-      addEventToState(rowToEvent(row));
+      
+      const newEvent = rowToEvent(row);
+      addEventToState(newEvent);
+
+      // 2-Way Sync: Push to Native App
+      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView && data.source !== "calendar_import") {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({
+          type: "createNativeEvent",
+          reqId: row.id,
+          title: data.title,
+          startDate: data.date + "T" + (data.start_time || "00:00:00"),
+          endDate: data.date + "T" + (data.end_time || "23:59:59"),
+          notes: data.notes || "",
+          location: data.location || ""
+        }));
+      }
     },
     [user, addEventToState],
   );
@@ -1560,6 +1613,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ...(data.notes !== undefined && { notes: data.notes }),
           ...(data.date !== undefined && { date: data.date }),
           ...(data.time !== undefined && { time: data.time }),
+          ...(data.start_time !== undefined && { start_time: data.start_time }),
+          ...(data.end_time !== undefined && { end_time: data.end_time }),
+          ...(data.color !== undefined && { color: data.color }),
+          ...(data.recurrence_rule !== undefined && { recurrence_rule: data.recurrence_rule }),
+          ...(data.recurrence_end_date !== undefined && { recurrence_end_date: data.recurrence_end_date }),
+          ...(data.reminders !== undefined && { reminders: data.reminders }),
           ...(data.phone !== undefined && { phone: data.phone }),
           ...(data.location !== undefined && { location: data.location }),
           ...(data.email !== undefined && { email: data.email }),
@@ -1577,9 +1636,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error("updateEvent:", error);
         throw error;
       }
+
+      // 2-Way Sync: Update Native App
+      const existingEvent = dbEvents.find(e => e.id === id);
+      if (existingEvent?.native_event_id && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({
+          type: "updateNativeEvent",
+          native_event_id: existingEvent.native_event_id,
+          title: data.title ?? existingEvent.title,
+          startDate: (data.date ?? existingEvent.date) + "T" + (data.start_time ?? existingEvent.start_time ?? "00:00:00"),
+          endDate: (data.date ?? existingEvent.date) + "T" + (data.end_time ?? existingEvent.end_time ?? "23:59:59"),
+          notes: data.notes ?? existingEvent.notes ?? "",
+          location: data.location ?? existingEvent.location ?? ""
+        }));
+      }
       updateEventInState(id, rowToEvent(row));
     },
-    [user, updateEventInState],
+    [user, updateEventInState, dbEvents],
   );
 
   const deleteEvent = useCallback(
@@ -1598,9 +1671,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error("deleteEvent:", error);
         throw error;
       }
+
+      // 2-Way Sync: Delete from Native App
+      const existingEvent = dbEvents.find(e => e.id === id);
+      if (existingEvent?.native_event_id && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({
+          type: "deleteNativeEvent",
+          native_event_id: existingEvent.native_event_id
+        }));
+      }
       removeEventFromState(id);
     },
-    [user, removeEventFromState],
+    [user, removeEventFromState, dbEvents],
   );
 
   // ── Generate virtual shift events from work schedule (next 30 days) ──────────

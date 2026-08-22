@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from "react"
 import type { IQXOEvent } from "../lib/types"
+import { getNextOccurrence } from "../lib/recurrence"
 
 interface MobileWindow extends Window {
   isNativeApp?: boolean;
@@ -68,12 +69,10 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
   const strings = i18n[lang]
 
   // ── Permission request ────────────────────────────────────────────────────
-  // On native: permissions are handled in the App shell on startup.
-  // On browser: requests the user's permission via the Web Notification API.
   const requestPermission = useCallback(async () => {
     const win = typeof window !== "undefined" ? (window as unknown as MobileWindow) : null
     const isNativeApp = win && !!win.isNativeApp
-    if (isNativeApp) return true // native app handles permissions in App.tsx
+    if (isNativeApp) return true
 
     if (!("Notification" in window)) return false
     if (Notification.permission === "granted") return true
@@ -87,11 +86,7 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
     requestPermission()
   }, [requestPermission])
 
-  // ── Native app: sync 1h-before reminders to the OS scheduler ─────────────
-  // The server already sends morning notifications each night (next day summary).
-  // We only schedule the "1 hour before" reminder via the native OS scheduler —
-  // this fires even when the app is fully closed or in the background.
-  // No polling interval needed — the OS owns the scheduling.
+  // ── Native app: sync reminders and calendar ─────────────
   useEffect(() => {
     const win = typeof window !== "undefined" ? (window as unknown as MobileWindow) : null
     const isNativeApp = win && !!win.isNativeApp
@@ -106,29 +101,50 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
     }[] = []
 
     events.forEach((event) => {
-      const eventDate = new Date(event.date)
-      const eventTime = event.time || "09:00"
-      const [hours, minutes] = eventTime.split(":").map(Number)
-      eventDate.setHours(hours, minutes, 0, 0)
+      const nextOcc = getNextOccurrence(event);
+      if (!nextOcc) return; // Event is entirely in the past or invalid
 
-      // Only the 1h-before reminder — morning is handled by the server nightly.
-      const oneHourReminder = new Date(eventDate.getTime() - 60 * 60 * 1000)
-      if (oneHourReminder.getTime() > now) {
-        notificationsToSchedule.push({
-          id: `${event.id}-1h`,
-          title: strings.oneHourTitle,
-          body: strings.oneHourBody(event.title, event.location || undefined),
-          triggerAt: oneHourReminder.getTime(),
-        })
-      }
+      // Use custom reminders combined with the default 1-hour (60 mins) reminder
+      const customReminders = event.reminders && event.reminders.length > 0 
+        ? event.reminders.map(r => r.minutes_before)
+        : [];
+      
+      const reminderMinutes = Array.from(new Set([60, ...customReminders]));
+
+      reminderMinutes.forEach(minutesBefore => {
+        const reminderTime = new Date(nextOcc.getTime() - minutesBefore * 60 * 1000)
+        if (reminderTime.getTime() > now) {
+          notificationsToSchedule.push({
+            id: `${event.id}-${minutesBefore}m`,
+            title: `IQXO - ${event.title}`,
+            body: strings.oneHourBody(event.title, event.location || undefined),
+            triggerAt: reminderTime.getTime(),
+          })
+        }
+      });
     })
 
-    // React Native receives this, cancels old scheduled notifications,
-    // then registers the updated list with the OS — no polling required.
+    // Sync Notifications
     win.ReactNativeWebView.postMessage(
       JSON.stringify({
         type: "syncScheduledNotifications",
         notifications: notificationsToSchedule,
+      })
+    )
+
+    // Sync to Device Calendar via expo-calendar
+    win.ReactNativeWebView.postMessage(
+      JSON.stringify({
+        type: "syncCalendar",
+        events: events.map(e => ({
+          id: e.id,
+          title: e.title,
+          startDate: `${e.date}T${e.start_time || e.time || "09:00"}:00`,
+          endDate: e.end_time ? `${e.date}T${e.end_time}:00` : new Date(new Date(`${e.date}T${e.start_time || e.time || "09:00"}:00`).getTime() + 60*60*1000).toISOString(),
+          location: e.location,
+          notes: e.notes,
+          recurrenceRule: e.recurrence_rule
+        })),
       })
     )
   }, [events, strings])

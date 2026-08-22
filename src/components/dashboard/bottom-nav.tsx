@@ -26,6 +26,7 @@ export type NavTab = "home" | "history" | "settings";
 // ICS PARSER — parses .ics / iCalendar files
 // ─────────────────────────────────────────────────────────────────────────────
 interface ParsedCalEvent {
+  id?: string;
   uid: string;
   title: string;
   date: string; // YYYY-MM-DD
@@ -711,7 +712,7 @@ export const BottomNav = memo(function BottomNav({
   onComposerOpenChange,
   onImportEvents,
 }: BottomNavProps) {
-  const { language, addEvent, user: _user, planStatus } = useApp();
+  const { language, addEvent, events: existingEvents, user: _user, planStatus } = useApp();
   const isRTL = language === "ar";
   const [internalMenuOpen, setInternalMenuOpen] = useState(false);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
@@ -876,8 +877,10 @@ export const BottomNav = memo(function BottomNav({
       }
       // Map native events into ParsedCalEvent shape
        
-      const mapped: ParsedCalEvent[] = (result.events || []).map((e: { title?: string; date?: string; time?: string; location?: string; notes?: string }, i: number) => ({
+      const rawEvents = result.events || [];
+      const mapped: ParsedCalEvent[] = rawEvents.map((e: any, i: number) => ({
         uid: `native-${i}-${e.title}`,
+        id: e.id || '',
         title: e.title || '',
         date: e.date || '',
         time: e.time || '',
@@ -905,6 +908,7 @@ export const BottomNav = memo(function BottomNav({
 
   const handleImportedEvents = async (
     events: {
+      id?: string;
       title: string;
       date: string;
       time: string;
@@ -917,6 +921,16 @@ export const BottomNav = memo(function BottomNav({
     } else {
       // Directly add to store if no callback provided
       for (const ev of events) {
+        // Deduplication check: do not add if an event with same title, date, and time already exists
+        const isDuplicate = existingEvents.some(
+          (existing) => 
+            (ev.id && existing.native_event_id === ev.id) || 
+            (existing.title === ev.title && existing.date === ev.date && existing.time === ev.time)
+        );
+        if (isDuplicate) {
+          continue;
+        }
+        
         await addEvent({
           title: ev.title,
           date: ev.date,
@@ -924,6 +938,7 @@ export const BottomNav = memo(function BottomNav({
           location: ev.location || undefined,
           notes: ev.notes,
           source: "calendar_import",
+          native_event_id: ev.id || undefined,
           is_done: false,
           phone: undefined,
           image_url: undefined,

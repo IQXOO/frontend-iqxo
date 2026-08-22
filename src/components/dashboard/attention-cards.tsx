@@ -4,6 +4,7 @@ import { Bell, Phone, MapPin } from "lucide-react"
 import { useApp } from "@/lib/store"
 import type { IQXOEvent } from "@/lib/types"
 import { format, isToday, isTomorrow } from "@/lib/date-utils"
+import { getNextOccurrence } from "@/lib/recurrence"
 
 interface UrgentCardsProps {
   onEventClick: (event: IQXOEvent) => void
@@ -48,8 +49,10 @@ function UrgentEventCard({
   event: IQXOEvent
   onClick: () => void
 }) {
-  const { t } = useApp()
-  const eventDate = new Date(event.date)
+  const { t, language } = useApp()
+  const isRTL = language === "ar"
+  const nextOcc = getNextOccurrence(event)
+  const eventDate = nextOcc || new Date(event.date)
 
   const dateLabel = isToday(eventDate)
     ? t("today")
@@ -74,11 +77,21 @@ function UrgentEventCard({
         </span>
       </div>
 
-      <div>
-        <h3 className="text-sm font-semibold text-foreground leading-snug truncate">
-          {event.title}
-        </h3>
-        <p className="text-xs text-muted-foreground mt-0.5">{dateLabel}</p>
+      <div className={`flex flex-col ${isRTL ? "items-end text-right" : "items-start text-left"}`}>
+        <div className={`flex items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
+          {event.color && (
+            <div 
+              className="w-2.5 h-2.5 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.1)] border border-white/10" 
+              style={{ backgroundColor: event.color }} 
+            />
+          )}
+          <h3 className="text-sm font-semibold text-foreground leading-snug truncate">
+            {event.title}
+          </h3>
+        </div>
+        <p className={`text-xs text-muted-foreground mt-0.5 ${isRTL ? "mr-4.5" : "ml-4.5"}`}>
+          {dateLabel}
+        </p>
       </div>
 
       {(event.phone || event.location) && (
