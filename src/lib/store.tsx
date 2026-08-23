@@ -1327,6 +1327,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setTotalUsage(tableUsage);
             devLog("Usage", "PRO usage loaded from user_plans", { tableUsage });
           }
+
+          // Verify PRO cache in background after a delay to prevent stale PRO access
+          setTimeout(() => {
+             devLog("Billing", "Verifying PRO cache validity...");
+             fetchPlanStatus();
+          }, 30000);
         }, 1500);
       } else {
         // Defer plan status loading by 1.5s to keep LCP path clean
