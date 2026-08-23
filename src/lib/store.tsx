@@ -1268,8 +1268,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       };
 
-      const handleNativeUpdate = () => {
+      const handleNativeUpdate = async (e?: Event) => {
         devLog("Billing", "Native subscription update received, refreshing plan...");
+        
+        try {
+          if (e) {
+            const customEvent = e as CustomEvent;
+            const customerInfo = customEvent.detail;
+            
+            if (customerInfo) {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.access_token) {
+                const apiUrl = import.meta.env?.VITE_BACKEND_API || "http://localhost:4040";
+                await fetch(`${apiUrl}/sync-revenuecat`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session.access_token}`,
+                  },
+                  body: JSON.stringify({ customerInfo })
+                });
+                devLog("Billing", "Explicitly synced RevenueCat status with backend");
+              }
+            }
+          }
+        } catch (err) {
+          devWarn("Billing", "Failed to sync RevenueCat with backend", err);
+        }
+
         fetchPlanStatus();
       };
 

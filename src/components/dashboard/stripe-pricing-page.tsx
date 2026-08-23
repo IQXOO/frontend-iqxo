@@ -109,11 +109,31 @@ export function StripePricingPage({
   }, [isInNativeApp]);
 
   useEffect(() => {
-    const handleNativeIapResult = (e: Event) => {
+    const handleNativeIapResult = async (e: Event) => {
       setIsPurchasing(false);
       const customEvent = e as CustomEvent;
       const detail = customEvent.detail;
       if (detail.success) {
+        // Optimistic sync with backend
+        if (detail.customerInfo) {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) {
+              const apiUrl = import.meta.env?.VITE_BACKEND_API || "http://localhost:4040";
+              await fetch(`${apiUrl}/sync-revenuecat`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ customerInfo: detail.customerInfo })
+              });
+            }
+          } catch (err) {
+            console.error("Failed to sync IAP result with backend", err);
+          }
+        }
+
         if (detail.isRestore) {
           toast({
             title: t("Purchases Restored", "Achats restaurés", "تمت استعادة المشتريات"),
