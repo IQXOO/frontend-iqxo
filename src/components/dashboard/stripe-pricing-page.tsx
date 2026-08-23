@@ -114,7 +114,7 @@ export function StripePricingPage({
       const customEvent = e as CustomEvent;
       const detail = customEvent.detail;
       if (detail.success) {
-        // Optimistic sync with backend
+        // Optimistic sync with backend + trigger immediate UI refresh
         if (detail.customerInfo) {
           try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -132,6 +132,8 @@ export function StripePricingPage({
           } catch (err) {
             console.error("Failed to sync IAP result with backend", err);
           }
+          // Trigger immediate plan status refresh in store.tsx (no event.detail needed)
+          window.dispatchEvent(new CustomEvent("nativeCustomerInfoUpdate"));
         }
 
         if (detail.isRestore) {
