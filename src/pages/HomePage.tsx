@@ -65,13 +65,9 @@ export default function Page() {
   const [uploadAutoOpenPicker, setUploadAutoOpenPicker] = useState(true);
   const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmData, _setConfirmData] = useState<ParsedEvent | null>(null);
-  const [confirmSource, _setConfirmSource] = useState<"voice" | "photo">(
-    "voice",
-  );
-  const [confirmImageUrl, _setConfirmImageUrl] = useState<string | undefined>(
-    undefined,
-  );
+  const [confirmData, _setConfirmData] = useState<ParsedEvent[] | null>(null);
+  const [confirmSource, _setConfirmSource] = useState<"voice" | "photo">("voice");
+  const [confirmImageUrls, _setConfirmImageUrls] = useState<string[] | undefined>(undefined);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [tomorrowModalOpen, setTomorrowModalOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -175,10 +171,16 @@ export default function Page() {
   );
 
   const handlePhotoExtracted = useCallback(
-    (data: ParsedEvent, imageUrl?: string) => {
-      openEventForm(null, { prefillData: data, prefillImageUrl: imageUrl });
+    (data: ParsedEvent | ParsedEvent[], imageUrls?: string | string[]) => {
+      const dataArray = Array.isArray(data) ? data : [data];
+      const urlArray = Array.isArray(imageUrls) ? imageUrls : (imageUrls ? [imageUrls] : undefined);
+      
+      _setConfirmData(dataArray);
+      _setConfirmImageUrls(urlArray);
+      _setConfirmSource("photo");
+      setConfirmOpen(true);
     },
-    [openEventForm],
+    [],
   );
 
   useEffect(() => {
@@ -363,7 +365,7 @@ export default function Page() {
             onOpenChange={setConfirmOpen}
             extractedData={confirmData}
             source={confirmSource}
-            imageUrl={confirmImageUrl}
+            imageUrls={confirmImageUrls}
           />
         </Suspense>
       )}

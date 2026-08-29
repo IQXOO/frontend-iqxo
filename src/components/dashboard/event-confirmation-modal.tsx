@@ -1,15 +1,20 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Calendar, Clock, MapPin, Phone, FileText, Check, Edit3, CheckCircle, AlertCircle } from "lucide-react"
+import { X, Check, CheckCircle, AlertCircle, Trash2 } from "lucide-react"
 import { useApp } from "../../lib/store"
 import type { ParsedEvent } from "../../lib/parse-voice-input"
 
 interface EventConfirmationModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  extractedData: ParsedEvent | null
+  extractedData: ParsedEvent[] | null
   source: "voice" | "photo"
+  imageUrls?: string[]
+}
+
+interface EditableEvent extends ParsedEvent {
+  _id: string
 }
 
 export function EventConfirmationModal({
@@ -17,82 +22,95 @@ export function EventConfirmationModal({
   onOpenChange,
   extractedData,
   source,
-  imageUrl,
-}: EventConfirmationModalProps & { imageUrl?: string }) {
+  imageUrls,
+}: EventConfirmationModalProps) {
   const { addEvent, language } = useApp()
   
-  // Editable fields
-  const [title, setTitle] = useState("")
-  const [date, setDate] = useState("")
-  const [time, setTime] = useState("")
-  const [location, setLocation] = useState("")
-  const [phone, setPhone] = useState("")
-  const [notes, setNotes] = useState("")
-  const [isEditing, setIsEditing] = useState(false)
+  const [events, setEvents] = useState<EditableEvent[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null)
 
-  // Populate fields when data changes
   useEffect(() => {
     if (extractedData && open) {
-      setTitle(extractedData.title || "")
-      setDate(extractedData.date || "")
-      setTime(extractedData.time || "")
-      setLocation(extractedData.location || "")
-      setPhone(extractedData.phone || "")
-      setNotes("") // ParsedEvent doesn't have notes, so set empty
-      setIsEditing(false)
+      setEvents(
+        extractedData.map((ev) => ({
+          ...ev,
+          title: ev.title || "",
+          date: ev.date || "",
+          time: ev.time || "",
+          start_time: ev.start_time || "",
+          end_time: ev.end_time || "",
+          location: ev.location || "",
+          phone: ev.phone || "",
+          notes: ev.notes || "",
+          color: ev.color || "",
+          recurrence_rule: ev.recurrence_rule || "",
+          reminders: ev.reminders || [],
+          _id: Math.random().toString(36).substring(7)
+        }))
+      )
     }
-  
   }, [extractedData, open])
 
-  // Random motivational messages for success (defined here so we can use it in handleConfirm)
   const getSuccessMessage = () => {
     const messages = language === "fr" 
-      ? ["C'est note.", "Une chose de moins a penser.", "Tu geres.", "Tout est organise."]
+      ? ["C'est noté.", "Une chose de moins à penser.", "Tu gères.", "Tout est organisé."]
+      : language === "ar"
+      ? ["تم الحفظ.", "شيء أقل للتفكير فيه.", "أنت مسيطر.", "تمت إضافته للتقويم."]
       : ["All set.", "One less thing to think about.", "You're on top of it.", "It's in your calendar."]
     return messages[Math.floor(Math.random() * messages.length)]
   }
 
+  const updateEventField = <K extends keyof EditableEvent>(id: string, field: K, value: EditableEvent[K]) => {
+    setEvents(prev => prev.map(ev => ev._id === id ? { ...ev, [field]: value } : ev))
+  }
+
+  const removeEvent = (id: string) => {
+    setEvents(prev => prev.filter(ev => ev._id !== id))
+  }
+
   const handleConfirm = async () => {
-    if (!title.trim() || !date) {
-      setToast({ type: "error", message: language === "fr" ? "Il me faut un titre et une date" : "I need a title and date" })
+    const validEvents = events.filter(ev => ev.title?.trim() && ev.date)
+
+    if (validEvents.length === 0) {
+      setToast({ type: "error", message: language === "fr" ? "Il me faut un titre et une date" : language === "ar" ? "أحتاج إلى عنوان وتاريخ لحدث واحد على الأقل" : "I need a title and date for at least one event" })
       return
     }
 
     setIsSaving(true)
 
     try {
-      // Save directly to Supabase via store addEvent (scoped to current user)
-      await addEvent({
-        title: title.trim(),
-        date,
-        time: time || "",
-        location: location || undefined,
-        phone: phone || undefined,
-        notes: notes || "",
-        image_url: imageUrl || undefined,
-        source: source === "photo" ? "upload" : "voice",
-        is_done: false,
-      })
+      const primaryImageUrl = imageUrls?.[0]
+
+      for (const ev of validEvents) {
+        await addEvent({
+          title: ev.title?.trim() || "Event",
+          date: ev.date || "",
+          time: ev.time || "",
+          start_time: ev.start_time || undefined,
+          end_time: ev.end_time || undefined,
+          location: ev.location || undefined,
+          phone: ev.phone || undefined,
+          notes: ev.notes || "",
+          color: ev.color || undefined,
+          recurrence_rule: ev.recurrence_rule || undefined,
+          reminders: ev.reminders && ev.reminders.length > 0 ? ev.reminders : undefined,
+          image_url: primaryImageUrl || undefined,
+          source: source === "photo" ? "upload" : "voice",
+          is_done: false,
+        })
+      }
 
       setToast({ type: "success", message: getSuccessMessage() })
-
-      // Reset fields
-      setTitle("")
-      setDate("")
-      setTime("")
-      setLocation("")
-      setPhone("")
-      setNotes("")
 
       setTimeout(() => {
         setToast(null)
         onOpenChange(false)
-      }, 600)
+        setEvents([])
+      }, 800)
     } catch (err) {
       console.error("Failed to save event:", err)
-      setToast({ type: "error", message: "Failed to save event. Please try again." })
+      setToast({ type: "error", message: language === "ar" ? "فشل حفظ الأحداث. يرجى المحاولة مرة أخرى." : "Failed to save events. Please try again." })
     } finally {
       setIsSaving(false)
     }
@@ -100,247 +118,257 @@ export function EventConfirmationModal({
 
   const handleClose = () => {
     onOpenChange(false)
-    setIsEditing(false)
     setToast(null)
   }
 
   if (!open) return null
 
   const labels = {
-    title: language === "fr" ? "Quoi" : "What",
-    date: language === "fr" ? "Quand" : "When",
-    time: language === "fr" ? "Heure" : "Time",
-    location: language === "fr" ? "Ou" : "Where",
-    phone: language === "fr" ? "Telephone" : "Phone",
-    notes: language === "fr" ? "Notes" : "Notes",
-    confirm: language === "fr" ? "C'est bon" : "Looks good",
-    edit: language === "fr" ? "Modifier" : "Change something",
-    cancel: language === "fr" ? "Annuler" : "Never mind",
-    headerVoice: language === "fr" ? "J'ai trouve ca" : "Found this for you",
-    headerPhoto: language === "fr" ? "J'ai vu ca" : "I spotted this",
-    saving: language === "fr" ? "Un instant..." : "Just a moment...",
+    title: language === "ar" ? "العنوان" : language === "fr" ? "Titre" : "TITLE",
+    date: language === "ar" ? "متى" : language === "fr" ? "Quand" : "WHEN",
+    startTime: language === "ar" ? "وقت البدء" : language === "fr" ? "Heure de début" : "START TIME",
+    endTime: language === "ar" ? "وقت الانتهاء" : language === "fr" ? "Heure de fin" : "END TIME",
+    location: language === "ar" ? "الموقع" : language === "fr" ? "Lieu" : "LOCATION",
+    phone: language === "ar" ? "الهاتف" : language === "fr" ? "Téléphone" : "PHONE",
+    email: language === "ar" ? "البريد الإلكتروني" : language === "fr" ? "E-mail" : "EMAIL",
+    notes: language === "ar" ? "ملاحظات" : language === "fr" ? "Notes" : "NOTES",
+    color: language === "ar" ? "اللون" : language === "fr" ? "Couleur" : "COLOR",
+    recurrence: language === "ar" ? "التكرار" : language === "fr" ? "Répétition" : "REPEAT",
+    reminder: language === "ar" ? "تذكير" : language === "fr" ? "Rappel" : "REMINDER",
+    confirmAll: language === "ar" ? "حفظ الحدث" : language === "fr" ? "Enregistrer l'événement" : "Save Event",
+    headerPhoto: language === "ar" ? "مراجعة الأحداث" : language === "fr" ? "Événements trouvés" : "Review Events",
+    saving: language === "ar" ? "جاري الحفظ..." : language === "fr" ? "Un instant..." : "Saving...",
+    empty: language === "ar" ? "لا توجد أحداث" : language === "fr" ? "Aucun événement" : "No events",
   }
+
+  const inputClass = "w-full px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15"
+  const labelClass = "text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block"
+
+  const availableColors = [
+    "#007AFF", // Blue
+    "#FF3B30", // Red
+    "#34C759", // Green
+    "#FF9500", // Orange
+    "#AF52DE", // Purple
+    "#FF2D55", // Pink
+    "#06B6D4", // Cyan
+    "#EAB308", // Yellow
+    "#5856D6", // Indigo
+    "#14B8A6"  // Teal
+  ]
 
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/60 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={(e) => {
-        // Only close if clicking the backdrop itself, not the modal content
-        if (e.target === e.currentTarget) {
-          handleClose()
-        }
+        if (e.target === e.currentTarget) handleClose()
       }}
     >
-      {/* Toast notification */}
       {toast && (
         <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-3 rounded-xl flex items-center gap-2 shadow-lg animate-in slide-in-from-top duration-300 ${
           toast.type === "success" 
             ? "bg-green-500 text-white" 
             : "bg-destructive text-destructive-foreground"
         }`}>
-          {toast.type === "success" ? (
-            <CheckCircle className="h-5 w-5" />
-          ) : (
-            <AlertCircle className="h-5 w-5" />
-          )}
+          {toast.type === "success" ? <CheckCircle className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
           <span className="text-sm font-medium">{toast.message}</span>
         </div>
       )}
       
-      <div className="w-full max-w-md glass rounded-3xl p-5 animate-in zoom-in-95 duration-200 max-h-[80vh] overflow-y-auto" style={{ paddingBottom: "24px" }}>
+      <div className="w-full max-w-md bg-background border border-border/30 rounded-[30px] p-5 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-base font-semibold text-foreground">
-            {source === "voice" ? labels.headerVoice : labels.headerPhoto}
-          </h3>
+        <div className="flex items-center justify-between mb-4 shrink-0 px-1">
+          <div className="flex items-center gap-2">
+            <h3 className="text-xl font-bold text-foreground tracking-tight">
+              {labels.headerPhoto}
+            </h3>
+            <span className="bg-primary/20 text-primary text-xs font-bold px-2.5 py-0.5 rounded-full">
+              {events.length}
+            </span>
+          </div>
           <button
             type="button"
             onClick={handleClose}
-            className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            className="h-8 w-8 rounded-full bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors hover:bg-secondary"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Fields */}
-        <div className="space-y-4">
-          {/* Title */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-              <FileText className="h-3 w-3" />
-              {labels.title}
-            </label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-xl bg-secondary/60 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder={labels.title}
-              />
-            ) : (
-              <p className="rounded-xl bg-secondary/40 px-3.5 py-2.5 text-sm text-foreground">
-                {title || "-"}
-              </p>
-            )}
-          </div>
-
-          {/* Date & Time row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5 min-w-0">
-              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                <Calendar className="h-3 w-3" />
-                {labels.date}
-              </label>
-              {isEditing ? (
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full min-w-0 rounded-xl bg-secondary/60 px-2.5 sm:px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              ) : (
-                <p className="rounded-xl bg-secondary/40 px-3.5 py-2.5 text-sm text-foreground truncate">
-                  {date || "-"}
-                </p>
-              )}
+        {/* Scrollable list of events */}
+        <div className="overflow-y-auto pr-1 -mr-1 flex-1 space-y-6 pb-6">
+          {events.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              {labels.empty}
             </div>
-            <div className="space-y-1.5 min-w-0">
-              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                <Clock className="h-3 w-3" />
-                {labels.time}
-              </label>
-              {isEditing ? (
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full min-w-0 rounded-xl bg-secondary/60 px-2.5 sm:px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              ) : (
-                <p className="rounded-xl bg-secondary/40 px-3.5 py-2.5 text-sm text-foreground truncate">
-                  {time || "-"}
-                </p>
-              )}
-            </div>
-          </div>
+          ) : (
+            events.map((ev, index) => (
+              <div key={ev._id} className="relative pb-6 border-b border-border/30 last:border-0 last:pb-0">
+                {events.length > 1 && (
+                  <button 
+                    onClick={() => removeEvent(ev._id)}
+                    className="absolute top-0 right-0 bg-destructive/10 text-destructive p-2 rounded-full hover:bg-destructive hover:text-destructive-foreground transition-colors z-10"
+                    aria-label="Remove event"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+                
+                <div className="space-y-5 pt-1">
+                  {/* Title */}
+                  <div className="flex flex-col">
+                    <label className={labelClass}>{labels.title}</label>
+                    <input
+                      type="text"
+                      value={ev.title || ""}
+                      onChange={(e) => updateEventField(ev._id, "title", e.target.value)}
+                      className={inputClass}
+                      placeholder="e.g. Weekly Team Meeting"
+                    />
+                  </div>
 
-          {/* Location */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-              <MapPin className="h-3 w-3" />
-              {labels.location}
-            </label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full rounded-xl bg-secondary/60 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder={labels.location}
-              />
-            ) : (
-              <p className="rounded-xl bg-secondary/40 px-3.5 py-2.5 text-sm text-foreground">
-                {location || "-"}
-              </p>
-            )}
-          </div>
+                  {/* Date & Start Time */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col min-w-0">
+                      <label className={labelClass}>{labels.date}</label>
+                      <input
+                        type="date"
+                        value={ev.date || ""}
+                        onChange={(e) => updateEventField(ev._id, "date", e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <label className={labelClass}>{labels.startTime}</label>
+                      <input
+                        type="time"
+                        value={ev.start_time || ev.time || ""}
+                        onChange={(e) => {
+                          updateEventField(ev._id, "start_time", e.target.value)
+                          updateEventField(ev._id, "time", e.target.value)
+                        }}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
 
-          {/* Phone */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-              <Phone className="h-3 w-3" />
-              {labels.phone}
-            </label>
-            {isEditing ? (
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full rounded-xl bg-secondary/60 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder={labels.phone}
-              />
-            ) : (
-              <p className="rounded-xl bg-secondary/40 px-3.5 py-2.5 text-sm text-foreground">
-                {phone || "-"}
-              </p>
-            )}
-          </div>
+                  {/* End Time (optional) */}
+                  <div className="flex flex-col min-w-0 w-1/2 pr-1.5">
+                    <label className={labelClass}>{labels.endTime}</label>
+                    <input
+                      type="time"
+                      value={ev.end_time || ""}
+                      onChange={(e) => updateEventField(ev._id, "end_time", e.target.value)}
+                      className={inputClass}
+                    />
+                  </div>
 
-          {/* Notes (only in edit mode or if has content) */}
-          {(isEditing || notes) && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
-                {labels.notes}
-              </label>
-              {isEditing ? (
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  className="w-full rounded-xl bg-secondary/60 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                  placeholder={labels.notes}
-                />
-              ) : (
-                <p className="rounded-xl bg-secondary/40 px-3.5 py-2.5 text-sm text-foreground">
-                  {notes}
-                </p>
-              )}
-            </div>
+                  {/* Color Picker */}
+                  <div className="flex flex-col col-span-2">
+                    <label className={labelClass}>{labels.color}</label>
+                    <div className="grid grid-cols-5 gap-3 bg-secondary/20 p-4 rounded-[20px] border border-border justify-items-center">
+                      {availableColors.map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => updateEventField(ev._id, "color", c)}
+                          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full transition-all duration-300 flex items-center justify-center ${ev.color === c ? 'scale-110 ring-2 ring-offset-2 ring-offset-background shadow-[0_0_15px_rgba(255,255,255,0.15)]' : 'hover:scale-110 opacity-70 hover:opacity-100 shadow-sm hover:shadow-md'}`}
+                          style={{ backgroundColor: c, '--tw-ring-color': c } as React.CSSProperties}
+                          aria-label={`Select color ${c}`}
+                        >
+                          {ev.color === c && (
+                            <div className="w-2.5 h-2.5 rounded-full bg-white/90 shadow-sm" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Recurrence & Reminder */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col min-w-0">
+                      <label className={labelClass}>{labels.recurrence}</label>
+                      <select 
+                        value={ev.recurrence_rule || ""} 
+                        onChange={(e) => updateEventField(ev._id, "recurrence_rule", e.target.value)}
+                        className={inputClass}>
+                        <option value="">{language === "ar" ? "بدون تكرار" : language === "fr" ? "Jamais" : "Never"}</option>
+                        <option value="FREQ=DAILY">{language === "ar" ? "يومياً" : language === "fr" ? "Quotidien" : "Daily"}</option>
+                        <option value="FREQ=WEEKLY">{language === "ar" ? "أسبوعياً" : language === "fr" ? "Hebdomadaire" : "Weekly"}</option>
+                        <option value="FREQ=MONTHLY">{language === "ar" ? "شهرياً" : language === "fr" ? "Mensuel" : "Monthly"}</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <label className={labelClass}>{labels.reminder}</label>
+                      <select 
+                        value={ev.reminders && ev.reminders.length > 0 ? String(ev.reminders[0].minutes_before) : ""} 
+                        onChange={(e) => updateEventField(ev._id, "reminders", e.target.value ? [{minutes_before: parseInt(e.target.value)}] : [])}
+                        className={inputClass}>
+                        <option value="">{language === "ar" ? "بدون تذكير" : language === "fr" ? "Aucun" : "None"}</option>
+                        <option value="0">{language === "ar" ? "في وقت الحدث" : language === "fr" ? "A l'heure" : "At time of event"}</option>
+                        <option value="10">{language === "ar" ? "قبل 10 دقائق" : language === "fr" ? "10 min avant" : "10 min before"}</option>
+                        <option value="30">{language === "ar" ? "قبل 30 دقيقة" : language === "fr" ? "30 min avant" : "30 min before"}</option>
+                        <option value="60">{language === "ar" ? "قبل ساعة" : language === "fr" ? "1 heure avant" : "1 hour before"}</option>
+                        <option value="1440">{language === "ar" ? "قبل يوم" : language === "fr" ? "1 jour avant" : "1 day before"}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Phone & Location */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col">
+                      <label className={labelClass}>{labels.phone}</label>
+                      <input
+                        type="tel"
+                        value={ev.phone || ""}
+                        onChange={(e) => updateEventField(ev._id, "phone", e.target.value)}
+                        className={inputClass}
+                        placeholder="e.g. +1 555 0123"
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <label className={labelClass}>{labels.location}</label>
+                      <input
+                        type="text"
+                        value={ev.location || ""}
+                        onChange={(e) => updateEventField(ev._id, "location", e.target.value)}
+                        className={inputClass}
+                        placeholder="Location"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div className="flex flex-col">
+                    <label className={labelClass}>{labels.notes}</label>
+                    <textarea
+                      value={ev.notes || ""}
+                      onChange={(e) => updateEventField(ev._id, "notes", e.target.value)}
+                      rows={2}
+                      className={`${inputClass} resize-none`}
+                      placeholder="Add any extra details..."
+                    />
+                  </div>
+                </div>
+              </div>
+            ))
           )}
         </div>
 
-        {/* Buttons */}
-        <div className="flex gap-3 mt-6">
-          {isEditing ? (
-            <>
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="flex-1 rounded-2xl bg-secondary py-3 text-sm font-semibold text-foreground transition-all hover:bg-secondary/80"
-              >
-                {labels.cancel}
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirm}
-                disabled={!title.trim() || !date || isSaving}
-                className="flex-1 rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                {isSaving ? (
-                  <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Check className="h-4 w-4" />
-                )}
-                {isSaving ? labels.saving : labels.confirm}
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => setIsEditing(true)}
-                disabled={isSaving}
-                className="flex-1 rounded-2xl bg-secondary py-3 text-sm font-semibold text-foreground flex items-center justify-center gap-2 transition-all hover:bg-secondary/80 disabled:opacity-50"
-              >
-                <Edit3 className="h-4 w-4" />
-                {labels.edit}
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirm}
-                disabled={!title.trim() || !date || isSaving}
-                className="flex-1 rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                {isSaving ? (
-                  <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Check className="h-4 w-4" />
-                )}
-                {isSaving ? labels.saving : labels.confirm}
-              </button>
-            </>
-          )}
+        {/* Bottom Actions */}
+        <div className="pt-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={events.length === 0 || isSaving}
+            className="w-full rounded-[20px] py-4 text-base font-bold transition-all disabled:opacity-50 bg-[#5BC0DE] text-black hover:bg-[#5BC0DE]/90 shadow-md flex justify-center items-center"
+          >
+            {isSaving ? (
+              <span className="h-5 w-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+            ) : (
+              labels.confirmAll
+            )}
+          </button>
         </div>
       </div>
     </div>
