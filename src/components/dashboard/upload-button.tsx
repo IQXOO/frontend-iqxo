@@ -11,7 +11,7 @@ import { useToast } from "../../hooks/use-toast"
 interface UploadButtonProps {
   externalOpen: boolean
   onExternalOpenChange: (open: boolean) => void
-  onExtractedData?: (data: ParsedEvent, imageUrl?: string) => void
+  onExtractedData?: (data: ParsedEvent | ParsedEvent[], imageUrl?: string | string[]) => void
   autoOpenPicker?: boolean
   incomingFile?: File | null
 }
@@ -49,7 +49,7 @@ export function UploadButton({
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [state, setState] = useState<UploadState>("picking")
-  const [preview, setPreview] = useState<FilePreview | null>(null)
+  const [previews, setPreviews] = useState<FilePreview[]>([])
   const [errorMessage, setErrorMessage] = useState("")
   const hasAutoTriggered = useRef(false)
   const lastIncomingFileRef = useRef<File | null>(null)
@@ -80,7 +80,7 @@ export function UploadButton({
 
   const handleClose = useCallback(() => {
     setState("picking")
-    setPreview(null)
+    setPreviews([])
     setErrorMessage("")
     setLangPickerOpen(false)
     hasAutoTriggered.current = false // Reset the trigger flag
@@ -107,7 +107,7 @@ export function UploadButton({
   // Auto-trigger file picker when externally opened
   useEffect(() => {
     if (!autoOpenPicker) return
-    if (externalOpen && state === "picking" && !preview && !hasAutoTriggered.current) {
+    if (externalOpen && state === "picking" && previews.length === 0 && !hasAutoTriggered.current) {
       hasAutoTriggered.current = true // Mark as triggered
       devLog('Upload', 'File picker auto-opened')
       const frame = requestAnimationFrame(() => {
@@ -115,7 +115,7 @@ export function UploadButton({
       })
       return () => cancelAnimationFrame(frame)
     }
-  }, [autoOpenPicker, externalOpen, state, preview])
+  }, [autoOpenPicker, externalOpen, state, previews])
 
   // Reset auto-trigger flag when modal is closed
   useEffect(() => {
@@ -124,74 +124,75 @@ export function UploadButton({
     }
   }, [externalOpen])
 
-  const processFile = useCallback(async (file: File) => {
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      setErrorMessage(t("uploadUnsupported"))
-      toast({
-        title: "Unsupported file type",
-        description: t("uploadUnsupported"),
+  const processFiles = useCallback(async (files: File[]) => {
+    const validFiles = files.filter(f => ACCEPTED_TYPES.includes(f.type) && f.size <= MAX_SIZE)
+    
+    if (validFiles.length !== files.length) {
+       toast({
+        title: "Some files skipped",
+        description: "Some files were skipped due to unsupported type or size > 10MB.",
         variant: "destructive",
       })
+    }
+
+    if (validFiles.length === 0) {
+      setErrorMessage("No valid files selected.")
       setState("error")
       return
     }
 
-    if (file.size > MAX_SIZE) {
-      setErrorMessage(t("uploadTooLarge"))
-      toast({
-        title: "File is too large",
-        description: t("uploadTooLarge"),
-        variant: "destructive",
+    const newPreviews = await Promise.all(
+      validFiles.map(file => {
+        return new Promise<FilePreview>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => {
+            const dataUrl = reader.result as string
+            const base64 = dataUrl.split(",")[1]
+            resolve({
+              name: file.name,
+              type: file.type,
+              size: formatSize(file.size),
+              dataUrl,
+              base64,
+              mediaType: file.type,
+            })
+          }
+          reader.onerror = () => reject(new Error("Failed to read file " + file.name))
+          reader.readAsDataURL(file)
+        })
       })
-      setState("error")
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result as string
-      const base64 = dataUrl.split(",")[1]
-      setPreview({
-        name: file.name,
-        type: file.type,
-        size: formatSize(file.size),
-        dataUrl,
-        base64,
-        mediaType: file.type,
-      })
-      setState("preview")
-    }
-    reader.onerror = () => {
-      devError('Upload', 'Failed to read selected file')
-      const message = "Couldn't read the selected file. Please choose another one."
+    ).catch(err => {
+      devError('Upload', 'Failed to read selected files', err)
+      const message = "Couldn't read the selected files."
       setErrorMessage(message)
       toast({
-        title: "Couldn't read file",
+        title: "Couldn't read files",
         description: message,
         variant: "destructive",
       })
       setState("error")
+      return []
+    })
+
+    if (newPreviews.length > 0) {
+      setPreviews(newPreviews)
+      setState("preview")
     }
-    reader.readAsDataURL(file)
-  }, [toast, t])
+  }, [toast])
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      if (!file) {
-        // User cancelled the file picker
-        if (!preview) handleClose()
+      const files = Array.from(e.target.files || [])
+      if (files.length === 0) {
+        if (previews.length === 0) handleClose()
         devLog('Upload', 'File picker cancelled')
         return
       }
-
-      devLog('Upload', 'File selected', { name: file.name, type: file.type, size: file.size })
-
-      void processFile(file)
-      // Reset input value to allow selecting the same file again
+      devLog('Upload', 'Files selected', { count: files.length })
+      void processFiles(files)
       e.target.value = ""
     },
-    [handleClose, preview, processFile]
+    [handleClose, previews, processFiles]
   )
 
   useEffect(() => {
@@ -200,11 +201,11 @@ export function UploadButton({
     if (incomingFile === lastIncomingFileRef.current) return
     lastIncomingFileRef.current = incomingFile
     devLog('Upload', 'Processing externally supplied file', { name: incomingFile.name, type: incomingFile.type, size: incomingFile.size })
-    void processFile(incomingFile)
-  }, [incomingFile, externalOpen, processFile])
+    void processFiles([incomingFile])
+  }, [incomingFile, externalOpen, processFiles])
 
   const handleAnalyze = useCallback(async () => {
-    if (!preview) return
+    if (previews.length === 0) return
 
     setState("analyzing")
     setErrorMessage("")
@@ -212,76 +213,78 @@ export function UploadButton({
     try {
       await withAsyncDiagnostics(
         'Upload',
-        'Analyze image',
+        'Analyze images',
         async () => {
-          devLog('Upload', 'Starting image analysis', {
-            name: preview.name,
-            type: preview.type,
-            size: preview.size,
-          })
+          const allExtractedEvents: ParsedEvent[] = []
+          let accumulatedUsage = 0
+          
+          for (const preview of previews) {
+            devLog('Upload', 'Starting image analysis', { name: preview.name })
 
-          const base64 = preview.base64
-          const contentType = preview.mediaType || preview.type || "application/octet-stream"
-          const byteString = atob(base64)
-          const ab = new ArrayBuffer(byteString.length)
-          const ia = new Uint8Array(ab)
-          for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i)
-          }
-          const blob = new Blob([ab], { type: contentType })
+            const base64 = preview.base64
+            const contentType = preview.mediaType || preview.type || "application/octet-stream"
+            const byteString = atob(base64)
+            const ab = new ArrayBuffer(byteString.length)
+            const ia = new Uint8Array(ab)
+            for (let i = 0; i < byteString.length; i++) {
+              ia[i] = byteString.charCodeAt(i)
+            }
+            const blob = new Blob([ab], { type: contentType })
 
-          devLog('Upload', 'Image blob created', { size: blob.size, type: blob.type })
+            const formData = new FormData()
+            formData.append("image", blob, preview.name)
+            if (user?.id) formData.append("userId", user.id)
 
-          const formData = new FormData()
-          formData.append("image", blob, preview.name)
-          if (user?.id) formData.append("userId", user.id)
+            const headers: Record<string, string> = {}
+            if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`
 
-          const headers: Record<string, string> = {}
-          if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`
+            const res = await fetchWithDiagnostics(
+              'Upload',
+              'POST /analyze-image',
+              `${import.meta.env.VITE_BACKEND_API}/analyze-image`,
+              { method: "POST", headers, body: formData },
+              { timeoutMs: 90000, context: { name: preview.name } },
+            )
 
-          const res = await fetchWithDiagnostics(
-            'Upload',
-            'POST /analyze-image',
-            `${import.meta.env.VITE_BACKEND_API}/analyze-image`,
-            {
-              method: "POST",
-              headers,
-              body: formData,
-            },
-            { timeoutMs: 60000, context: { name: preview.name, type: preview.type } },
-          )
+            if (!res.ok) {
+              const text = await readResponseText(res)
+              throw new Error(text || `Server error: ${res.status} on file ${preview.name}`)
+            }
 
-          if (!res.ok) {
-            const text = await readResponseText(res)
-            devError('Upload', 'Image analysis failed', text, { status: res.status, statusText: res.statusText })
-            throw new Error(text || `Server error: ${res.status}`)
-          }
+            const raw = await res.json()
+            const events = raw.events || []
+            
+            if (Array.isArray(events)) {
+              allExtractedEvents.push(...events)
+            } else if (raw.event) {
+              allExtractedEvents.push(raw.event)
+            }
 
-          const raw = await res.json()
-          devLog('Upload', 'Image analysis response received', { hasEvent: Boolean(raw?.event), hasActualCost: Boolean(raw?.actualCost) })
-
-          const extractedEvent = raw && typeof raw === "object" ? (raw.event ?? raw) : null
-          if (!extractedEvent || typeof extractedEvent !== "object") {
-            throw new Error("Invalid response from server")
-          }
-
-          if (typeof raw.total_usage === "number") {
-            devLog('Upload', 'analyze-image total_usage received', { total_usage: raw.total_usage })
-            setTotalUsage(raw.total_usage)
+            if (typeof raw.total_usage === "number") {
+              accumulatedUsage = raw.total_usage
+            }
           }
 
-          onExtractedData?.(extractedEvent, preview?.dataUrl ?? undefined)
+          if (accumulatedUsage > 0) {
+            setTotalUsage(accumulatedUsage)
+          }
+
+          if (allExtractedEvents.length === 0) {
+            throw new Error("No events found in the selected images.")
+          }
+
+          onExtractedData?.(allExtractedEvents, previews.map(p => p.dataUrl))
           handleClose()
         },
         {
           method: 'POST',
-          context: { name: preview.name, type: preview.type },
-          timeoutMs: 60000,
+          context: { count: previews.length },
+          timeoutMs: 120000,
           onError: (message) => {
             const friendly = getFriendlyErrorMessage(message, t("uploadError"))
             setErrorMessage(friendly)
             toast({
-              title: "Couldn't analyze image",
+              title: "Couldn't analyze images",
               description: friendly,
               variant: "destructive",
             })
@@ -293,14 +296,16 @@ export function UploadButton({
       devError('Upload', 'Image analysis failed', err)
       setErrorMessage(msg)
       toast({
-        title: "Couldn't analyze image",
+        title: "Couldn't analyze images",
         description: msg,
         variant: "destructive",
       })
       setState("error")
     }
-  }, [preview, onExtractedData, handleClose, session?.access_token, user?.id, toast, t])
-  const isImage = preview?.type.startsWith("image/")
+  }, [previews, onExtractedData, handleClose, session?.access_token, user?.id, toast, t, setTotalUsage])
+
+  const primaryPreview = previews[0]
+  const isImage = primaryPreview?.type.startsWith("image/")
 
   return (
     <>
@@ -308,6 +313,7 @@ export function UploadButton({
         ref={fileInputRef}
         id="iqxo-upload-input"
         type="file"
+        multiple
         accept=".jpg,.jpeg,.png,.webp,.gif,.pdf"
         onChange={handleFileSelect}
         className="hidden"
@@ -317,18 +323,17 @@ export function UploadButton({
       {/* Only render modal when externalOpen is true */}
       {externalOpen && (
         <>
-      {/* Full overlay modal - pb-32 ensures content is above bottom nav bar */}
       <div className="fixed inset-0 z-50 flex items-end justify-center bg-background/60 backdrop-blur-sm animate-in fade-in duration-200">
         <div className="w-full max-w-md glass rounded-t-3xl p-5 animate-in slide-in-from-bottom duration-300" style={{ paddingBottom: "120px" }}>
+          
           {/* Preview state */}
-          {state === "preview" && preview && (
+          {state === "preview" && previews.length > 0 && (
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold text-foreground">
-                    {t("uploadPreview")}
+                    {previews.length > 1 ? `${previews.length} Files Selected` : t("uploadPreview")}
                   </h3>
-                  {/* Language picker */}
                   <div ref={langPickerRef} className="relative">
                     <button
                       onClick={() => setLangPickerOpen(!langPickerOpen)}
@@ -338,7 +343,6 @@ export function UploadButton({
                       <span>{selectedLang.flag} {selectedLang.label}</span>
                       <ChevronDown className="h-3 w-3" />
                     </button>
-                    
                     {langPickerOpen && (
                       <div className="absolute top-full mt-1 left-0 bg-background border border-border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto w-40">
                         {VOICE_LANGUAGES.map((lang) => (
@@ -367,11 +371,11 @@ export function UploadButton({
                 </button>
               </div>
 
-              <div className="rounded-2xl bg-secondary/50 overflow-hidden flex items-center justify-center h-40">
+              <div className="rounded-2xl bg-secondary/50 overflow-hidden flex items-center justify-center h-40 relative">
                 {isImage ? (
                   <img
-                    src={preview.dataUrl}
-                    alt={preview.name}
+                    src={primaryPreview.dataUrl}
+                    alt={primaryPreview.name}
                     className="h-full w-full object-contain"
                     loading="lazy"
                   />
@@ -379,6 +383,11 @@ export function UploadButton({
                   <div className="flex flex-col items-center gap-2 py-6">
                     <FileText className="h-12 w-12 text-primary/60" />
                     <span className="text-xs font-mono text-muted-foreground">PDF</span>
+                  </div>
+                )}
+                {previews.length > 1 && (
+                  <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs font-bold px-2 py-1 rounded-lg">
+                    +{previews.length - 1} More
                   </div>
                 )}
               </div>
@@ -391,24 +400,23 @@ export function UploadButton({
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-foreground truncate">
-                    {preview.name}
+                    {primaryPreview.name}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">{preview.size}</p>
+                  <p className="text-[10px] text-muted-foreground">{primaryPreview.size}</p>
                 </div>
               </div>
 
-              {/* Big analyze button */}
               <button
                 onClick={handleAnalyze}
                 className="w-full rounded-2xl py-4 text-base font-bold text-primary-foreground flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] shadow-lg bg-primary"
               >
                 <Sparkles className="h-5 w-5" />
-                {t("uploadAnalyze")}
+                {t("uploadAnalyze")} {previews.length > 1 ? `(${previews.length})` : ""}
               </button>
             </div>
           )}
 
-          {/* Picking state (waiting for file input) */}
+          {/* Picking state */}
           {state === "picking" && (
             <div className="flex flex-col items-center gap-4 py-6">
               <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
