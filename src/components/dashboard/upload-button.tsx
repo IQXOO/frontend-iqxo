@@ -215,12 +215,12 @@ export function UploadButton({
         'Upload',
         'Analyze images',
         async () => {
-          const allExtractedEvents: ParsedEvent[] = []
-          let accumulatedUsage = 0
-          
-          for (const preview of previews) {
-            devLog('Upload', 'Starting image analysis', { name: preview.name })
+          devLog('Upload', 'Starting batched image analysis', { count: previews.length })
 
+          const formData = new FormData()
+          if (user?.id) formData.append("userId", user.id)
+
+          for (const preview of previews) {
             const base64 = preview.base64
             const contentType = preview.mediaType || preview.type || "application/octet-stream"
             const byteString = atob(base64)
@@ -230,43 +230,37 @@ export function UploadButton({
               ia[i] = byteString.charCodeAt(i)
             }
             const blob = new Blob([ab], { type: contentType })
-
-            const formData = new FormData()
-            formData.append("image", blob, preview.name)
-            if (user?.id) formData.append("userId", user.id)
-
-            const headers: Record<string, string> = {}
-            if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`
-
-            const res = await fetchWithDiagnostics(
-              'Upload',
-              'POST /analyze-image',
-              `${import.meta.env.VITE_BACKEND_API}/analyze-image`,
-              { method: "POST", headers, body: formData },
-              { timeoutMs: 90000, context: { name: preview.name } },
-            )
-
-            if (!res.ok) {
-              const text = await readResponseText(res)
-              throw new Error(text || `Server error: ${res.status} on file ${preview.name}`)
-            }
-
-            const raw = await res.json()
-            const events = raw.events || []
-            
-            if (Array.isArray(events)) {
-              allExtractedEvents.push(...events)
-            } else if (raw.event) {
-              allExtractedEvents.push(raw.event)
-            }
-
-            if (typeof raw.total_usage === "number") {
-              accumulatedUsage = raw.total_usage
-            }
+            formData.append("images", blob, preview.name)
           }
 
-          if (accumulatedUsage > 0) {
-            setTotalUsage(accumulatedUsage)
+          const headers: Record<string, string> = {}
+          if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`
+
+          const res = await fetchWithDiagnostics(
+            'Upload',
+            'POST /analyze-images',
+            `${import.meta.env.VITE_BACKEND_API}/analyze-images`,
+            { method: "POST", headers, body: formData },
+            { timeoutMs: 120000, context: { count: previews.length } },
+          )
+
+          if (!res.ok) {
+            const text = await readResponseText(res)
+            throw new Error(text || `Server error: ${res.status} when analyzing images`)
+          }
+
+          const raw = await res.json()
+          const events = raw.events || []
+          
+          let allExtractedEvents: ParsedEvent[] = []
+          if (Array.isArray(events)) {
+            allExtractedEvents = events
+          } else if (raw.event) {
+            allExtractedEvents = [raw.event]
+          }
+
+          if (typeof raw.total_usage === "number" && raw.total_usage > 0) {
+            setTotalUsage(raw.total_usage)
           }
 
           if (allExtractedEvents.length === 0) {
