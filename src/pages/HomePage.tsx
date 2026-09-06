@@ -63,7 +63,7 @@ export default function Page() {
   const [searchQuery, _setSearchQuery] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadAutoOpenPicker, setUploadAutoOpenPicker] = useState(true);
-  const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
+  const [pendingUploadFiles, setPendingUploadFiles] = useState<File[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmData, _setConfirmData] = useState<ParsedEvent[] | null>(null);
   const [confirmSource, _setConfirmSource] = useState<"voice" | "photo">("voice");
@@ -137,12 +137,18 @@ export default function Page() {
     openEventForm(null);
   }, [openEventForm]);
 
-  const handleUploadClick = useCallback(({ autoOpenPicker = true, file = null }: { autoOpenPicker?: boolean, file?: File | null } = {}) => {
+  const handleUploadClick = useCallback(({ autoOpenPicker = true, file = null, files = null }: { autoOpenPicker?: boolean, file?: File | null, files?: File[] | null } = {}) => {
     if (shouldBlockAI) {
       window.dispatchEvent(new CustomEvent("trigger-paywall"));
     } else {
       setUploadAutoOpenPicker(autoOpenPicker);
-      setPendingUploadFile(file);
+      if (files && files.length > 0) {
+        setPendingUploadFiles(files);
+      } else if (file) {
+        setPendingUploadFiles([file]);
+      } else {
+        setPendingUploadFiles([]);
+      }
       setUploadOpen(true);
     }
   }, [shouldBlockAI]);
@@ -185,7 +191,7 @@ export default function Page() {
 
   useEffect(() => {
     if (!uploadOpen) {
-      setPendingUploadFile(null);
+      setPendingUploadFiles([]);
     }
   }, [uploadOpen]);
 
@@ -351,7 +357,7 @@ export default function Page() {
             externalOpen={uploadOpen}
             onExternalOpenChange={setUploadOpen}
             autoOpenPicker={uploadAutoOpenPicker}
-            incomingFile={pendingUploadFile}
+            incomingFiles={pendingUploadFiles}
             onExtractedData={handlePhotoExtracted}
           />
         </Suspense>
@@ -423,14 +429,24 @@ export default function Page() {
       )}
 
       {/* Minimalist Action Hub - The Power Trio — only visible on home */}
-      <BottomNav
-        active={activeTab}
-        onTabChange={setActiveTab}
-        onUploadClick={handleUploadClick}
-        onManualAdd={handleManualAdd}
-        composerOpen={composerOpen}
-        onComposerOpenChange={setComposerOpen}
-      />
+        <BottomNav
+          active={activeTab}
+          onTabChange={setActiveTab}
+          onUploadClick={(opts) => {
+            if (opts?.files && opts.files.length > 0) {
+              setPendingUploadFiles(opts.files)
+            } else if (opts?.file) {
+              setPendingUploadFiles([opts.file])
+            } else {
+              setPendingUploadFiles([])
+            }
+            setUploadAutoOpenPicker(opts?.autoOpenPicker ?? true)
+            setUploadOpen(true)
+          }}
+          onManualAdd={() => setManualFormOpen(true)}
+          composerOpen={composerOpen}
+          onComposerOpenChange={setComposerOpen}
+        />
 
       {/* Tomorrow's Chain Modal */}
       {tomorrowModalOpen && (

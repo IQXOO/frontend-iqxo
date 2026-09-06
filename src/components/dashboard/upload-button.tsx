@@ -13,7 +13,7 @@ interface UploadButtonProps {
   onExternalOpenChange: (open: boolean) => void
   onExtractedData?: (data: ParsedEvent | ParsedEvent[], imageUrl?: string | string[]) => void
   autoOpenPicker?: boolean
-  incomingFile?: File | null
+  incomingFiles?: File[]
 }
 
 type UploadState = "picking" | "preview" | "analyzing" | "error"
@@ -43,7 +43,7 @@ export function UploadButton({
   onExternalOpenChange,
   onExtractedData,
   autoOpenPicker = true,
-  incomingFile = null,
+  incomingFiles = [],
 }: UploadButtonProps) {
   const { t, language, user, session, setTotalUsage } = useApp()
   const { toast } = useToast()
@@ -52,7 +52,7 @@ export function UploadButton({
   const [previews, setPreviews] = useState<FilePreview[]>([])
   const [errorMessage, setErrorMessage] = useState("")
   const hasAutoTriggered = useRef(false)
-  const lastIncomingFileRef = useRef<File | null>(null)
+  const lastIncomingFilesRef = useRef<File[]>([])
   
   // Language selection state
   const [selectedLang, setSelectedLang] = useState<VoiceLang>(() => {
@@ -196,13 +196,16 @@ export function UploadButton({
   )
 
   useEffect(() => {
-    if (!incomingFile) return
+    if (!incomingFiles || incomingFiles.length === 0) return
     if (!externalOpen) return
-    if (incomingFile === lastIncomingFileRef.current) return
-    lastIncomingFileRef.current = incomingFile
-    devLog('Upload', 'Processing externally supplied file', { name: incomingFile.name, type: incomingFile.type, size: incomingFile.size })
-    void processFiles([incomingFile])
-  }, [incomingFile, externalOpen, processFiles])
+    
+    // Check if the array of files is exactly the same reference
+    if (incomingFiles === lastIncomingFilesRef.current) return
+    lastIncomingFilesRef.current = incomingFiles
+    
+    devLog('Upload', 'Processing externally supplied files', { count: incomingFiles.length })
+    void processFiles(incomingFiles)
+  }, [incomingFiles, externalOpen, processFiles])
 
   const handleAnalyze = useCallback(async () => {
     if (previews.length === 0) return
