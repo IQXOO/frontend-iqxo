@@ -308,7 +308,7 @@ export function UploadButton({
         id="iqxo-upload-input"
         type="file"
         multiple
-        accept=".jpg,.jpeg,.png,.webp,.gif,.pdf"
+        accept="image/*,application/pdf"
         onChange={handleFileSelect}
         className="hidden"
         aria-label={t("uploadLabel")}
