@@ -87,8 +87,8 @@ export function EventConfirmationModal({
     try {
       const primaryImageUrl = imageUrls?.[0]
 
-      for (const ev of validEvents) {
-        await addEvent({
+      await Promise.all(
+        validEvents.map(ev => addEvent({
           title: ev.title?.trim() || "Event",
           date: ev.date || "",
           time: ev.time || "",
@@ -103,8 +103,8 @@ export function EventConfirmationModal({
           image_url: primaryImageUrl || undefined,
           source: source === "photo" ? "upload" : "voice",
           is_done: false,
-        })
-      }
+        }))
+      )
 
       setToast({ type: "success", message: getSuccessMessage() })
 

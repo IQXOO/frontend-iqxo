@@ -443,7 +443,7 @@ export default function Page() {
             setUploadAutoOpenPicker(opts?.autoOpenPicker ?? true)
             setUploadOpen(true)
           }}
-          onManualAdd={() => setManualFormOpen(true)}
+          onManualAdd={handleManualAdd}
           composerOpen={composerOpen}
           onComposerOpenChange={setComposerOpen}
         />
