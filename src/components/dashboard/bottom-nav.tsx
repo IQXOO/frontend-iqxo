@@ -688,7 +688,7 @@ function CalendarImportSheet({
 interface BottomNavProps {
   active: NavTab;
   onTabChange: (tab: NavTab) => void;
-  onUploadClick: (options?: { autoOpenPicker?: boolean; file?: File | null }) => void;
+  onUploadClick: (options?: { autoOpenPicker?: boolean; file?: File | null, files?: File[] }) => void;
   onManualAdd: () => void;
   composerOpen?: boolean;
   onComposerOpenChange?: (open: boolean) => void;
@@ -793,12 +793,16 @@ export const BottomNav = memo(function BottomNav({
     // Standard browser / gallery flow
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/*";
-    if (capture) input.setAttribute("capture", capture);
+    input.accept = "image/*,application/pdf";
+    if (capture) {
+      input.setAttribute("capture", capture);
+    } else {
+      input.multiple = true;
+    }
     input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        onUploadClick({ autoOpenPicker: false, file });
+      const files = Array.from((e.target as HTMLInputElement).files || []);
+      if (files.length > 0) {
+        onUploadClick({ autoOpenPicker: false, files });
       }
     };
     input.click();

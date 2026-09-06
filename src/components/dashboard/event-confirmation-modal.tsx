@@ -246,40 +246,44 @@ export function EventConfirmationModal({
                 />
               </div>
 
-              {/* Date & Start Time */}
+              {/* Date, Start Time, & End Time */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col min-w-0">
                   <label className={labelClass}>{labels.date}</label>
-                  <input
-                    type="date"
-                    value={editingEvent.date || ""}
-                    onChange={(e) => updateEventField(editingEvent._id, "date", e.target.value)}
-                    className={inputClass}
-                  />
+                  <div className="w-full rounded-[20px] border border-border bg-secondary/40 transition-all duration-300 focus-within:border-[#5BC0DE] focus-within:ring-4 focus-within:ring-[#5BC0DE]/15 overflow-hidden flex items-center">
+                    <input
+                      type="date"
+                      value={editingEvent.date || ""}
+                      onChange={(e) => updateEventField(editingEvent._id, "date", e.target.value)}
+                      className="w-full bg-transparent border-none outline-none px-3 sm:px-4 py-3.5 text-sm sm:text-base text-foreground min-w-0 [color-scheme:dark]"
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-col min-w-0">
                   <label className={labelClass}>{labels.startTime}</label>
-                  <input
-                    type="time"
-                    value={editingEvent.start_time || editingEvent.time || ""}
-                    onChange={(e) => {
-                      updateEventField(editingEvent._id, "start_time", e.target.value)
-                      updateEventField(editingEvent._id, "time", e.target.value)
-                    }}
-                    className={inputClass}
-                  />
+                  <div className="w-full rounded-[20px] border border-border bg-secondary/40 transition-all duration-300 focus-within:border-[#5BC0DE] focus-within:ring-4 focus-within:ring-[#5BC0DE]/15 overflow-hidden flex items-center">
+                    <input
+                      type="time"
+                      value={editingEvent.start_time || editingEvent.time || ""}
+                      onChange={(e) => {
+                        updateEventField(editingEvent._id, "start_time", e.target.value)
+                        updateEventField(editingEvent._id, "time", e.target.value)
+                      }}
+                      className="w-full bg-transparent border-none outline-none px-3 sm:px-4 py-3.5 text-sm sm:text-base text-foreground min-w-0 [color-scheme:dark]"
+                    />
+                  </div>
                 </div>
-              </div>
-
-              {/* End Time (optional) */}
-              <div className="flex flex-col min-w-0 w-1/2 pr-1.5">
-                <label className={labelClass}>{labels.endTime}</label>
-                <input
-                  type="time"
-                  value={editingEvent.end_time || ""}
-                  onChange={(e) => updateEventField(editingEvent._id, "end_time", e.target.value)}
-                  className={inputClass}
-                />
+                <div className="flex flex-col min-w-0">
+                  <label className={labelClass}>{labels.endTime}</label>
+                  <div className="w-full rounded-[20px] border border-border bg-secondary/40 transition-all duration-300 focus-within:border-[#5BC0DE] focus-within:ring-4 focus-within:ring-[#5BC0DE]/15 overflow-hidden flex items-center">
+                    <input
+                      type="time"
+                      value={editingEvent.end_time || ""}
+                      onChange={(e) => updateEventField(editingEvent._id, "end_time", e.target.value)}
+                      className="w-full bg-transparent border-none outline-none px-3 sm:px-4 py-3.5 text-sm sm:text-base text-foreground min-w-0 [color-scheme:dark]"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Color Picker */}
