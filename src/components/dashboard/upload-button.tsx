@@ -25,6 +25,7 @@ interface FilePreview {
   dataUrl: string
   base64: string
   mediaType: string
+  file: File
 }
 
 const ACCEPTED_TYPES = [
@@ -147,14 +148,14 @@ export function UploadButton({
           const reader = new FileReader()
           reader.onload = () => {
             const dataUrl = reader.result as string
-            const base64 = dataUrl.split(",")[1]
             resolve({
               name: file.name,
               type: file.type,
               size: formatSize(file.size),
               dataUrl,
-              base64,
+              base64: "", // Not used anymore
               mediaType: file.type,
+              file: file,
             })
           }
           reader.onerror = () => reject(new Error("Failed to read file " + file.name))
@@ -224,16 +225,7 @@ export function UploadButton({
           if (user?.id) formData.append("userId", user.id)
 
           for (const preview of previews) {
-            const base64 = preview.base64
-            const contentType = preview.mediaType || preview.type || "application/octet-stream"
-            const byteString = atob(base64)
-            const ab = new ArrayBuffer(byteString.length)
-            const ia = new Uint8Array(ab)
-            for (let i = 0; i < byteString.length; i++) {
-              ia[i] = byteString.charCodeAt(i)
-            }
-            const blob = new Blob([ab], { type: contentType })
-            formData.append("images", blob, preview.name)
+            formData.append("images", preview.file, preview.name)
           }
 
           const headers: Record<string, string> = {}
