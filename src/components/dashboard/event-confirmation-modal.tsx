@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Check, CheckCircle, AlertCircle, Trash2, Calendar, Clock, Edit2 } from "lucide-react"
+import { X, CheckCircle, AlertCircle, Trash2, Calendar, Clock, Edit2, ChevronLeft } from "lucide-react"
 import { useApp } from "../../lib/store"
 import type { ParsedEvent } from "../../lib/parse-voice-input"
 
@@ -145,9 +145,11 @@ export function EventConfirmationModal({
     reminder: language === "ar" ? "تذكير" : language === "fr" ? "Rappel" : "REMINDER",
     confirmAll: language === "ar" ? `حفظ (${selectedCount})` : language === "fr" ? `Enregistrer (${selectedCount})` : `Save (${selectedCount})`,
     headerPhoto: language === "ar" ? "مراجعة الأحداث" : language === "fr" ? "Événements" : "Review Events",
+    editEvent: language === "ar" ? "تعديل الحدث" : language === "fr" ? "Modifier l'événement" : "Edit Event",
     saving: language === "ar" ? "جاري الحفظ..." : language === "fr" ? "Un instant..." : "Saving...",
     empty: language === "ar" ? "لا توجد أحداث" : language === "fr" ? "Aucun événement" : "No events",
-    newEvent: language === "ar" ? "حدث جديد" : language === "fr" ? "Nouvel événement" : "New Event"
+    newEvent: language === "ar" ? "حدث جديد" : language === "fr" ? "Nouvel événement" : "New Event",
+    done: language === "ar" ? "تم" : language === "fr" ? "Terminé" : "Done"
   }
 
   const inputClass = "w-full px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15"
@@ -165,6 +167,8 @@ export function EventConfirmationModal({
     "#5856D6", // Indigo
     "#14B8A6"  // Teal
   ]
+
+  const editingEvent = events.find(ev => ev._id === editingId)
 
   return (
     <div 
@@ -184,271 +188,286 @@ export function EventConfirmationModal({
         </div>
       )}
       
-      <div className="w-full max-w-md bg-background border border-border/30 rounded-[30px] p-5 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+      <div className="w-full max-w-md bg-background border border-border/30 rounded-[30px] p-5 shadow-2xl flex flex-col h-[85vh] sm:h-[700px] animate-in zoom-in-95 duration-200">
+        
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 shrink-0 px-1">
-          <div className="flex items-center gap-2">
-            <h3 className="text-xl font-bold text-foreground tracking-tight">
-              {labels.headerPhoto}
-            </h3>
-            <span className="bg-[#5BC0DE]/20 text-[#5BC0DE] text-xs font-bold px-2.5 py-0.5 rounded-full">
-              {events.length}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="h-8 w-8 rounded-full bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors hover:bg-secondary"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Scrollable list of events */}
-        <div className="overflow-y-auto pr-1 -mr-1 flex-1 space-y-3 pb-6">
-          {events.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground text-sm">
-              {labels.empty}
+        <div className="flex items-center justify-between mb-5 shrink-0 px-1">
+          {editingEvent ? (
+            <div className="flex items-center gap-3 w-full">
+              <button
+                type="button"
+                onClick={() => setEditingId(null)}
+                className="h-9 w-9 rounded-full bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                aria-label="Back"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <h3 className="text-lg font-bold text-foreground tracking-tight truncate">
+                {labels.editEvent}
+              </h3>
             </div>
           ) : (
-            events.map((ev) => {
-              const isEditing = editingId === ev._id;
-
-              return (
-                <div 
-                  key={ev._id} 
-                  className={`relative rounded-2xl p-4 transition-all duration-300 border ${
-                    ev.selected 
-                      ? 'bg-secondary/20 border-border/60 hover:border-border' 
-                      : 'bg-background/50 border-border/30 opacity-70'
-                  } ${isEditing ? 'ring-2 ring-[#5BC0DE]/30 border-transparent bg-secondary/30' : ''}`}
-                >
-                  
-                  {/* Summary / Checkbox Row */}
-                  <div className="flex items-start gap-3">
-                    <div className="pt-0.5 shrink-0">
-                      <input 
-                        type="checkbox" 
-                        checked={ev.selected} 
-                        onChange={(e) => updateEventField(ev._id, "selected", e.target.checked)}
-                        className="w-4 h-4 rounded border-border text-[#5BC0DE] focus:ring-[#5BC0DE] bg-background cursor-pointer"
-                      />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0 pt-0.5">
-                      <h4 className={`text-sm font-semibold truncate ${!ev.selected ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                        {ev.title || labels.newEvent}
-                      </h4>
-                      <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3.5 w-3.5" />
-                          {ev.date || "---"}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          {ev.start_time || ev.time || "---"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button 
-                        onClick={() => setEditingId(isEditing ? null : ev._id)}
-                        className={`h-8 w-8 rounded-xl flex items-center justify-center transition-colors ${
-                          isEditing 
-                            ? 'bg-[#5BC0DE] text-black shadow-sm' 
-                            : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                        }`}
-                        aria-label="Edit event"
-                      >
-                        {isEditing ? <Check className="h-4 w-4" /> : <Edit2 className="h-4 w-4" />}
-                      </button>
-                      
-                      {!isEditing && events.length > 1 && (
-                        <button 
-                          onClick={() => removeEvent(ev._id)}
-                          className="h-8 w-8 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                          aria-label="Delete event"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Expanded Edit Form */}
-                  {isEditing && (
-                    <div className="mt-5 pt-5 border-t border-border/40 space-y-5 animate-in slide-in-from-top-2 fade-in duration-200">
-                      
-                      {/* Title */}
-                      <div className="flex flex-col">
-                        <label className={labelClass}>{labels.title}</label>
-                        <input
-                          type="text"
-                          value={ev.title || ""}
-                          onChange={(e) => updateEventField(ev._id, "title", e.target.value)}
-                          className={inputClass}
-                          placeholder="e.g. Weekly Team Meeting"
-                        />
-                      </div>
-
-                      {/* Date & Start Time */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="flex flex-col min-w-0">
-                          <label className={labelClass}>{labels.date}</label>
-                          <input
-                            type="date"
-                            value={ev.date || ""}
-                            onChange={(e) => updateEventField(ev._id, "date", e.target.value)}
-                            className={inputClass}
-                          />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <label className={labelClass}>{labels.startTime}</label>
-                          <input
-                            type="time"
-                            value={ev.start_time || ev.time || ""}
-                            onChange={(e) => {
-                              updateEventField(ev._id, "start_time", e.target.value)
-                              updateEventField(ev._id, "time", e.target.value)
-                            }}
-                            className={inputClass}
-                          />
-                        </div>
-                      </div>
-
-                      {/* End Time (optional) */}
-                      <div className="flex flex-col min-w-0 w-1/2 pr-1.5">
-                        <label className={labelClass}>{labels.endTime}</label>
-                        <input
-                          type="time"
-                          value={ev.end_time || ""}
-                          onChange={(e) => updateEventField(ev._id, "end_time", e.target.value)}
-                          className={inputClass}
-                        />
-                      </div>
-
-                      {/* Color Picker */}
-                      <div className="flex flex-col col-span-2">
-                        <label className={labelClass}>{labels.color}</label>
-                        <div className="grid grid-cols-5 gap-3 bg-background/50 p-4 rounded-[20px] border border-border/50 justify-items-center">
-                          {availableColors.map(c => (
-                            <button
-                              key={c}
-                              type="button"
-                              onClick={() => updateEventField(ev._id, "color", c)}
-                              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full transition-all duration-300 flex items-center justify-center ${
-                                ev.color === c 
-                                  ? 'scale-110 ring-2 ring-offset-2 ring-offset-background shadow-[0_0_15px_rgba(255,255,255,0.15)]' 
-                                  : 'hover:scale-110 opacity-70 hover:opacity-100 shadow-sm hover:shadow-md'
-                              }`}
-                              style={{ backgroundColor: c, '--tw-ring-color': c } as React.CSSProperties}
-                              aria-label={`Select color ${c}`}
-                            >
-                              {ev.color === c && (
-                                <div className="w-2.5 h-2.5 rounded-full bg-white/90 shadow-sm" />
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Recurrence & Reminder */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="flex flex-col min-w-0">
-                          <label className={labelClass}>{labels.recurrence}</label>
-                          <select 
-                            value={ev.recurrence_rule || ""} 
-                            onChange={(e) => updateEventField(ev._id, "recurrence_rule", e.target.value)}
-                            className={inputClass}>
-                            <option value="">{language === "ar" ? "بدون تكرار" : language === "fr" ? "Jamais" : "Never"}</option>
-                            <option value="FREQ=DAILY">{language === "ar" ? "يومياً" : language === "fr" ? "Quotidien" : "Daily"}</option>
-                            <option value="FREQ=WEEKLY">{language === "ar" ? "أسبوعياً" : language === "fr" ? "Hebdomadaire" : "Weekly"}</option>
-                            <option value="FREQ=MONTHLY">{language === "ar" ? "شهرياً" : language === "fr" ? "Mensuel" : "Monthly"}</option>
-                          </select>
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <label className={labelClass}>{labels.reminder}</label>
-                          <select 
-                            value={ev.reminders && ev.reminders.length > 0 ? String(ev.reminders[0].minutes_before) : ""} 
-                            onChange={(e) => updateEventField(ev._id, "reminders", e.target.value ? [{minutes_before: parseInt(e.target.value)}] : [])}
-                            className={inputClass}>
-                            <option value="">{language === "ar" ? "بدون تذكير" : language === "fr" ? "Aucun" : "None"}</option>
-                            <option value="0">{language === "ar" ? "في وقت الحدث" : language === "fr" ? "A l'heure" : "At time of event"}</option>
-                            <option value="10">{language === "ar" ? "قبل 10 دقائق" : language === "fr" ? "10 min avant" : "10 min before"}</option>
-                            <option value="30">{language === "ar" ? "قبل 30 دقيقة" : language === "fr" ? "30 min avant" : "30 min before"}</option>
-                            <option value="60">{language === "ar" ? "قبل ساعة" : language === "fr" ? "1 heure avant" : "1 hour before"}</option>
-                            <option value="1440">{language === "ar" ? "قبل يوم" : language === "fr" ? "1 jour avant" : "1 day before"}</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Phone & Location */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="flex flex-col">
-                          <label className={labelClass}>{labels.phone}</label>
-                          <input
-                            type="tel"
-                            value={ev.phone || ""}
-                            onChange={(e) => updateEventField(ev._id, "phone", e.target.value)}
-                            className={inputClass}
-                            placeholder="e.g. +1 555 0123"
-                          />
-                        </div>
-                        <div className="flex flex-col">
-                          <label className={labelClass}>{labels.location}</label>
-                          <input
-                            type="text"
-                            value={ev.location || ""}
-                            onChange={(e) => updateEventField(ev._id, "location", e.target.value)}
-                            className={inputClass}
-                            placeholder="Location"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Notes */}
-                      <div className="flex flex-col">
-                        <label className={labelClass}>{labels.notes}</label>
-                        <textarea
-                          value={ev.notes || ""}
-                          onChange={(e) => updateEventField(ev._id, "notes", e.target.value)}
-                          rows={2}
-                          className={`${inputClass} resize-none`}
-                          placeholder="Add any extra details..."
-                        />
-                      </div>
-                      
-                      <button
-                        type="button"
-                        onClick={() => setEditingId(null)}
-                        className="w-full mt-2 rounded-[15px] bg-secondary/80 py-3 text-sm font-semibold text-foreground hover:bg-secondary transition-colors"
-                      >
-                        {language === "ar" ? "تم التعديل" : language === "fr" ? "Terminé" : "Done"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )
-            })
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-bold text-foreground tracking-tight">
+                  {labels.headerPhoto}
+                </h3>
+                <span className="bg-[#5BC0DE]/20 text-[#5BC0DE] text-xs font-bold px-2.5 py-0.5 rounded-full">
+                  {events.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="h-9 w-9 rounded-full bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           )}
         </div>
 
-        {/* Bottom Actions */}
-        <div className="pt-2 shrink-0 border-t border-border/30 mt-2">
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={selectedCount === 0 || isSaving}
-            className="w-full rounded-[20px] py-4 text-base font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-[#5BC0DE] text-black hover:bg-[#5BC0DE]/90 shadow-md flex justify-center items-center"
-          >
-            {isSaving ? (
-              <span className="h-5 w-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-            ) : (
-              labels.confirmAll
-            )}
-          </button>
+        {/* Main Scrollable Area */}
+        <div className="overflow-y-auto pr-1 -mr-1 flex-1 pb-4">
+          
+          {editingEvent ? (
+            /* ================= EDIT VIEW ================= */
+            <div className="space-y-5 px-1 pb-6 animate-in slide-in-from-right-4 duration-300">
+              
+              {/* Title */}
+              <div className="flex flex-col">
+                <label className={labelClass}>{labels.title}</label>
+                <input
+                  type="text"
+                  value={editingEvent.title || ""}
+                  onChange={(e) => updateEventField(editingEvent._id, "title", e.target.value)}
+                  className={inputClass}
+                  placeholder="e.g. Weekly Team Meeting"
+                />
+              </div>
+
+              {/* Date & Start Time */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col min-w-0">
+                  <label className={labelClass}>{labels.date}</label>
+                  <input
+                    type="date"
+                    value={editingEvent.date || ""}
+                    onChange={(e) => updateEventField(editingEvent._id, "date", e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <label className={labelClass}>{labels.startTime}</label>
+                  <input
+                    type="time"
+                    value={editingEvent.start_time || editingEvent.time || ""}
+                    onChange={(e) => {
+                      updateEventField(editingEvent._id, "start_time", e.target.value)
+                      updateEventField(editingEvent._id, "time", e.target.value)
+                    }}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              {/* End Time (optional) */}
+              <div className="flex flex-col min-w-0 w-1/2 pr-1.5">
+                <label className={labelClass}>{labels.endTime}</label>
+                <input
+                  type="time"
+                  value={editingEvent.end_time || ""}
+                  onChange={(e) => updateEventField(editingEvent._id, "end_time", e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+
+              {/* Color Picker */}
+              <div className="flex flex-col">
+                <label className={labelClass}>{labels.color}</label>
+                <div className="grid grid-cols-5 gap-3 bg-background/50 p-4 rounded-[20px] border border-border/50 justify-items-center">
+                  {availableColors.map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => updateEventField(editingEvent._id, "color", c)}
+                      className={`w-10 h-10 rounded-full transition-all duration-300 flex items-center justify-center ${
+                        editingEvent.color === c 
+                          ? 'scale-110 ring-2 ring-offset-2 ring-offset-background shadow-[0_0_15px_rgba(255,255,255,0.15)]' 
+                          : 'hover:scale-110 opacity-70 hover:opacity-100 shadow-sm hover:shadow-md'
+                      }`}
+                      style={{ backgroundColor: c, '--tw-ring-color': c } as React.CSSProperties}
+                      aria-label={`Select color ${c}`}
+                    >
+                      {editingEvent.color === c && (
+                        <div className="w-2.5 h-2.5 rounded-full bg-white/90 shadow-sm" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Recurrence & Reminder */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col min-w-0">
+                  <label className={labelClass}>{labels.recurrence}</label>
+                  <select 
+                    value={editingEvent.recurrence_rule || ""} 
+                    onChange={(e) => updateEventField(editingEvent._id, "recurrence_rule", e.target.value)}
+                    className={inputClass}>
+                    <option value="">{language === "ar" ? "بدون تكرار" : language === "fr" ? "Jamais" : "Never"}</option>
+                    <option value="FREQ=DAILY">{language === "ar" ? "يومياً" : language === "fr" ? "Quotidien" : "Daily"}</option>
+                    <option value="FREQ=WEEKLY">{language === "ar" ? "أسبوعياً" : language === "fr" ? "Hebdomadaire" : "Weekly"}</option>
+                    <option value="FREQ=MONTHLY">{language === "ar" ? "شهرياً" : language === "fr" ? "Mensuel" : "Monthly"}</option>
+                  </select>
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <label className={labelClass}>{labels.reminder}</label>
+                  <select 
+                    value={editingEvent.reminders && editingEvent.reminders.length > 0 ? String(editingEvent.reminders[0].minutes_before) : ""} 
+                    onChange={(e) => updateEventField(editingEvent._id, "reminders", e.target.value ? [{minutes_before: parseInt(e.target.value)}] : [])}
+                    className={inputClass}>
+                    <option value="">{language === "ar" ? "بدون تذكير" : language === "fr" ? "Aucun" : "None"}</option>
+                    <option value="0">{language === "ar" ? "في وقت الحدث" : language === "fr" ? "A l'heure" : "At time of event"}</option>
+                    <option value="10">{language === "ar" ? "قبل 10 دقائق" : language === "fr" ? "10 min avant" : "10 min before"}</option>
+                    <option value="30">{language === "ar" ? "قبل 30 دقيقة" : language === "fr" ? "30 min avant" : "30 min before"}</option>
+                    <option value="60">{language === "ar" ? "قبل ساعة" : language === "fr" ? "1 heure avant" : "1 hour before"}</option>
+                    <option value="1440">{language === "ar" ? "قبل يوم" : language === "fr" ? "1 jour avant" : "1 day before"}</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Phone & Location */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col">
+                  <label className={labelClass}>{labels.phone}</label>
+                  <input
+                    type="tel"
+                    value={editingEvent.phone || ""}
+                    onChange={(e) => updateEventField(editingEvent._id, "phone", e.target.value)}
+                    className={inputClass}
+                    placeholder="e.g. +1 555 0123"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className={labelClass}>{labels.location}</label>
+                  <input
+                    type="text"
+                    value={editingEvent.location || ""}
+                    onChange={(e) => updateEventField(editingEvent._id, "location", e.target.value)}
+                    className={inputClass}
+                    placeholder="Location"
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="flex flex-col">
+                <label className={labelClass}>{labels.notes}</label>
+                <textarea
+                  value={editingEvent.notes || ""}
+                  onChange={(e) => updateEventField(editingEvent._id, "notes", e.target.value)}
+                  rows={2}
+                  className={`${inputClass} resize-none`}
+                  placeholder="Add any extra details..."
+                />
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => setEditingId(null)}
+                className="w-full mt-4 rounded-[20px] bg-secondary/80 py-4 text-base font-bold text-foreground hover:bg-secondary transition-colors"
+              >
+                {labels.done}
+              </button>
+            </div>
+          ) : (
+            /* ================= LIST VIEW ================= */
+            <div className="space-y-3 px-1 animate-in fade-in duration-300">
+              {events.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground text-sm">
+                  {labels.empty}
+                </div>
+              ) : (
+                events.map((ev) => (
+                  <div 
+                    key={ev._id} 
+                    className={`relative rounded-[20px] p-4 transition-all duration-200 border ${
+                      ev.selected 
+                        ? 'bg-secondary/20 border-border/60 hover:border-border' 
+                        : 'bg-background/50 border-border/30 opacity-70'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="pt-0.5 shrink-0">
+                        <input 
+                          type="checkbox" 
+                          checked={ev.selected} 
+                          onChange={(e) => updateEventField(ev._id, "selected", e.target.checked)}
+                          className="w-5 h-5 rounded border-border text-[#5BC0DE] focus:ring-[#5BC0DE] bg-background cursor-pointer accent-[#5BC0DE]"
+                        />
+                      </div>
+                      
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <h4 className={`text-base font-semibold truncate ${!ev.selected ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                          {ev.title || labels.newEvent}
+                        </h4>
+                        <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5 opacity-70" />
+                            {ev.date || "---"}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5 opacity-70" />
+                            {ev.start_time || ev.time || "---"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-center gap-2 shrink-0">
+                        <button 
+                          onClick={() => setEditingId(ev._id)}
+                          className="h-8 w-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                          aria-label="Edit event"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        
+                        {events.length > 1 && (
+                          <button 
+                            onClick={() => removeEvent(ev._id)}
+                            className="h-8 w-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                            aria-label="Delete event"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Footer Actions (Only show in List View) */}
+        {!editingEvent && (
+          <div className="pt-3 shrink-0 border-t border-border/30 mt-2 animate-in fade-in duration-300">
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={selectedCount === 0 || isSaving}
+              className="w-full rounded-[20px] py-4 text-base font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-[#5BC0DE] text-black hover:bg-[#5BC0DE]/90 shadow-lg flex justify-center items-center"
+            >
+              {isSaving ? (
+                <span className="h-5 w-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+              ) : (
+                labels.confirmAll
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
