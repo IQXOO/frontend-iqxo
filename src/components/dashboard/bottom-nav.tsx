@@ -731,6 +731,17 @@ export const BottomNav = memo(function BottomNav({
   const menuOpen = composerOpen ?? internalMenuOpen;
   const setMenuOpen = onComposerOpenChange ?? setInternalMenuOpen;
 
+  const hiddenFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      onUploadClick({ autoOpenPicker: false, files });
+    }
+    // Reset so the same file can be selected again
+    e.target.value = "";
+  }, [onUploadClick]);
+
   // Stop the camera stream and hide the preview overlay
   const stopCameraStream = useCallback(() => {
     if (cameraStream) {
@@ -778,34 +789,26 @@ export const BottomNav = memo(function BottomNav({
         })
         .catch(() => {
           // Fallback: regular file input
-          const input = document.createElement("input");
-          input.type = "file";
-          input.accept = "image/*";
-          input.onchange = (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (file) onUploadClick({ autoOpenPicker: false, file });
-          };
-          input.click();
+          if (hiddenFileInputRef.current) {
+            hiddenFileInputRef.current.multiple = true;
+            hiddenFileInputRef.current.removeAttribute("capture");
+            hiddenFileInputRef.current.click();
+          }
         });
       return;
     }
 
     // Standard browser / gallery flow
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*,application/pdf";
-    if (capture) {
-      input.setAttribute("capture", capture);
-    } else {
-      input.multiple = true;
-    }
-    input.onchange = (e) => {
-      const files = Array.from((e.target as HTMLInputElement).files || []);
-      if (files.length > 0) {
-        onUploadClick({ autoOpenPicker: false, files });
+    if (hiddenFileInputRef.current) {
+      if (capture) {
+        hiddenFileInputRef.current.removeAttribute("multiple");
+        hiddenFileInputRef.current.setAttribute("capture", capture);
+      } else {
+        hiddenFileInputRef.current.removeAttribute("capture");
+        hiddenFileInputRef.current.multiple = true;
       }
-    };
-    input.click();
+      hiddenFileInputRef.current.click();
+    }
   };
 
   const handleManualEvent = () => {
@@ -981,6 +984,14 @@ export const BottomNav = memo(function BottomNav({
 
   return (
     <>
+      {/* Hidden file input strictly attached to the DOM for iOS Safari bug workaround */}
+      <input
+        ref={hiddenFileInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        className="hidden"
+        onChange={handleFileChange}
+      />
       {/* Action Sheet */}
       <AnimatePresence>
         {menuOpen && (

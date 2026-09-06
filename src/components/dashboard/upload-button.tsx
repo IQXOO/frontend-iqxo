@@ -125,7 +125,7 @@ export function UploadButton({
   }, [externalOpen])
 
   const processFiles = useCallback(async (files: File[]) => {
-    const validFiles = files.filter(f => ACCEPTED_TYPES.includes(f.type) && f.size <= MAX_SIZE)
+    const validFiles = files.filter(f => (f.type.startsWith("image/") || f.type === "application/pdf") && f.size <= MAX_SIZE)
     
     if (validFiles.length !== files.length) {
        toast({
