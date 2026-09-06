@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useApp } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
+import { exportEventsToPDF } from "@/lib/export-pdf"
 import { SmartActionsCard } from "./smart-actions-card"
 import { lazyNamed } from "@/lib/lazy"
 import { compressAvatar } from "@/lib/compress-image"
@@ -549,8 +550,7 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
           </div>
         </div>
         <motion.button
-          onClick={async () => {
-            const { exportEventsToPDF } = await import("@/lib/export-pdf");
+          onClick={() => {
             exportEventsToPDF(events, user?.email);
           }}
           whileHover={{ scale: 1.02 }}

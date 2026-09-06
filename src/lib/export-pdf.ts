@@ -28,20 +28,38 @@ export async function exportEventsToPDF(events: IQXOEvent[], userName: string | 
     return
   }
 
-  // ── Web browser: open in new window and trigger print dialog ─────────────────
-  const printWindow = window.open("", "", "height=600,width=800")
-  if (!printWindow) {
-    console.error("Could not open print window")
+  // ── Web browser: use a hidden iframe to print without popup blockers ──────────
+  const iframe = document.createElement("iframe")
+  iframe.style.position = "absolute"
+  iframe.style.left = "-9999px"
+  iframe.style.top = "-9999px"
+  iframe.style.width = "100%"
+  iframe.style.height = "100%"
+  iframe.style.opacity = "0"
+  iframe.style.pointerEvents = "none"
+  document.body.appendChild(iframe)
+
+  const iframeDoc = iframe.contentWindow?.document
+  if (!iframeDoc) {
+    console.error("Could not access iframe document")
     return
   }
 
-  printWindow.document.write(doc)
-  printWindow.document.close()
+  iframeDoc.open()
+  iframeDoc.write(doc)
+  iframeDoc.close()
 
+  if (iframe.contentWindow) {
+    iframe.contentWindow.focus()
+    iframe.contentWindow.print()
+  }
+
+  // Clean up after print dialog closes (give it some time)
   setTimeout(() => {
-    printWindow.focus()
-    printWindow.print()
-  }, 250)
+    if (document.body.contains(iframe)) {
+      document.body.removeChild(iframe)
+    }
+  }, 10000)
 }
 
 function createPDFContent(events: IQXOEvent[], userName: string | undefined): string {
