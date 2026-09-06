@@ -28,26 +28,11 @@ export async function exportEventsToPDF(events: IQXOEvent[], userName: string | 
     return
   }
 
-  // ── Web browser: open in new tab and trigger print dialog ─────────────────
-  const printWindow = window.open("", "_blank")
-  if (!printWindow) {
-    console.error("Could not open print window. Popup blocker might be enabled.")
-    // Fallback: overwrite current document if popup is completely blocked
-    document.write(doc)
-    document.close()
-    setTimeout(() => window.print(), 500)
-    return
-  }
-
-  printWindow.document.open()
-  printWindow.document.write(doc)
-  printWindow.document.close()
-
-  // Wait for images/styles to load before printing
-  setTimeout(() => {
-    printWindow.focus()
-    printWindow.print()
-  }, 500)
+  // ── Web browser: Overwrite current tab as requested by user ─────────────────
+  document.open()
+  document.write(doc)
+  document.close()
+  window.scrollTo(0, 0)
 }
 
 function createPDFContent(events: IQXOEvent[], userName: string | undefined): string {
@@ -253,10 +238,43 @@ function createPDFContent(events: IQXOEvent[], userName: string | undefined): st
           .section {
             page-break-inside: avoid;
           }
+          .no-print {
+            display: none !important;
+          }
+        }
+        
+        .download-btn {
+          display: block;
+          width: 100%;
+          max-width: 300px;
+          margin: 0 auto 30px auto;
+          background: #3b82f6;
+          color: white;
+          text-align: center;
+          padding: 14px 20px;
+          border-radius: 12px;
+          text-decoration: none;
+          font-size: 16px;
+          font-weight: bold;
+          border: none;
+          cursor: pointer;
+          box-shadow: 0 4px 6px rgba(59, 130, 246, 0.25);
+        }
+        .download-btn:active {
+          transform: scale(0.98);
         }
       </style>
     </head>
     <body>
+      <div class="no-print" style="display: flex; gap: 10px; max-width: 400px; margin: 0 auto 30px auto;">
+        <button onclick="window.print()" class="download-btn" style="margin: 0; flex: 1;">
+          ⬇ Download PDF (حفظ)
+        </button>
+        <button onclick="window.location.reload()" class="download-btn" style="margin: 0; flex: 1; background: #64748b;">
+          ⬅ Back (العودة)
+        </button>
+      </div>
+      
       <div class="header">
         <div>
           <h1 dir="auto">📋 IQXO Event Summary</h1>
