@@ -28,38 +28,26 @@ export async function exportEventsToPDF(events: IQXOEvent[], userName: string | 
     return
   }
 
-  // ── Web browser: use a hidden iframe to print without popup blockers ──────────
-  const iframe = document.createElement("iframe")
-  iframe.style.position = "absolute"
-  iframe.style.left = "-9999px"
-  iframe.style.top = "-9999px"
-  iframe.style.width = "100%"
-  iframe.style.height = "100%"
-  iframe.style.opacity = "0"
-  iframe.style.pointerEvents = "none"
-  document.body.appendChild(iframe)
-
-  const iframeDoc = iframe.contentWindow?.document
-  if (!iframeDoc) {
-    console.error("Could not access iframe document")
+  // ── Web browser: open in new tab and trigger print dialog ─────────────────
+  const printWindow = window.open("", "_blank")
+  if (!printWindow) {
+    console.error("Could not open print window. Popup blocker might be enabled.")
+    // Fallback: overwrite current document if popup is completely blocked
+    document.write(doc)
+    document.close()
+    setTimeout(() => window.print(), 500)
     return
   }
 
-  iframeDoc.open()
-  iframeDoc.write(doc)
-  iframeDoc.close()
+  printWindow.document.open()
+  printWindow.document.write(doc)
+  printWindow.document.close()
 
-  if (iframe.contentWindow) {
-    iframe.contentWindow.focus()
-    iframe.contentWindow.print()
-  }
-
-  // Clean up after print dialog closes (give it some time)
+  // Wait for images/styles to load before printing
   setTimeout(() => {
-    if (document.body.contains(iframe)) {
-      document.body.removeChild(iframe)
-    }
-  }, 10000)
+    printWindow.focus()
+    printWindow.print()
+  }, 500)
 }
 
 function createPDFContent(events: IQXOEvent[], userName: string | undefined): string {
