@@ -4,29 +4,7 @@ export async function exportEventsToPDF(events: IQXOEvent[], userName: string | 
   const safeEvents = Array.isArray(events) ? events : []
   const doc = createPDFContent(safeEvents, userName)
 
-  // ── Native App (React Native WebView) ────────────────────────────────────────
-  // Send HTML content via postMessage to native app, which renders it via expo-print
-  const isNativeApp =
-    typeof window !== "undefined" &&
-    ((window as any).isNativeApp === true || (window as any).__IQXO_IS_NATIVE === true)
-
-  if (isNativeApp) {
-    try {
-      const postFn = (window as any).__IQXO_postMessage || (window as any).ReactNativeWebView?.postMessage
-      if (typeof postFn === "function") {
-        postFn(
-          JSON.stringify({
-            type: "exportPDF",
-            html: doc,
-            title: "IQXO – Event Summary",
-          })
-        )
-      }
-    } catch (err) {
-      console.error("Native export postMessage failed:", err)
-    }
-    return
-  }
+  // The preview page will be rendered universally. Native bridges are handled inside the HTML.
 
   // ── Web browser: Overwrite current tab as requested by user ─────────────────
   document.open()
@@ -264,10 +242,26 @@ function createPDFContent(events: IQXOEvent[], userName: string | undefined): st
           transform: scale(0.98);
         }
       </style>
+      <script>
+        function handleDownload() {
+          var isNativeApp = window.isNativeApp === true || window.__IQXO_IS_NATIVE === true || (typeof window.ReactNativeWebView !== "undefined");
+          var postFn = window.__IQXO_postMessage || (window.ReactNativeWebView && window.ReactNativeWebView.postMessage);
+          
+          if (isNativeApp && typeof postFn === "function") {
+            postFn(JSON.stringify({
+              type: "exportPDF",
+              html: document.documentElement.outerHTML,
+              title: "IQXO - Event Summary"
+            }));
+          } else {
+            window.print();
+          }
+        }
+      </script>
     </head>
     <body>
       <div class="no-print" style="display: flex; gap: 10px; max-width: 400px; margin: 0 auto 30px auto;">
-        <button onclick="window.print()" class="download-btn" style="margin: 0; flex: 1;">
+        <button onclick="handleDownload()" class="download-btn" style="margin: 0; flex: 1;">
           ⬇ Download PDF (حفظ)
         </button>
         <button onclick="window.location.reload()" class="download-btn" style="margin: 0; flex: 1; background: #64748b;">
