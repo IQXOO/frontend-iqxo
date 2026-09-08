@@ -242,20 +242,29 @@ function createPDFContent(events: IQXOEvent[], userName: string | undefined): st
           transform: scale(0.98);
         }
       </style>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
       <script>
         function handleDownload() {
-          var isNativeApp = window.isNativeApp === true || window.__IQXO_IS_NATIVE === true || (typeof window.ReactNativeWebView !== "undefined");
-          var postFn = window.__IQXO_postMessage || (window.ReactNativeWebView && window.ReactNativeWebView.postMessage);
+          // Hide the buttons so they don't appear in the PDF
+          var buttons = document.querySelector('.no-print');
+          buttons.style.display = 'none';
           
-          if (isNativeApp && typeof postFn === "function") {
-            postFn(JSON.stringify({
-              type: "exportPDF",
-              html: document.documentElement.outerHTML,
-              title: "IQXO - Event Summary"
-            }));
-          } else {
-            window.print();
-          }
+          var element = document.body;
+          var opt = {
+            margin:       10,
+            filename:     'IQXO_Report.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+          };
+          
+          html2pdf().set(opt).from(element).save().then(function() {
+            // Restore buttons after PDF is generated
+            buttons.style.display = 'flex';
+          }).catch(function(err) {
+            buttons.style.display = 'flex';
+            alert("حدث خطأ أثناء تحميل الملف.");
+          });
         }
       </script>
     </head>
