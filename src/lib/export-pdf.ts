@@ -18,6 +18,26 @@ export async function exportEventsToPDF(events: IQXOEvent[], userName: string | 
   iframe.style.border = "none"
   iframe.style.backgroundColor = "white"
   
+  // Listen for messages from the iframe
+  const messageHandler = (e: MessageEvent) => {
+    if (e.data && e.data.type === 'trigger_native_download') {
+      const isNativeApp =
+        typeof window !== "undefined" &&
+        ((window as any).isNativeApp === true || (window as any).__IQXO_IS_NATIVE === true || typeof (window as any).ReactNativeWebView !== "undefined");
+      
+      if (isNativeApp) {
+        const postFn = (window as any).__IQXO_postMessage || (window as any).ReactNativeWebView?.postMessage;
+        if (typeof postFn === "function") {
+          postFn(JSON.stringify({ type: "exportPDF", html: doc, title: "IQXO - Event Summary" }));
+        }
+      }
+    } else if (e.data && e.data.type === 'trigger_close') {
+      window.removeEventListener('message', messageHandler);
+      document.getElementById("iqxo-pdf-preview-iframe")?.remove();
+    }
+  };
+  window.addEventListener('message', messageHandler);
+  
   // Remove existing if any
   const existing = document.getElementById("iqxo-pdf-preview-iframe")
   if (existing) existing.remove()
@@ -264,64 +284,66 @@ function createPDFContent(events: IQXOEvent[], userName: string | undefined): st
       <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
       <script>
         function handleDownload() {
-          var isNativeApp = window.parent.isNativeApp === true || window.parent.__IQXO_IS_NATIVE === true || (typeof window.parent.ReactNativeWebView !== "undefined");
-          var postFn = window.parent.__IQXO_postMessage || (window.parent.ReactNativeWebView && window.parent.ReactNativeWebView.postMessage);
+          // Tell parent window to attempt native download first
+          window.parent.postMessage({ type: 'trigger_native_download' }, '*');
           
-          if (isNativeApp && typeof postFn === "function") {
-            postFn(JSON.stringify({ type: "exportPDF", html: document.documentElement.outerHTML, title: "IQXO - Event Summary" }));
-            return;
-          }
+          // Wait 300ms to see if parent handled it (if it's a native app). 
+          // If we are on web, parent will do nothing, so we proceed with html2pdf.
+          setTimeout(function() {
+            var isNativeApp = window.parent.isNativeApp === true || window.parent.__IQXO_IS_NATIVE === true || (typeof window.parent.ReactNativeWebView !== "undefined");
+            if (isNativeApp) return; // Parent handled it
 
-          var buttons = document.querySelector('.no-print');
-          buttons.style.display = 'none';
-          
-          try {
-            if (typeof html2pdf === 'undefined') {
-              throw new Error("PDF Engine not loaded from CDN");
-            }
+            var buttons = document.querySelector('.no-print');
+            buttons.style.display = 'none';
             
-            var element = document.body;
-            var opt = {
-              margin:       10,
-              filename:     'IQXO_Report.pdf',
-              image:        { type: 'jpeg', quality: 0.98 },
-              html2canvas:  { scale: 2, useCORS: true, logging: false },
-              jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-            
-            html2pdf().set(opt).from(element).output('blob').then(function(pdfBlob) {
-              buttons.style.display = 'flex';
-              
-              var file = new File([pdfBlob], "IQXO_Report.pdf", { type: 'application/pdf' });
-              var canShareFile = false;
-              
-              if (navigator.canShare) {
-                canShareFile = navigator.canShare({ files: [file] });
-              } else if (navigator.share) {
-                canShareFile = true;
+            try {
+              if (typeof html2pdf === 'undefined') {
+                throw new Error("PDF Engine not loaded from CDN");
               }
               
-              if (canShareFile) {
-                navigator.share({
-                  files: [file],
-                  title: 'IQXO Event Summary'
-                }).catch(function(err) {
-                  console.error("Share failed", err);
+              var element = document.body;
+              var opt = {
+                margin:       10,
+                filename:     'IQXO_Report.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+              };
+              
+              html2pdf().set(opt).from(element).output('blob').then(function(pdfBlob) {
+                buttons.style.display = 'flex';
+                
+                var file = new File([pdfBlob], "IQXO_Report.pdf", { type: 'application/pdf' });
+                var canShareFile = false;
+                
+                if (navigator.canShare) {
+                  canShareFile = navigator.canShare({ files: [file] });
+                } else if (navigator.share) {
+                  canShareFile = true;
+                }
+                
+                if (canShareFile) {
+                  navigator.share({
+                    files: [file],
+                    title: 'IQXO Event Summary'
+                  }).catch(function(err) {
+                    console.error("Share failed", err);
+                    fallbackDownload(pdfBlob);
+                  });
+                } else {
                   fallbackDownload(pdfBlob);
-                });
-              } else {
-                fallbackDownload(pdfBlob);
-              }
-            }).catch(function(err) {
+                }
+              }).catch(function(err) {
+                buttons.style.display = 'flex';
+                console.error("PDF generation failed", err);
+                window.print();
+              });
+            } catch (e) {
               buttons.style.display = 'flex';
-              console.error("PDF generation failed", err);
+              console.error(e);
               window.print();
-            });
-          } catch (e) {
-            buttons.style.display = 'flex';
-            console.error(e);
-            window.print();
-          }
+            }
+          }, 300);
         }
         
         function fallbackDownload(blob) {
@@ -340,12 +362,7 @@ function createPDFContent(events: IQXOEvent[], userName: string | undefined): st
         }
         
         function closePreview() {
-          var iframe = window.parent.document.getElementById('iqxo-pdf-preview-iframe');
-          if (iframe) {
-            iframe.remove();
-          } else {
-            window.parent.location.reload();
-          }
+          window.parent.postMessage({ type: 'trigger_close' }, '*');
         }
       </script>
     </head>
