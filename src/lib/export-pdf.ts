@@ -245,6 +245,14 @@ function createPDFContent(events: IQXOEvent[], userName: string | undefined): st
       <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
       <script>
         function handleDownload() {
+          var isNativeApp = window.isNativeApp === true || window.__IQXO_IS_NATIVE === true || (typeof window.ReactNativeWebView !== "undefined");
+          var postFn = window.__IQXO_postMessage || (window.ReactNativeWebView && window.ReactNativeWebView.postMessage);
+          
+          if (isNativeApp && typeof postFn === "function") {
+            postFn(JSON.stringify({ type: "exportPDF", html: document.documentElement.outerHTML, title: "IQXO - Event Summary" }));
+            return;
+          }
+
           var buttons = document.querySelector('.no-print');
           buttons.style.display = 'none';
           
@@ -288,12 +296,12 @@ function createPDFContent(events: IQXOEvent[], userName: string | undefined): st
             }).catch(function(err) {
               buttons.style.display = 'flex';
               console.error("PDF generation failed", err);
-              fallbackPrint();
+              window.print();
             });
           } catch (e) {
             buttons.style.display = 'flex';
             console.error(e);
-            fallbackPrint();
+            window.print();
           }
         }
         
@@ -308,18 +316,8 @@ function createPDFContent(events: IQXOEvent[], userName: string | undefined): st
             document.body.removeChild(a);
             setTimeout(function() { URL.revokeObjectURL(blobUrl); }, 100);
           } catch (e) {
-            fallbackPrint();
+            window.print();
           }
-        }
-        
-        function fallbackPrint() {
-           var isNativeApp = window.isNativeApp === true || window.__IQXO_IS_NATIVE === true || (typeof window.ReactNativeWebView !== "undefined");
-           var postFn = window.__IQXO_postMessage || (window.ReactNativeWebView && window.ReactNativeWebView.postMessage);
-           if (isNativeApp && typeof postFn === "function") {
-             postFn(JSON.stringify({ type: "exportPDF", html: document.documentElement.outerHTML, title: "IQXO - Event Summary" }));
-           } else {
-             window.print();
-           }
         }
       </script>
     </head>
