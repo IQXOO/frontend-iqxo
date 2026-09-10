@@ -551,7 +551,14 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
         </div>
         <motion.button
           onClick={() => {
-            exportEventsToPDF(events, user?.email);
+            try {
+              console.log("[Export] Button clicked, events:", events?.length)
+              exportEventsToPDF(events, user?.email)
+              console.log("[Export] Function called successfully")
+            } catch (err) {
+              console.error("[Export] Error:", err)
+              alert("Export error: " + err)
+            }
           }}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
