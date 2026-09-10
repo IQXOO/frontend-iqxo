@@ -6,11 +6,30 @@ export async function exportEventsToPDF(events: IQXOEvent[], userName: string | 
 
   // The preview page will be rendered universally. Native bridges are handled inside the HTML.
 
-  // ── Web browser: Overwrite current tab as requested by user ─────────────────
-  document.open()
-  document.write(doc)
-  document.close()
-  window.scrollTo(0, 0)
+  // ── Web browser & Native Apps: Use a full-screen iframe to preserve app state and native bridges ──
+  const iframe = document.createElement("iframe")
+  iframe.id = "iqxo-pdf-preview-iframe"
+  iframe.style.position = "fixed"
+  iframe.style.top = "0"
+  iframe.style.left = "0"
+  iframe.style.width = "100%"
+  iframe.style.height = "100%"
+  iframe.style.zIndex = "9999999"
+  iframe.style.border = "none"
+  iframe.style.backgroundColor = "white"
+  
+  // Remove existing if any
+  const existing = document.getElementById("iqxo-pdf-preview-iframe")
+  if (existing) existing.remove()
+  
+  document.body.appendChild(iframe)
+
+  const iframeDoc = iframe.contentWindow?.document
+  if (iframeDoc) {
+    iframeDoc.open()
+    iframeDoc.write(doc)
+    iframeDoc.close()
+  }
 }
 
 function createPDFContent(events: IQXOEvent[], userName: string | undefined): string {
@@ -245,8 +264,8 @@ function createPDFContent(events: IQXOEvent[], userName: string | undefined): st
       <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
       <script>
         function handleDownload() {
-          var isNativeApp = window.isNativeApp === true || window.__IQXO_IS_NATIVE === true || (typeof window.ReactNativeWebView !== "undefined");
-          var postFn = window.__IQXO_postMessage || (window.ReactNativeWebView && window.ReactNativeWebView.postMessage);
+          var isNativeApp = window.parent.isNativeApp === true || window.parent.__IQXO_IS_NATIVE === true || (typeof window.parent.ReactNativeWebView !== "undefined");
+          var postFn = window.parent.__IQXO_postMessage || (window.parent.ReactNativeWebView && window.parent.ReactNativeWebView.postMessage);
           
           if (isNativeApp && typeof postFn === "function") {
             postFn(JSON.stringify({ type: "exportPDF", html: document.documentElement.outerHTML, title: "IQXO - Event Summary" }));
@@ -319,6 +338,15 @@ function createPDFContent(events: IQXOEvent[], userName: string | undefined): st
             window.print();
           }
         }
+        
+        function closePreview() {
+          var iframe = window.parent.document.getElementById('iqxo-pdf-preview-iframe');
+          if (iframe) {
+            iframe.remove();
+          } else {
+            window.parent.location.reload();
+          }
+        }
       </script>
     </head>
     <body>
@@ -326,7 +354,7 @@ function createPDFContent(events: IQXOEvent[], userName: string | undefined): st
         <button onclick="handleDownload()" class="download-btn" style="margin: 0; flex: 1;">
           ⬇ Download PDF (حفظ)
         </button>
-        <button onclick="window.location.reload()" class="download-btn" style="margin: 0; flex: 1; background: #64748b;">
+        <button onclick="closePreview()" class="download-btn" style="margin: 0; flex: 1; background: #64748b;">
           ⬅ Back (العودة)
         </button>
       </div>
