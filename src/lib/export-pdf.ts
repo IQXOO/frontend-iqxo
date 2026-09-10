@@ -1,44 +1,31 @@
 import type { IQXOEvent } from "./types"
 
 export function exportEventsToPDF(events: IQXOEvent[], userName: string | undefined) {
-  const safeEvents = Array.isArray(events) ? events : []
-  const doc = createPDFContent(safeEvents, userName)
-
-  // ── CRITICAL: Detect native app on the MAIN window BEFORE touching the DOM ───
-  // App.tsx injects __IQXO_IS_NATIVE and __IQXO_postMessage on THIS window.
-  // Iframes have a completely separate window context — they CANNOT see these flags.
-  const isNativeApp =
-    typeof window !== "undefined" &&
-    ((window as any).isNativeApp === true ||
-      (window as any).__IQXO_IS_NATIVE === true ||
-      typeof (window as any).ReactNativeWebView !== "undefined")
-
-  if (isNativeApp) {
-    // ── Native App (iOS / Android) ───────────────────────────────────────────
-    // Call bridge directly from this window — the bridge does NOT exist in iframes.
-    const postFn =
-      (window as any).__IQXO_postMessage ||
-      (window as any).ReactNativeWebView?.postMessage
-    if (typeof postFn === "function") {
-      postFn(JSON.stringify({ type: "exportPDF", html: doc, title: "IQXO – Event Summary" }))
-    }
-    return
-  }
-
-  // ── Web Browser: Navigate current tab to a Blob URL ─────────────────────────
-  // Most reliable approach: no popup blockers, no iframe sandbox issues.
-  // User presses browser Back button to return to the app.
   try {
-    const blob = new Blob([doc], { type: "text/html;charset=utf-8" })
-    const url = URL.createObjectURL(blob)
-    window.location.href = url
-    // Blob URLs are auto-revoked by the browser when navigated away from
-  } catch (err) {
-    // Last resort fallback
-    console.error("Export failed:", err)
-    document.open()
+    const safeEvents = Array.isArray(events) ? events : []
+    const doc = createPDFContent(safeEvents, userName)
+
+    // ── Native App (iOS / Android) ─────────────────────────────────────────────
+    // App.tsx injects these flags via INJECTED_JS before React mounts.
+    const w = window as any
+    const isNativeApp = w.isNativeApp === true || w.__IQXO_IS_NATIVE === true || typeof w.ReactNativeWebView !== "undefined"
+
+    if (isNativeApp) {
+      const postFn = w.__IQXO_postMessage || w.ReactNativeWebView?.postMessage
+      if (typeof postFn === "function") {
+        postFn(JSON.stringify({ type: "exportPDF", html: doc, title: "IQXO – Event Summary" }))
+      }
+      return
+    }
+
+    // ── Web Browser: replace page content directly ─────────────────────────────
+    document.open("text/html", "replace")
     document.write(doc)
     document.close()
+
+  } catch (err) {
+    console.error("[exportEventsToPDF] failed:", err)
+    alert("Export error: " + String(err))
   }
 }
 
