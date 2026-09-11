@@ -39,6 +39,7 @@ const TomorrowPage = lazy(() => import("./pages/TomorrowPage"));
 const FuturePage = lazy(() => import("./pages/FuturePage"));
 const SchedulePage = lazy(() => import("./pages/SchedulePage"));
 const ArchivePage = lazy(() => import("./pages/ArchivePage"));
+const PdfPreviewPage = lazy(() => import("./pages/PdfPreviewPage").then(m => ({ default: m.PdfPreviewPage })));
 const AppLayout = lazy(() => import("./components/AppLayout"));
 const ProtectedRoute = lazy(() => import("./components/ProtectedRoute"));
 const RouterInit = lazy(() => import("./lib/router-init"));
@@ -252,6 +253,8 @@ function App() {
                     <Route path="/archive" element={<ArchivePage />} />
                     <Route path="/profile" element={<ProfilePage />} />
                   </Route>
+                  {/* PDF Preview — outside AppLayout so it's full screen */}
+                  <Route path="/pdf-preview" element={<PdfPreviewPage />} />
                 </Route>
 
                 {/* Public routes */}

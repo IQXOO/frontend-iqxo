@@ -1,31 +1,19 @@
 import type { IQXOEvent } from "./types"
+import { navigateToPath } from "./navigation"
+import { PDF_PREVIEW_STORAGE_KEY } from "../pages/PdfPreviewPage"
 
 export function exportEventsToPDF(events: IQXOEvent[], userName: string | undefined) {
   try {
     const safeEvents = Array.isArray(events) ? events : []
     const doc = createPDFContent(safeEvents, userName)
 
-    // ── Native App (iOS / Android) ─────────────────────────────────────────────
-    // App.tsx injects these flags via INJECTED_JS before React mounts.
-    const w = window as any
-    const isNativeApp = w.isNativeApp === true || w.__IQXO_IS_NATIVE === true || typeof w.ReactNativeWebView !== "undefined"
+    // Store the HTML so PdfPreviewPage can read it
+    sessionStorage.setItem(PDF_PREVIEW_STORAGE_KEY, doc)
 
-    if (isNativeApp) {
-      const postFn = w.__IQXO_postMessage || w.ReactNativeWebView?.postMessage
-      if (typeof postFn === "function") {
-        postFn(JSON.stringify({ type: "exportPDF", html: doc, title: "IQXO – Event Summary" }))
-      }
-      return
-    }
-
-    // ── Web Browser: replace page content directly ─────────────────────────────
-    document.open("text/html", "replace")
-    document.write(doc)
-    document.close()
-
+    // Navigate to the preview page — keeps React & native bridge fully alive
+    navigateToPath("/pdf-preview")
   } catch (err) {
     console.error("[exportEventsToPDF] failed:", err)
-    alert("Export error: " + String(err))
   }
 }
 
@@ -226,105 +214,12 @@ function createPDFContent(events: IQXOEvent[], userName: string | undefined): st
         }
         
         @media print {
-          body {
-            padding: 15px;
-          }
-          .section {
-            page-break-inside: avoid;
-          }
-          .no-print {
-            display: none !important;
-          }
-        }
-        
-        .download-btn {
-          display: block;
-          width: 100%;
-          max-width: 300px;
-          margin: 0 auto 30px auto;
-          background: #3b82f6;
-          color: white;
-          text-align: center;
-          padding: 14px 20px;
-          border-radius: 12px;
-          text-decoration: none;
-          font-size: 16px;
-          font-weight: bold;
-          border: none;
-          cursor: pointer;
-          box-shadow: 0 4px 6px rgba(59, 130, 246, 0.25);
-        }
-        .download-btn:active {
-          transform: scale(0.98);
+          body { padding: 15px; }
+          .section { page-break-inside: avoid; }
         }
       </style>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-      <script>
-        function handleDownload() {
-          var buttons = document.querySelector('.no-print');
-          buttons.style.display = 'none';
-          
-          if (typeof html2pdf !== 'undefined') {
-            var element = document.body;
-            var opt = {
-              margin:       10,
-              filename:     'IQXO_Report.pdf',
-              image:        { type: 'jpeg', quality: 0.98 },
-              html2canvas:  { scale: 2, useCORS: true, logging: false },
-              jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-            
-            html2pdf().set(opt).from(element).output('blob').then(function(pdfBlob) {
-              buttons.style.display = 'flex';
-              var file = new File([pdfBlob], "IQXO_Report.pdf", { type: 'application/pdf' });
-              var canShare = navigator.canShare ? navigator.canShare({ files: [file] }) : !!navigator.share;
-              
-              if (canShare) {
-                navigator.share({ files: [file], title: 'IQXO Event Summary' })
-                  .catch(function() { fallbackDownload(pdfBlob); });
-              } else {
-                fallbackDownload(pdfBlob);
-              }
-            }).catch(function() {
-              buttons.style.display = 'flex';
-              window.print();
-            });
-          } else {
-            // CDN blocked — fall back to browser print
-            buttons.style.display = 'flex';
-            window.print();
-          }
-        }
-        
-        function fallbackDownload(blob) {
-          try {
-            var blobUrl = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = blobUrl;
-            a.download = "IQXO_Report.pdf";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(function() { URL.revokeObjectURL(blobUrl); }, 100);
-          } catch (e) {
-            window.print();
-          }
-        }
-        
-        function closePreview() {
-          window.parent.postMessage({ type: 'trigger_close' }, '*');
-        }
-      </script>
     </head>
     <body>
-      <div class="no-print" style="display: flex; gap: 10px; max-width: 400px; margin: 0 auto 30px auto;">
-        <button onclick="handleDownload()" class="download-btn" style="margin: 0; flex: 1;">
-          ⬇ Download PDF (حفظ)
-        </button>
-        <button onclick="closePreview()" class="download-btn" style="margin: 0; flex: 1; background: #64748b;">
-          ⬅ Back (العودة)
-        </button>
-      </div>
       
       <div class="header">
         <div>
