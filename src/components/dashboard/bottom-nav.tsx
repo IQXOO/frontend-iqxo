@@ -31,8 +31,12 @@ interface ParsedCalEvent {
   title: string;
   date: string; // YYYY-MM-DD
   time: string; // HH:mm or ""
+  start_time?: string;
+  end_time?: string;
+  recurrence_rule?: string;
   location: string;
   notes: string;
+  calendar_id?: string;
   selected: boolean;
 }
 
@@ -93,6 +97,9 @@ function parseICS(content: string): ParsedCalEvent[] {
           title: current.title,
           date: current.date,
           time: current.time || "",
+          start_time: current.start_time || current.time || "",
+          end_time: current.end_time || current.time || "",
+          recurrence_rule: current.recurrence_rule,
           location: current.location || "",
           notes: current.notes || "",
           selected: true,
@@ -124,9 +131,24 @@ function parseICS(content: string): ParsedCalEvent[] {
         if (parsed.date) {
           current.date = parsed.date;
           current.time = parsed.time;
+          current.start_time = parsed.time;
         }
         break;
       }
+      case "DTEND": {
+        const parsed = parseICSDate(
+          keyFull.includes(";")
+            ? line.slice(colonIdx - keyFull.length + key.length)
+            : value,
+        );
+        if (parsed.time) {
+          current.end_time = parsed.time;
+        }
+        break;
+      }
+      case "RRULE":
+        current.recurrence_rule = value;
+        break;
       case "LOCATION":
         current.location = decodeICSText(value);
         break;
@@ -887,12 +909,15 @@ export const BottomNav = memo(function BottomNav({
       const rawEvents = result.events || [];
       const mapped: ParsedCalEvent[] = rawEvents.map((e: any, i: number) => ({
         uid: `native-${i}-${e.title}`,
-        id: e.id || '',
+        id: e.native_event_id || e.id || '',
         title: e.title || '',
         date: e.date || '',
         time: e.time || '',
+        start_time: e.start_time || '',
+        end_time: e.end_time || '',
         location: e.location || '',
         notes: e.notes || '',
+        calendar_id: e.calendar_id || '',
         selected: true,
       }));
       // Filter future + next 12 months, then sort chronologically
@@ -921,36 +946,55 @@ export const BottomNav = memo(function BottomNav({
       time: string;
       location: string;
       notes: string;
+      start_time?: string;
+      end_time?: string;
+      calendar_id?: string;
     }[],
   ) => {
     if (onImportEvents) {
       onImportEvents(events);
     } else {
-      // Directly add to store if no callback provided
-      for (const ev of events) {
-        // Deduplication check: do not add if an event with same title, date, and time already exists
-        const isDuplicate = existingEvents.some(
-          (existing) => 
-            (ev.id && existing.native_event_id === ev.id) || 
-            (existing.title === ev.title && existing.date === ev.date && existing.time === ev.time)
-        );
-        if (isDuplicate) {
-          continue;
-        }
-        
-        await addEvent({
+      // Use the new batch sync API for efficient two-way merge
+      try {
+        const mappedEvents = events.map(ev => ({
+          native_event_id: ev.id,
           title: ev.title,
           date: ev.date,
           time: ev.time,
-          location: ev.location || undefined,
+          start_time: ev.start_time || ev.time,
+          end_time: ev.end_time || ev.time,
+          location: ev.location,
           notes: ev.notes,
-          source: "calendar_import",
-          native_event_id: ev.id || undefined,
-          is_done: false,
-          phone: undefined,
-          image_url: undefined,
-          pdf_url: undefined,
-        });
+          calendar_id: ev.calendar_id,
+          source: "calendar_sync"
+        }));
+
+        const { fetchWithDiagnostics, readResponseText } = await import("../../lib/logger");
+        const { supabase } = await import("../../lib/supabase");
+        const { data: { session } } = await supabase.auth.getSession();
+
+        const response = await fetchWithDiagnostics(
+          `${import.meta.env.VITE_BACKEND_URL}/api/calendar/sync-batch`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.access_token || ""}`,
+            },
+            body: JSON.stringify({ events: mappedEvents }),
+          }
+        );
+        const data = await readResponseText(response);
+        const result = JSON.parse(data);
+        console.log("[CalendarSync] Batch result:", result);
+
+        // Refresh store so UI updates immediately
+        if (result.ok) {
+          const { useApp } = await import("../../lib/store");
+          await useApp.getState().refreshEvents();
+        }
+      } catch (err) {
+        console.error("[CalendarSync] Failed to batch sync events", err);
       }
     }
   };

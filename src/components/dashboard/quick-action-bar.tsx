@@ -26,7 +26,37 @@ export function QuickActionBar({ event, language }: QuickActionBarProps) {
       icon: Calendar,
       label: language === "fr" ? "Ajouter" : language === "ar" ? "إضافة" : "Add",
       onClick: () => {
-        const icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//IQXO//NONSGML Event//EN\nBEGIN:VEVENT\nDTSTART:${event.date.replace(/-/g, "")}T${event.time.replace(/:/g, "")}00Z\nDTEND:${event.date.replace(/-/g, "")}T${(parseInt(event.time.split(":")[0]) + 1).toString().padStart(2, "0")}${event.time.split(":")[1]}00Z\nSUMMARY:${event.title}\nDESCRIPTION:${event.notes}\nEND:VEVENT\nEND:VCALENDAR`
+        const formatDate = (dateStr: string, timeStr: string) => {
+          if (!timeStr) return dateStr.replace(/-/g, "");
+          return `${dateStr.replace(/-/g, "")}T${timeStr.replace(/:/g, "")}00`;
+        };
+
+        const dtStartStr = formatDate(event.date, event.start_time || event.time);
+        
+        let dtEndStr = "";
+        if (event.end_time) {
+           dtEndStr = formatDate(event.date, event.end_time);
+        } else if (event.time) {
+           const [h, m] = event.time.split(":");
+           const nextH = (parseInt(h) + 1).toString().padStart(2, "0");
+           dtEndStr = `${event.date.replace(/-/g, "")}T${nextH}${m}00`;
+        }
+
+        let icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//IQXO//NONSGML Event//EN\nBEGIN:VEVENT\n`;
+        if (event.time) {
+           icsContent += `DTSTART:${dtStartStr}\n`;
+           if (dtEndStr) icsContent += `DTEND:${dtEndStr}\n`;
+        } else {
+           icsContent += `DTSTART;VALUE=DATE:${dtStartStr}\n`;
+        }
+        
+        icsContent += `SUMMARY:${event.title || ""}\n`;
+        if (event.location) icsContent += `LOCATION:${event.location}\n`;
+        if (event.notes) icsContent += `DESCRIPTION:${event.notes.replace(/\n/g, '\\n')}\n`;
+        if ((event as any).recurrence_rule) icsContent += `RRULE:${(event as any).recurrence_rule}\n`;
+        
+        icsContent += `END:VEVENT\nEND:VCALENDAR`;
+
         const blob = new Blob([icsContent], { type: "text/calendar" })
         const url = URL.createObjectURL(blob)
         const a = document.createElement("a")

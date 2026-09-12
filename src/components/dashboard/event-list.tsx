@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRight, Phone, MapPin, Calendar, Clock, Trash2, Lightbulb } from "lucide-react"
+import { Clock, Phone, MapPin, ChevronRight, Lightbulb, CheckCircle2, Circle, AlertTriangle, Calendar, Trash2 } from "lucide-react"
 import { useApp } from "../../lib/store"
 import { generateAIInsight } from "../../lib/ai-insights"
 import type { IQXOEvent, Priority } from "../../lib/types"
@@ -220,6 +220,9 @@ function EventGridCard({
                   className="w-2 h-2 rounded-full shrink-0 shadow-[0_0_6px_rgba(0,0,0,0.1)] border border-white/10" 
                   style={{ backgroundColor: event.color }} 
                 />
+              )}
+              {event.has_conflict && (
+                <AlertTriangle className="h-3 w-3 text-red-500 shrink-0" />
               )}
               {event.phone && (
                 <Phone className="h-3 w-3 text-muted-foreground/50 shrink-0" />

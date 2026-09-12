@@ -45,6 +45,8 @@ export interface IQXOEvent {
   pdf_url?: string;
   is_done: boolean;
   native_event_id?: string;
+  calendar_id?: string;
+  has_conflict?: boolean;
   createdAt: string;
   updatedAt: string;
 }
