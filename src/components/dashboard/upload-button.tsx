@@ -184,6 +184,7 @@ export function UploadButton({
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files || [])
+      e.target.value = '' // Reset input so re-selecting the same file works
       if (files.length === 0) {
         if (previews.length === 0) handleClose()
         devLog('Upload', 'File picker cancelled')
