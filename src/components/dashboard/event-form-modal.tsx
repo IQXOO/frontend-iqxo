@@ -211,27 +211,53 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
 
   // ── File handlers ──────────────────────────────────────────────────────────
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
+    const file = e.target.files?.[0]; 
+    if (!file) return;
+    
     setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = ev => setImagePreview(ev.target?.result as string);
-    reader.readAsDataURL(file);
+    // Use createObjectURL instead of FileReader for large mobile images (memory safe & instant)
+    setImagePreview(URL.createObjectURL(file));
+    
+    // Reset input so selecting the same file again works
+    e.target.value = "";
   };
 
   const handlePdfSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    if (file.type !== "application/pdf") { setUploadError("Only PDF files are accepted."); return; }
-    if (file.size > 10 * 1024 * 1024) { setUploadError("PDF must be under 10 MB."); return; }
-    setPdfFile(file); setPdfName(file.name); setExistingPdfUrl(null); setUploadError(null);
+    const file = e.target.files?.[0]; 
+    if (!file) return;
+    
+    if (file.type !== "application/pdf") { 
+      setUploadError("Only PDF files are accepted."); 
+      e.target.value = "";
+      return; 
+    }
+    if (file.size > 10 * 1024 * 1024) { 
+      setUploadError("PDF must be under 10 MB."); 
+      e.target.value = "";
+      return; 
+    }
+    
+    setPdfFile(file); 
+    setPdfName(file.name); 
+    setExistingPdfUrl(null); 
+    setUploadError(null);
+    
+    // Reset input
+    e.target.value = "";
   };
 
   // ── Combined attach handler (image OR pdf) ────────────────────────────────
   const handleAttachSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
+    const file = e.target.files?.[0]; 
+    if (!file) return;
+    
     if (file.type.startsWith("image/")) {
       handleImageSelect(e);
     } else if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
       handlePdfSelect(e);
+    } else {
+      // If combined input got a bad file type
+      e.target.value = "";
     }
   };
 
