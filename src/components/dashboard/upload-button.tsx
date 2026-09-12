@@ -142,37 +142,18 @@ export function UploadButton({
       return
     }
 
-    const newPreviews = await Promise.all(
-      validFiles.map(file => {
-        return new Promise<FilePreview>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => {
-            const dataUrl = reader.result as string
-            resolve({
-              name: file.name,
-              type: file.type,
-              size: formatSize(file.size),
-              dataUrl,
-              base64: "", // Not used anymore
-              mediaType: file.type,
-              file: file,
-            })
-          }
-          reader.onerror = () => reject(new Error("Failed to read file " + file.name))
-          reader.readAsDataURL(file)
-        })
-      })
-    ).catch(err => {
-      devError('Upload', 'Failed to read selected files', err)
-      const message = "Couldn't read the selected files."
-      setErrorMessage(message)
-      toast({
-        title: "Couldn't read files",
-        description: message,
-        variant: "destructive",
-      })
-      setState("error")
-      return []
+    // Synchronously create object URLs (No Memory Overhead for Large Images)
+    const newPreviews: FilePreview[] = validFiles.map(file => {
+      const dataUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : ""
+      return {
+        name: file.name,
+        type: file.type,
+        size: formatSize(file.size),
+        dataUrl,
+        base64: "", // Not used anymore
+        mediaType: file.type,
+        file: file,
+      }
     })
 
     if (newPreviews.length > 0) {
