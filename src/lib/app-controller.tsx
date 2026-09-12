@@ -83,6 +83,80 @@ export default function AppController() {
     }
   }, [user, authLoading, location.pathname, navigate]);
 
+  // Global Native Calendar Auto-Sync (Runs on startup & foreground)
+  useEffect(() => {
+    if (authLoading || !user) return;
+    
+    if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
+      const handleNativeCalendar = async (e: Event) => {
+        const result = (window as any).__nativeCalendarResult;
+        if (!result || result.error || !result.events) return;
+        
+        try {
+          const mappedEvents = result.events.map((ev: any) => ({
+            native_event_id: ev.native_event_id || ev.id,
+            title: ev.title,
+            date: ev.date,
+            time: ev.time,
+            start_time: ev.start_time || ev.time,
+            end_time: ev.end_time || ev.time,
+            location: ev.location,
+            notes: ev.notes,
+            calendar_id: ev.calendar_id,
+            source: "calendar_sync"
+          }));
+
+          const { supabase } = await import("./supabase");
+          const { fetchWithDiagnostics, readResponseText } = await import("./logger");
+          const { data: { session } } = await supabase.auth.getSession();
+
+          const response = await fetchWithDiagnostics(
+            `${import.meta.env.VITE_BACKEND_URL}/api/calendar/sync-batch`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session?.access_token || ""}`,
+              },
+              body: JSON.stringify({ events: mappedEvents }),
+            }
+          );
+          const data = await readResponseText(response);
+          const syncResult = JSON.parse(data);
+          
+          if (syncResult.ok) {
+            const { useApp } = await import("./store");
+            await useApp.getState().refreshEvents();
+          }
+        } catch (err) {
+          console.error("[AutoSync] Error:", err);
+        }
+      };
+
+      window.addEventListener('nativeCalendarReady', handleNativeCalendar);
+      
+      const triggerSync = () => {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestCalendarEvents' }));
+      };
+
+      // 1. Sync on startup
+      triggerSync();
+
+      // 2. Sync on foreground (visibilitychange)
+      const onVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          triggerSync();
+        }
+      };
+      document.addEventListener('visibilitychange', onVisibilityChange);
+
+      return () => {
+        window.removeEventListener('nativeCalendarReady', handleNativeCalendar);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      };
+    }
+  }, [user, authLoading]);
+
   // Render nothing — this component only controls side-effects and redirects.
   if (authLoading) return null;
   return null;

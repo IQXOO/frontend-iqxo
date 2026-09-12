@@ -24,6 +24,8 @@ export interface IQXOEvent {
   source: string;
   is_done: boolean;
   native_event_id?: string;
+  calendar_id?: string;
+  has_conflict?: boolean;
 }
 
 export interface AppState {
