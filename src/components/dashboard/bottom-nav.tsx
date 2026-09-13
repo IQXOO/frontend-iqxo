@@ -992,9 +992,12 @@ export const BottomNav = memo(function BottomNav({
         if (result.ok) {
           const { useApp } = await import("../../lib/store");
           await useApp.getState().refreshEvents();
+        } else {
+          alert(`Backend Error: ${result.error || 'Unknown error'}`);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("[CalendarSync] Failed to batch sync events", err);
+        alert(`Sync failed: ${err.message}`);
       }
     }
   };
