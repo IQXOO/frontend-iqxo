@@ -88,10 +88,14 @@ export default function AppController() {
     if (authLoading || !user) return;
     
     if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
+      let syncInProgress = false;
       const handleNativeCalendar = async (e: Event) => {
+        if (syncInProgress) return;
+        
         const result = (window as any).__nativeCalendarResult;
         if (!result || result.error || !result.events) return;
         
+        syncInProgress = true;
         try {
           const mappedEvents = result.events.map((ev: any) => ({
             native_event_id: ev.native_event_id || ev.id,
@@ -130,6 +134,8 @@ export default function AppController() {
           }
         } catch (err) {
           console.error("[AutoSync] Error:", err);
+        } finally {
+          syncInProgress = false;
         }
       };
 
