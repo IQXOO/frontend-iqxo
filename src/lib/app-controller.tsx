@@ -126,7 +126,14 @@ export default function AppController() {
             }
           );
           const data = await readResponseText(response);
-          const syncResult = JSON.parse(data);
+          
+          let syncResult;
+          try {
+            syncResult = JSON.parse(data);
+          } catch (e) {
+            console.error("[AutoSync] JSON Parse error. Server returned:", data.slice(0, 200));
+            return;
+          }
           
           if (syncResult.ok) {
             const { useApp } = await import("./store");
