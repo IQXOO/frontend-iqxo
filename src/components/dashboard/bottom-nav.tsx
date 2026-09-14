@@ -974,7 +974,7 @@ export const BottomNav = memo(function BottomNav({
         const { data: { session } } = await supabase.auth.getSession();
 
         const response = await fetchWithDiagnostics(
-          `${import.meta.env.VITE_BACKEND_URL}/api/calendar/sync-batch`,
+          `${import.meta.env.VITE_BACKEND_API || "http://localhost:4040"}/api/calendar/sync-batch`,
           {
             method: "POST",
             headers: {
