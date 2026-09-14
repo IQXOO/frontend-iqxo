@@ -974,6 +974,8 @@ export const BottomNav = memo(function BottomNav({
         const { data: { session } } = await supabase.auth.getSession();
 
         const response = await fetchWithDiagnostics(
+          "CalendarSync",
+          "POST /api/calendar/sync-batch",
           `${import.meta.env.VITE_BACKEND_API || "http://localhost:4040"}/api/calendar/sync-batch`,
           {
             method: "POST",
@@ -986,10 +988,11 @@ export const BottomNav = memo(function BottomNav({
         );
         const data = await readResponseText(response);
         let result;
+        const targetUrl = `${import.meta.env.VITE_BACKEND_API || "http://localhost:4040"}/api/calendar/sync-batch`;
         try {
           result = JSON.parse(data);
         } catch (parseErr) {
-          throw new Error(`Server returned non-JSON. HTTP ${response.status}. Response: ${data.slice(0, 100)}...`);
+          throw new Error(`URL: ${targetUrl} | HTTP ${response.status} | non-JSON: ${data.slice(0, 50)}`);
         }
 
         // Refresh store so UI updates immediately

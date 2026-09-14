@@ -115,6 +115,8 @@ export default function AppController() {
           const { data: { session } } = await supabase.auth.getSession();
 
           const response = await fetchWithDiagnostics(
+            "AutoSync",
+            "POST /api/calendar/sync-batch",
             `${import.meta.env.VITE_BACKEND_API || "http://localhost:4040"}/api/calendar/sync-batch`,
             {
               method: "POST",
