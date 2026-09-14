@@ -734,7 +734,7 @@ export const BottomNav = memo(function BottomNav({
   onComposerOpenChange,
   onImportEvents,
 }: BottomNavProps) {
-  const { language, addEvent, events: existingEvents, user: _user, planStatus } = useApp();
+  const { language, addEvent, events: existingEvents, user: _user, planStatus, refreshEvents } = useApp();
   const isRTL = language === "ar";
   const [internalMenuOpen, setInternalMenuOpen] = useState(false);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
@@ -997,8 +997,7 @@ export const BottomNav = memo(function BottomNav({
 
         // Refresh store so UI updates immediately
         if (result.ok) {
-          const { useApp } = await import("../../lib/store");
-          await useApp.getState().refreshEvents();
+          await refreshEvents();
         } else {
           alert(`Backend Error: ${result.error || 'Unknown error'}`);
         }
