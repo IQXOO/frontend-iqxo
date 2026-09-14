@@ -985,8 +985,12 @@ export const BottomNav = memo(function BottomNav({
           }
         );
         const data = await readResponseText(response);
-        const result = JSON.parse(data);
-        console.log("[CalendarSync] Batch result:", result);
+        let result;
+        try {
+          result = JSON.parse(data);
+        } catch (parseErr) {
+          throw new Error(`Server returned non-JSON. HTTP ${response.status}. Response: ${data.slice(0, 100)}...`);
+        }
 
         // Refresh store so UI updates immediately
         if (result.ok) {
