@@ -90,6 +90,8 @@ interface AppContextValue {
   // Onboarding state persisted in user metadata
   onboardingDone: boolean;
   setOnboardingDone: (done: boolean) => Promise<void>;
+  calendarOnboardingDone: boolean;
+  setCalendarOnboardingDone: (done: boolean) => Promise<void>;
 
   // Events
   events: IQXOEvent[];
@@ -887,6 +889,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [totalUsage, setTotalUsage] = useState<number>(0);
   const [usageLoading, setUsageLoading] = useState<boolean>(false);
   const [onboardingDone, setOnboardingDoneState] = useState<boolean>(false);
+  const [calendarOnboardingDone, setCalendarOnboardingDoneState] = useState<boolean>(false);
 
   // ── Bootstrap auth session ──────────────────────────────────────────────────
   useEffect(() => {
@@ -898,7 +901,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setUser(data.session?.user ?? null);
         // bootstrap onboarding flag from session user metadata
         const onboard = !!data.session?.user?.user_metadata?.onboarding_done;
+        const calOnboard = !!data.session?.user?.user_metadata?.calendar_onboarding_done;
         setOnboardingDoneState(onboard);
+        setCalendarOnboardingDoneState(calOnboard);
       })
       .catch((error) => {
         devError("Auth", "Failed to restore session", error);
@@ -917,6 +922,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         sessionRef.current = sess; // keep ref in sync immediately
         setSession(sess);
         setUser(sess?.user ?? null);
+        const calOnboard = !!sess?.user?.user_metadata?.calendar_onboarding_done;
+        setCalendarOnboardingDoneState(calOnboard);
+
+        // Safely capture OAuth tokens if present during a sign-in or link identity event
+        if (sess?.provider_refresh_token && sess?.user) {
+          // Identify which provider this token belongs to
+          let provider = sess.user.app_metadata?.provider || 'unknown';
+          const linkingProvider = typeof window !== 'undefined' ? localStorage.getItem('iqxo_linking_provider') : null;
+          if (linkingProvider) {
+            provider = linkingProvider;
+            localStorage.removeItem('iqxo_linking_provider');
+          }
+          
+          supabase.from('calendar_integrations').upsert(
+            {
+              user_id: sess.user.id,
+              provider: provider,
+              access_token: sess.provider_token,
+              refresh_token: sess.provider_refresh_token,
+              // Expires at: now + expires_in (usually 3600 seconds)
+              expires_at: sess.expires_in ? new Date(Date.now() + sess.expires_in * 1000).toISOString() : null
+            },
+            { onConflict: 'user_id,provider' }
+          ).then(({ error }) => {
+            if (error) {
+              console.error("[Auth] Failed to save calendar integration tokens:", error);
+            } else {
+              console.log(`[Auth] Saved ${provider} calendar integration tokens securely.`);
+            }
+          });
+        }
       },
     );
 
@@ -1412,7 +1448,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           options: {
             data: {
               full_name: fullName ?? "",
-              onboarding_done: true,
             },
             // Email confirmation is disabled — user is logged in immediately after sign-up
           },
@@ -1570,6 +1605,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         setOnboardingDoneState(previous);
         devError("Onboarding", "Error updating onboarding flag", err);
+      }
+    },
+    [user],
+  );
+
+  const setCalendarOnboardingDone = useCallback(
+    async (done: boolean) => {
+      if (!user) {
+        setCalendarOnboardingDoneState(done);
+        return;
+      }
+      const previous = !!user.user_metadata?.calendar_onboarding_done;
+      if (previous === done) {
+        setCalendarOnboardingDoneState(done);
+        return;
+      }
+      setCalendarOnboardingDoneState(done);
+
+      try {
+        const { error } = await supabase.auth.updateUser({
+          data: { calendar_onboarding_done: done ? true : null },
+        });
+        if (error) {
+          throw error;
+        }
+      } catch (err) {
+        setCalendarOnboardingDoneState(previous);
+        devError("Onboarding", "Error updating calendar onboarding flag", err);
       }
     },
     [user],
@@ -1855,6 +1918,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         t,
         onboardingDone,
         setOnboardingDone,
+        calendarOnboardingDone,
+        setCalendarOnboardingDone,
       }}
     >
       {children}

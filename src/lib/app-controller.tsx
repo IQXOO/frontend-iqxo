@@ -4,7 +4,7 @@ import { useApp } from "../lib/store";
 import { shouldAutoOpenBillingRoute } from "../lib/billing-utils";
 
 export default function AppController() {
-  const { user, authLoading, planStatus, planResolved, trialEndsAt, onboardingDone, setOnboardingDone: _setOnboardingDone, refreshEvents } = useApp();
+  const { user, authLoading, planStatus, planResolved, trialEndsAt, onboardingDone, setOnboardingDone: _setOnboardingDone, refreshEvents, calendarOnboardingDone } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const _prevUserRef = useRef<string | null | undefined>(undefined);
@@ -46,40 +46,51 @@ export default function AppController() {
     return () => clearInterval(interval);
   }, [user, planStatus, trialEndsAt, shouldAutoOpenPricing, location.pathname, navigate]);
 
-  // Show onboarding immediate if not done
-  useEffect(() => {
-    if (authLoading) return;
-    const publicPaths = new Set(["/pricing", "/terms", "/privacy", "/reset-password", "/index.html", "/onboarding", "/login"]);
-    if (publicPaths.has(location.pathname)) return;
-
-    const isDismissed = typeof window !== "undefined" && localStorage.getItem("iqxo_intro_dismissed") === "1";
-    if (!onboardingDone && !isDismissed) {
-      navigate("/onboarding");
-    }
-  }, [onboardingDone, authLoading, location.pathname, navigate]);
-
   // Prevent logged-in users from seeing /login
   useEffect(() => {
     if (authLoading) return;
     if (user && location.pathname === "/login") {
-      navigate("/home", { replace: true });
+      if (!onboardingDone) {
+        navigate("/onboarding", { replace: true });
+      } else {
+        navigate("/home", { replace: true });
+      }
     }
-  }, [user, authLoading, location.pathname, navigate]);
+  }, [user, onboardingDone, authLoading, location.pathname, navigate]);
 
   // Prevent logged-in users from seeing /onboarding if they already completed it
+  // Or force them to /onboarding if they haven't completed it!
   useEffect(() => {
-    if (authLoading) return;
-    if (user && onboardingDone && location.pathname === "/onboarding") {
+    if (authLoading || !user) return;
+    if (!onboardingDone && location.pathname !== "/onboarding") {
+      navigate("/onboarding", { replace: true });
+    } else if (onboardingDone && location.pathname === "/onboarding") {
       navigate("/home", { replace: true });
     }
   }, [user, onboardingDone, authLoading, location.pathname, navigate]);
 
-  // If not authenticated and not on a public path, redirect to /login
+  // Calendar Onboarding: if user hasn't done calendar onboarding, force them there.
+  // Otherwise, if they try to access it after finishing, they can (e.g. from settings) or we can let them.
   useEffect(() => {
     if (authLoading) return;
-    const publicPaths = new Set(["/pricing", "/terms", "/privacy", "/reset-password", "/index.html", "/onboarding"]);
-    if (!user && !publicPaths.has(location.pathname) && location.pathname !== "/login") {
-      navigate("/login", { replace: true });
+    if (user && onboardingDone) {
+      if (!calendarOnboardingDone && location.pathname !== "/connect-calendars") {
+        navigate("/connect-calendars", { replace: true });
+      }
+    }
+  }, [user, onboardingDone, calendarOnboardingDone, authLoading, location.pathname, navigate]);
+
+  // If not authenticated and not on a public path, redirect appropriately
+  useEffect(() => {
+    if (authLoading) return;
+    const publicPaths = new Set(["/terms", "/privacy", "/reset-password", "/index.html", "/login", "/welcome", "/connect-calendars"]);
+    if (!user && !publicPaths.has(location.pathname)) {
+      const isDismissed = typeof window !== "undefined" && localStorage.getItem("iqxo_intro_dismissed") === "1";
+      if (!isDismissed) {
+        navigate("/welcome", { replace: true });
+      } else {
+        navigate("/login", { replace: true });
+      }
     }
   }, [user, authLoading, location.pathname, navigate]);
 
@@ -150,7 +161,10 @@ export default function AppController() {
       window.addEventListener('nativeCalendarReady', handleNativeCalendar);
       
       const triggerSync = () => {
-        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestCalendarEvents' }));
+        // Only request native calendar if the user explicitly enabled it
+        if (user.user_metadata?.sync_local_calendar !== false) {
+          (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestCalendarEvents' }));
+        }
       };
 
       // 1. Sync on startup
@@ -170,6 +184,42 @@ export default function AppController() {
       };
     }
   }, [user, authLoading]);
+
+  // Global Cloud Calendar Auto-Sync
+  useEffect(() => {
+    if (authLoading || !user) return;
+    
+    let isFetching = false;
+    const syncCloudCalendars = async () => {
+      if (isFetching) return;
+      isFetching = true;
+      try {
+        const { supabase } = await import("./supabase");
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        if (token) {
+          const backendUrl = import.meta.env?.VITE_BACKEND_API || "http://localhost:4040";
+          const res = await fetch(`${backendUrl}/api/calendar/sync-cloud`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (data?.added > 0) refreshEvents();
+        }
+      } catch (err) {} finally {
+        isFetching = false;
+      }
+    };
+
+    syncCloudCalendars();
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncCloudCalendars();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [authLoading, user, refreshEvents]);
 
   // Render nothing — this component only controls side-effects and redirects.
   if (authLoading) return null;

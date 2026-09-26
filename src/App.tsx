@@ -31,6 +31,8 @@ const HomePage = lazy(() => import("./pages/HomePage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
+const WelcomeSplashPage = lazy(() => import("./pages/WelcomeSplashPage"));
+const ConnectCalendarsPage = lazy(() => import("./pages/ConnectCalendarsPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
@@ -210,7 +212,11 @@ function RootRedirect() {
   if (user) {
     return <Navigate to="/home" replace />;
   }
-  return <Navigate to="/onboarding" replace />;
+  const isDismissed = typeof window !== "undefined" && localStorage.getItem("iqxo_intro_dismissed") === "1";
+  if (!isDismissed) {
+    return <Navigate to="/welcome" replace />;
+  }
+  return <Navigate to="/login" replace />;
 }
 
 function App() {
@@ -252,6 +258,7 @@ function App() {
                     <Route path="/schedule" element={<SchedulePage />} />
                     <Route path="/archive" element={<ArchivePage />} />
                     <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/connect-calendars" element={<ConnectCalendarsPage />} />
                   </Route>
                   {/* PDF Preview — outside AppLayout so it's full screen */}
                   <Route path="/pdf-preview" element={<PdfPreviewPage />} />
@@ -259,6 +266,7 @@ function App() {
 
                 {/* Public routes */}
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/welcome" element={<WelcomeSplashPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
