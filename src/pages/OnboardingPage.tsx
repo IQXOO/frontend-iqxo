@@ -143,8 +143,14 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
       
       const hasProvider = user?.identities?.some(id => id.provider === provider);
       
+      // On native mobile app, redirect to iqxo:// deep link so the browser returns to the app
+      const isNative = typeof window !== "undefined" && (window as any).__IQXO_IS_NATIVE;
+      const redirectTo = isNative 
+        ? 'iqxo://auth' 
+        : window.location.origin + '/onboarding';
+      
       const options = {
-        redirectTo: window.location.origin + '/onboarding',
+        redirectTo,
         scopes: provider === 'google' 
           ? 'https://www.googleapis.com/auth/calendar' 
           : 'Calendars.ReadWrite',

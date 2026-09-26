@@ -50,8 +50,14 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
       
       const hasProvider = user?.identities?.some(id => id.provider === provider);
       
+      // On native mobile app, redirect to iqxo:// deep link so the browser returns to the app
+      const isNative = typeof window !== "undefined" && (window as any).__IQXO_IS_NATIVE;
+      const redirectTo = isNative 
+        ? 'iqxo://auth' 
+        : window.location.origin + '/connect-calendars';
+      
       const options = {
-        redirectTo: window.location.origin + '/connect-calendars',
+        redirectTo,
         scopes: provider === 'google' 
           ? 'https://www.googleapis.com/auth/calendar' 
           : 'Calendars.ReadWrite',
