@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../lib/store";
 import { supabase } from "../lib/supabase";
@@ -12,6 +12,29 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
   const { user, setCalendarOnboardingDone } = useApp();
   const [syncLocal, setSyncLocal] = useState(user?.user_metadata?.sync_local_calendar !== false);
   const [loading, setLoading] = useState(false);
+  const [integrations, setIntegrations] = useState<any[]>([]);
+
+  const loadIntegrations = async () => {
+    if (!user) return;
+    const { data } = await supabase.from('calendar_integrations').select('*').eq('user_id', user.id);
+    if (data) setIntegrations(data);
+  };
+
+  useEffect(() => {
+    loadIntegrations();
+
+    const handleIntegrationSaved = (e: any) => {
+      const provider = e.detail?.provider;
+      toast({
+        title: "Calendar Connected!",
+        description: `Successfully linked your ${provider} calendar.`,
+      });
+      loadIntegrations();
+    };
+
+    window.addEventListener('calendarIntegrationSaved', handleIntegrationSaved);
+    return () => window.removeEventListener('calendarIntegrationSaved', handleIntegrationSaved);
+  }, [user]);
 
   const handleNext = async () => {
     setLoading(true);
@@ -78,7 +101,6 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
       }
     } catch (err: any) {
       console.error(err);
-      alert(err.message || `Failed to link ${provider}`);
       toast({
         title: `Failed to link ${provider}`,
         description: err.message,
@@ -86,6 +108,21 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
       });
     }
   };
+
+  const toggleIntegration = async (id: string, currentStatus: string) => {
+    const newState = currentStatus === 'active' ? 'paused' : 'active';
+    // Optimistic update
+    setIntegrations(prev => prev.map(i => i.id === id ? { ...i, sync_state: newState } : i));
+    
+    const { error } = await supabase.from('calendar_integrations').update({ sync_state: newState }).eq('id', id);
+    if (error) {
+      toast({ title: "Failed to update", description: error.message, variant: "destructive" });
+      loadIntegrations(); // Revert on failure
+    }
+  };
+
+  const googleInt = integrations.find(i => i.provider === 'google');
+  const outlookInt = integrations.find(i => i.provider === 'azure');
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground pt-12 pb-12 px-6 relative">
@@ -148,10 +185,7 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
             <h2 className="text-sm text-muted-foreground mb-3 px-1">Add more</h2>
             <div className="bg-card rounded-2xl border overflow-hidden flex flex-col divide-y">
               {/* Google */}
-              <button 
-                onClick={() => linkProvider('google')}
-                className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors text-left"
-              >
+              <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors text-left">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
                     <svg viewBox="0 0 24 24" className="w-5 h-5">
@@ -163,43 +197,39 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
                   </div>
                   <span className="font-medium text-card-foreground">Google</span>
                 </div>
-                <Plus className="w-5 h-5 text-muted-foreground" />
-              </button>
+                {googleInt ? (
+                  <Switch 
+                    checked={googleInt.sync_state === 'active'}
+                    onCheckedChange={() => toggleIntegration(googleInt.id, googleInt.sync_state)}
+                  />
+                ) : (
+                  <button onClick={() => linkProvider('google')} className="p-1">
+                    <Plus className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                )}
+              </div>
 
               {/* Outlook */}
-              <button 
-                onClick={() => linkProvider('azure')}
-                className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors text-left"
-              >
+              <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors text-left">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-[#0078D4] flex items-center justify-center">
                     <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white">
                       <path d="M2 3h20v18H2V3zm18 16V5H4v14h16zm-5-3h-6V8h6v8zm-4-2h2v-4h-2v4z" />
                     </svg>
                   </div>
-                  <span className="font-medium text-card-foreground">Outlook</span>
+                  <span className="font-medium text-card-foreground">Outlook / Microsoft 365</span>
                 </div>
-                <Plus className="w-5 h-5 text-muted-foreground" />
-              </button>
-
-              {/* Microsoft 365 */}
-              <button 
-                onClick={() => linkProvider('azure')}
-                className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-white border flex items-center justify-center p-1.5">
-                    <svg viewBox="0 0 23 23" className="w-full h-full">
-                      <path fill="#f35325" d="M1 1h10v10H1z"/>
-                      <path fill="#81bc06" d="M12 1h10v10H12z"/>
-                      <path fill="#05a6f0" d="M1 12h10v10H1z"/>
-                      <path fill="#ffba08" d="M12 12h10v10H12z"/>
-                    </svg>
-                  </div>
-                  <span className="font-medium text-card-foreground">Microsoft 365</span>
-                </div>
-                <Plus className="w-5 h-5 text-muted-foreground" />
-              </button>
+                {outlookInt ? (
+                  <Switch 
+                    checked={outlookInt.sync_state === 'active'}
+                    onCheckedChange={() => toggleIntegration(outlookInt.id, outlookInt.sync_state)}
+                  />
+                ) : (
+                  <button onClick={() => linkProvider('azure')} className="p-1">
+                    <Plus className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                )}
+              </div>
             </div>
           </section>
         </div>
