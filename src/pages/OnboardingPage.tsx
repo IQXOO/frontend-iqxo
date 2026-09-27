@@ -85,7 +85,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
   
   const [step, setStep] = useState(3); // Start directly at Calendar step (3)
   const [lang, setLang] = useState<'fr' | 'en'>('en');
-  const [syncLocal, setSyncLocal] = useState(true);
+  const [syncLocal, setSyncLocal] = useState(user?.user_metadata?.sync_local_calendar !== false);
 
   useEffect(() => {
     const browserLang = (
