@@ -929,46 +929,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (sess?.provider_token && sess?.user) {
           // Identify which provider this token belongs to
           let provider = sess.user.app_metadata?.provider || 'unknown';
+          
+          // Check localStorage first (set by linkProvider before OAuth redirect)
           const linkingProvider = typeof window !== 'undefined' ? localStorage.getItem('iqxo_linking_provider') : null;
           if (linkingProvider) {
             provider = linkingProvider;
             localStorage.removeItem('iqxo_linking_provider');
           }
           
-          const payload: any = {
-            user_id: sess.user.id,
-            provider: provider,
-            access_token: sess.provider_token,
-            sync_state: 'active'
-          };
-          
-          if (sess.provider_refresh_token) {
-            payload.refresh_token = sess.provider_refresh_token;
+          // If provider is still 'email' or 'unknown' but we have an OAuth token,
+          // detect the real provider from the user's identity list
+          if (provider === 'email' || provider === 'unknown') {
+            const identities = sess.user.identities || [];
+            const oauthIdentity = identities.find((id: any) => id.provider === 'google' || id.provider === 'azure');
+            if (oauthIdentity) {
+              provider = oauthIdentity.provider;
+            }
           }
           
-          if (sess.expires_in) {
-            payload.expires_at = new Date(Date.now() + sess.expires_in * 1000).toISOString();
-          }
+          // Only save if provider is a valid calendar provider (google or azure)
+          if (provider !== 'google' && provider !== 'azure') {
+            // Not a calendar OAuth - skip saving
+          } else {
+            const payload: any = {
+              user_id: sess.user.id,
+              provider: provider,
+              access_token: sess.provider_token,
+              sync_state: 'active'
+            };
+            
+            if (sess.provider_refresh_token) {
+              payload.refresh_token = sess.provider_refresh_token;
+            }
+            
+            if (sess.expires_in) {
+              payload.expires_at = new Date(Date.now() + sess.expires_in * 1000).toISOString();
+            }
 
-          // Use update first to avoid overwriting refresh_token with null if we don't have a new one
-          supabase.from('calendar_integrations')
-            .update(payload)
-            .eq('user_id', sess.user.id)
-            .eq('provider', provider)
-            .then(({ error, data }: any) => {
-              // If it doesn't exist yet, we do an insert (upsert)
-              if (error || (data && data.length === 0) || !data) {
-                supabase.from('calendar_integrations').upsert(
-                  payload,
-                  { onConflict: 'user_id,provider' }
-                ).then((res) => {
-                  if (res.error) console.error("[Auth] Failed to upsert calendar integration:", res.error);
-                  else console.log(`[Auth] Saved ${provider} calendar integration tokens securely.`);
-                });
-              } else {
-                console.log(`[Auth] Updated ${provider} calendar integration tokens securely.`);
-              }
+            supabase.from('calendar_integrations').upsert(
+              payload,
+              { onConflict: 'user_id,provider' }
+            ).then(({ error: upsertErr }) => {
+              if (upsertErr) console.error("[Auth] Failed to save calendar integration:", upsertErr);
+              else console.log(`[Auth] Saved ${provider} calendar integration tokens securely.`);
             });
+          }
         }
       },
     );
