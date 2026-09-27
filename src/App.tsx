@@ -29,6 +29,7 @@ function useNativeAppOAuthRedirect() {
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
 const WelcomeSplashPage = lazy(() => import("./pages/WelcomeSplashPage"));
@@ -212,11 +213,9 @@ function RootRedirect() {
   if (user) {
     return <Navigate to="/home" replace />;
   }
-  const isDismissed = typeof window !== "undefined" && localStorage.getItem("iqxo_intro_dismissed") === "1";
-  if (!isDismissed) {
-    return <Navigate to="/welcome" replace />;
-  }
-  return <Navigate to="/login" replace />;
+  // Instead of redirecting to login/welcome, redirect to the new public landing page
+  // The LandingPage has links to /login
+  return <Navigate to="/landing" replace />;
 }
 
 function App() {
@@ -265,6 +264,7 @@ function App() {
                 </Route>
 
                 {/* Public routes */}
+                <Route path="/landing" element={<LandingPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/welcome" element={<WelcomeSplashPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
