@@ -10,7 +10,7 @@ import { toast } from "../components/ui/use-toast";
 export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }) {
   const navigate = useNavigate();
   const { user, setCalendarOnboardingDone } = useApp();
-  const [syncLocal, setSyncLocal] = useState(true);
+  const [syncLocal, setSyncLocal] = useState(user?.user_metadata?.sync_local_calendar !== false);
   const [loading, setLoading] = useState(false);
 
   const handleNext = async () => {
