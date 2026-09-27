@@ -970,8 +970,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               payload,
               { onConflict: 'user_id,provider' }
             ).then(({ error: upsertErr }) => {
-              if (upsertErr) console.error("[Auth] Failed to save calendar integration:", upsertErr);
-              else console.log(`[Auth] Saved ${provider} calendar integration tokens securely.`);
+              if (upsertErr) {
+                console.error("[Auth] Failed to save calendar integration:", upsertErr);
+              } else {
+                console.log(`[Auth] Saved ${provider} calendar integration tokens securely.`);
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('calendarIntegrationSaved', { detail: { provider } }));
+                }
+              }
             });
           }
         }
