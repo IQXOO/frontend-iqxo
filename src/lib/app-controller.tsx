@@ -83,7 +83,7 @@ export default function AppController() {
   // If not authenticated and not on a public path, redirect appropriately
   useEffect(() => {
     if (authLoading) return;
-    const publicPaths = new Set(["/terms", "/privacy", "/reset-password", "/index.html", "/login", "/welcome", "/connect-calendars", "/landing"]);
+    const publicPaths = new Set(["/terms", "/privacy", "/reset-password", "/index.html", "/login", "/welcome", "/connect-calendars"]);
     if (!user && !publicPaths.has(location.pathname)) {
       const isDismissed = typeof window !== "undefined" && localStorage.getItem("iqxo_intro_dismissed") === "1";
       if (!isDismissed) {
