@@ -217,7 +217,32 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
                       <path d="M2 3h20v18H2V3zm18 16V5H4v14h16zm-5-3h-6V8h6v8zm-4-2h2v-4h-2v4z" />
                     </svg>
                   </div>
-                  <span className="font-medium text-card-foreground">Outlook / Microsoft 365</span>
+                  <span className="font-medium text-card-foreground">Outlook</span>
+                </div>
+                {outlookInt ? (
+                  <Switch 
+                    checked={outlookInt.sync_state === 'active'}
+                    onCheckedChange={() => toggleIntegration(outlookInt.id, outlookInt.sync_state)}
+                  />
+                ) : (
+                  <button onClick={() => linkProvider('azure')} className="p-1">
+                    <Plus className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                )}
+              </div>
+
+              {/* Microsoft 365 */}
+              <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors text-left">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-white border flex items-center justify-center p-1.5">
+                    <svg viewBox="0 0 23 23" className="w-full h-full">
+                      <path fill="#f35325" d="M1 1h10v10H1z"/>
+                      <path fill="#81bc06" d="M12 1h10v10H12z"/>
+                      <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+                      <path fill="#ffba08" d="M12 12h10v10H12z"/>
+                    </svg>
+                  </div>
+                  <span className="font-medium text-card-foreground">Microsoft 365</span>
                 </div>
                 {outlookInt ? (
                   <Switch 
