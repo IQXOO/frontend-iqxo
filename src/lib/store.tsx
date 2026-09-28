@@ -1786,26 +1786,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.warn("deleteEvent prevented: no authenticated user");
         throw new Error("No authenticated user");
       }
-      const { error } = await supabase
-        .from("events")
-        .delete()
-        .eq("id", id)
-        .eq("user_id", user.id);
 
-      if (error) {
-        console.error("deleteEvent:", error);
-        throw error;
+      // Optimistically remove from state
+      const existingEvent = dbEvents.find(e => e.id === id);
+      removeEventFromState(id);
+
+      // Call Backend API to handle both Supabase and Cloud provider deletion
+      try {
+        const { session } = (await supabase.auth.getSession()).data;
+        if (session) {
+          const backendUrl = import.meta.env.VITE_BACKEND_API || "https://backend-iqxo.fly.dev";
+          const res = await fetch(`${backendUrl}/api/calendar/event/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+          });
+          if (!res.ok) {
+            console.error("Backend delete failed, falling back to direct DB delete");
+            // Fallback just in case backend fails
+            await supabase.from("events").delete().eq("id", id).eq("user_id", user.id);
+          }
+        }
+      } catch (err) {
+        console.error("Backend delete error:", err);
       }
 
       // 2-Way Sync: Delete from Native App
-      const existingEvent = dbEvents.find(e => e.id === id);
       if (existingEvent?.native_event_id && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({
           type: "deleteNativeEvent",
           native_event_id: existingEvent.native_event_id
         }));
       }
-      removeEventFromState(id);
     },
     [user, removeEventFromState, dbEvents],
   );
