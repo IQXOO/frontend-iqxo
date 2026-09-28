@@ -1786,26 +1786,53 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.warn("deleteEvent prevented: no authenticated user");
         throw new Error("No authenticated user");
       }
-      const { error } = await supabase
-        .from("events")
-        .delete()
-        .eq("id", id)
-        .eq("user_id", user.id);
 
-      if (error) {
-        console.error("deleteEvent:", error);
-        throw error;
+      const existingEvent = dbEvents.find(e => e.id === id);
+      const isCloudEvent = existingEvent && (existingEvent.source === 'google' || existingEvent.source === 'azure');
+
+      // Optimistically remove from state
+      removeEventFromState(id);
+
+      try {
+        if (isCloudEvent) {
+          // MUST use backend to delete from Cloud APIs, otherwise it resurrects on next sync
+          const { session } = (await supabase.auth.getSession()).data;
+          if (session) {
+            const backendUrl = import.meta.env.VITE_BACKEND_API || "https://backend-iqxo.fly.dev";
+            const res = await fetch(`${backendUrl}/api/calendar/event/${id}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${session.access_token}` }
+            });
+            if (!res.ok) {
+              throw new Error(`Cloud deletion failed`);
+            }
+          }
+        } else {
+          // Local event, delete directly from Supabase
+          const { error } = await supabase.from("events").delete().eq("id", id).eq("user_id", user.id);
+          if (error) throw error;
+        }
+      } catch (err) {
+        console.error("Delete event error:", err);
+        // Revert optimistic update on failure
+        if (existingEvent) {
+          const isPast = existingEvent.date && new Date(`${existingEvent.date}T00:00:00`).getTime() < new Date().setHours(0,0,0,0);
+          if (isPast) {
+             setArchiveEvents(prev => [...prev, existingEvent]);
+          } else {
+             setActiveEvents(prev => [...prev, existingEvent]);
+          }
+        }
+        return;
       }
 
       // 2-Way Sync: Delete from Native App
-      const existingEvent = dbEvents.find(e => e.id === id);
       if (existingEvent?.native_event_id && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({
           type: "deleteNativeEvent",
           native_event_id: existingEvent.native_event_id
         }));
       }
-      removeEventFromState(id);
     },
     [user, removeEventFromState, dbEvents],
   );
