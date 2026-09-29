@@ -4,7 +4,7 @@ import { useApp } from "../lib/store";
 import { supabase } from "../lib/supabase";
 import { Switch } from "../components/ui/switch";
 import { Button } from "../components/ui/button";
-import { Calendar, Plus } from "lucide-react";
+import { Calendar, Plus, Trash2 } from "lucide-react";
 import { toast } from "../components/ui/use-toast";
 
 export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }) {
@@ -82,8 +82,8 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
       const options = {
         redirectTo,
         scopes: provider === 'google' 
-          ? 'https://www.googleapis.com/auth/calendar' 
-          : 'Calendars.ReadWrite',
+          ? 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events' 
+          : 'offline_access Calendars.ReadWrite',
         queryParams: {
           access_type: 'offline',
           prompt: 'consent', // Forces the consent screen so we always get a refresh token
@@ -118,6 +118,21 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
     if (error) {
       toast({ title: "Failed to update", description: error.message, variant: "destructive" });
       loadIntegrations(); // Revert on failure
+    }
+  };
+
+  const removeIntegration = async (id: string, provider: string) => {
+    if (!window.confirm("Are you sure you want to completely disconnect this calendar?")) return;
+    
+    // Optimistic remove
+    setIntegrations(prev => prev.filter(i => i.id !== id));
+    
+    const { error } = await supabase.from('calendar_integrations').delete().eq('id', id);
+    if (error) {
+      toast({ title: "Failed to disconnect", description: error.message, variant: "destructive" });
+      loadIntegrations();
+    } else {
+      toast({ title: "Disconnected", description: `Your ${provider} calendar has been disconnected.` });
     }
   };
 
@@ -198,10 +213,15 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
                   <span className="font-medium text-card-foreground">Google</span>
                 </div>
                 {googleInt ? (
-                  <Switch 
-                    checked={googleInt.sync_state === 'active'}
-                    onCheckedChange={() => toggleIntegration(googleInt.id, googleInt.sync_state)}
-                  />
+                  <div className="flex items-center gap-3">
+                    <Switch 
+                      checked={googleInt.sync_state === 'active'}
+                      onCheckedChange={() => toggleIntegration(googleInt.id, googleInt.sync_state)}
+                    />
+                    <button onClick={() => removeIntegration(googleInt.id, 'Google')} className="p-1 text-destructive hover:bg-destructive/10 rounded-md transition-colors">
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
                 ) : (
                   <button onClick={() => linkProvider('google')} className="p-1">
                     <Plus className="w-5 h-5 text-muted-foreground" />
@@ -220,10 +240,15 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
                   <span className="font-medium text-card-foreground">Outlook</span>
                 </div>
                 {outlookInt ? (
-                  <Switch 
-                    checked={outlookInt.sync_state === 'active'}
-                    onCheckedChange={() => toggleIntegration(outlookInt.id, outlookInt.sync_state)}
-                  />
+                  <div className="flex items-center gap-3">
+                    <Switch 
+                      checked={outlookInt.sync_state === 'active'}
+                      onCheckedChange={() => toggleIntegration(outlookInt.id, outlookInt.sync_state)}
+                    />
+                    <button onClick={() => removeIntegration(outlookInt.id, 'Outlook')} className="p-1 text-destructive hover:bg-destructive/10 rounded-md transition-colors">
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
                 ) : (
                   <button onClick={() => linkProvider('azure')} className="p-1">
                     <Plus className="w-5 h-5 text-muted-foreground" />
@@ -245,10 +270,15 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
                   <span className="font-medium text-card-foreground">Microsoft 365</span>
                 </div>
                 {outlookInt ? (
-                  <Switch 
-                    checked={outlookInt.sync_state === 'active'}
-                    onCheckedChange={() => toggleIntegration(outlookInt.id, outlookInt.sync_state)}
-                  />
+                  <div className="flex items-center gap-3">
+                    <Switch 
+                      checked={outlookInt.sync_state === 'active'}
+                      onCheckedChange={() => toggleIntegration(outlookInt.id, outlookInt.sync_state)}
+                    />
+                    <button onClick={() => removeIntegration(outlookInt.id, 'Microsoft 365')} className="p-1 text-destructive hover:bg-destructive/10 rounded-md transition-colors">
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
                 ) : (
                   <button onClick={() => linkProvider('azure')} className="p-1">
                     <Plus className="w-5 h-5 text-muted-foreground" />
