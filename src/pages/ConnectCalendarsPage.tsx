@@ -83,7 +83,7 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
         redirectTo,
         scopes: provider === 'google' 
           ? 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events' 
-          : 'offline_access Calendars.ReadWrite',
+          : 'email profile offline_access Calendars.ReadWrite',
         queryParams: {
           access_type: 'offline',
           prompt: 'consent', // Forces the consent screen so we always get a refresh token
