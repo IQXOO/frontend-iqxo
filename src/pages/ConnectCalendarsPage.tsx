@@ -83,7 +83,7 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
         redirectTo,
         scopes: provider === 'google' 
           ? 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events' 
-          : 'offline_access Calendars.ReadWrite',
+          : 'email profile offline_access Calendars.ReadWrite',
         queryParams: {
           access_type: 'offline',
           prompt: 'consent', // Forces the consent screen so we always get a refresh token
@@ -121,7 +121,7 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
     }
   };
 
-  const removeIntegration = async (id: string, provider: string) => {
+  const removeIntegration = async (id: string, providerTitle: string, providerName: string) => {
     if (!window.confirm("Are you sure you want to completely disconnect this calendar?")) return;
     
     // Optimistic remove
@@ -131,9 +131,18 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
     if (error) {
       toast({ title: "Failed to disconnect", description: error.message, variant: "destructive" });
       loadIntegrations();
-    } else {
-      toast({ title: "Disconnected", description: `Your ${provider} calendar has been disconnected.` });
+      return;
+    } 
+    
+    // Also unlink identity so a fresh token is generated next time
+    if (user?.identities) {
+      const identity = user.identities.find(ident => ident.provider === providerName);
+      if (identity) {
+        await supabase.auth.unlinkIdentity(identity);
+      }
     }
+    
+    toast({ title: "Disconnected", description: `Your ${providerTitle} calendar has been disconnected.` });
   };
 
   const googleInt = integrations.find(i => i.provider === 'google');
@@ -218,7 +227,7 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
                       checked={googleInt.sync_state === 'active'}
                       onCheckedChange={() => toggleIntegration(googleInt.id, googleInt.sync_state)}
                     />
-                    <button onClick={() => removeIntegration(googleInt.id, 'Google')} className="p-1 text-destructive hover:bg-destructive/10 rounded-md transition-colors">
+                    <button onClick={() => removeIntegration(googleInt.id, 'Google', 'google')} className="p-1 text-destructive hover:bg-destructive/10 rounded-md transition-colors">
                       <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
@@ -245,7 +254,7 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
                       checked={outlookInt.sync_state === 'active'}
                       onCheckedChange={() => toggleIntegration(outlookInt.id, outlookInt.sync_state)}
                     />
-                    <button onClick={() => removeIntegration(outlookInt.id, 'Outlook')} className="p-1 text-destructive hover:bg-destructive/10 rounded-md transition-colors">
+                    <button onClick={() => removeIntegration(outlookInt.id, 'Outlook', 'azure')} className="p-1 text-destructive hover:bg-destructive/10 rounded-md transition-colors">
                       <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
@@ -275,7 +284,7 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
                       checked={outlookInt.sync_state === 'active'}
                       onCheckedChange={() => toggleIntegration(outlookInt.id, outlookInt.sync_state)}
                     />
-                    <button onClick={() => removeIntegration(outlookInt.id, 'Microsoft 365')} className="p-1 text-destructive hover:bg-destructive/10 rounded-md transition-colors">
+                    <button onClick={() => removeIntegration(outlookInt.id, 'Microsoft 365', 'azure')} className="p-1 text-destructive hover:bg-destructive/10 rounded-md transition-colors">
                       <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
