@@ -835,13 +835,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Active events pagination state
   const [activePage, setActivePage] = useState(0);
   const [activeHasMore, setActiveHasMore] = useState(true);
-  const [_activeTotal, setActiveTotal] = useState<number | null>(null);
   const [activeLoading, setActiveLoading] = useState(false);
 
   // Archive events pagination state
   const [archivePage, setArchivePage] = useState(0);
   const [archiveHasMore, setArchiveHasMore] = useState(true);
-  const [_archiveTotal, setArchiveTotal] = useState<number | null>(null);
   const [archiveLoading, setArchiveLoading] = useState(false);
 
   const PAGE_SIZE = 40;
@@ -1036,11 +1034,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const from = pageNum * PAGE_SIZE;
       const to = (pageNum + 1) * PAGE_SIZE - 1;
 
-      const { data, count, error } = await supabase
+      const { data, error } = await supabase
         .from("events")
         .select(
-          "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
-          { count: "exact" }
+          "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at"
         )
         .eq("user_id", uid)
         .or(`date.gte.${todayStr},recurrence_rule.not.is.null`)
@@ -1057,9 +1054,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const filteredNew = formatted.filter(e => !existingIds.has(e.id));
         const merged = [...base, ...filteredNew];
         
-        const total = count ?? 0;
-        setActiveTotal(total);
-        setActiveHasMore(merged.length < total && formatted.length === PAGE_SIZE);
+        setActiveHasMore(formatted.length === PAGE_SIZE);
         
         return merged;
       });
@@ -1080,11 +1075,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const from = pageNum * PAGE_SIZE;
       const to = (pageNum + 1) * PAGE_SIZE - 1;
 
-      const { data, count, error } = await supabase
+      const { data, error } = await supabase
         .from("events")
         .select(
-          "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
-          { count: "exact" }
+          "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at"
         )
         .eq("user_id", uid)
         .lt("date", todayStr)
@@ -1102,9 +1096,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const filteredNew = formatted.filter(e => !existingIds.has(e.id));
         const merged = [...base, ...filteredNew];
         
-        const total = count ?? 0;
-        setArchiveTotal(total);
-        setArchiveHasMore(merged.length < total && formatted.length === PAGE_SIZE);
+        setArchiveHasMore(formatted.length === PAGE_SIZE);
         
         return merged;
       });
@@ -1144,8 +1136,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         supabase
           .from("events")
           .select(
-            "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at",
-            { count: "exact" }
+            "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at"
           )
           .eq("user_id", uid)
           .or(`date.gte.${toLocalDateStr()},recurrence_rule.not.is.null`)
@@ -1163,9 +1154,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setActiveEvents(formatted);
       setActivePage(0);
 
-      const total = eventsRes.count ?? 0;
-      setActiveTotal(total);
-      setActiveHasMore(formatted.length < total && formatted.length === PAGE_SIZE);
+      setActiveHasMore(formatted.length === PAGE_SIZE);
 
       if (!scheduleRes.error && scheduleRes.data) {
         setWorkScheduleRows(
