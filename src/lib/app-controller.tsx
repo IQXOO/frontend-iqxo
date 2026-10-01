@@ -210,15 +210,20 @@ export default function AppController() {
       }
     };
 
-    syncCloudCalendars();
-
+    // Defer the initial sync so it doesn't compete with the Home page data fetching
+    const timeoutId = setTimeout(() => {
+      syncCloudCalendars();
+    }, 3000);
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         syncCloudCalendars();
       }
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [authLoading, user, refreshEvents]);
 
   // Render nothing — this component only controls side-effects and redirects.
