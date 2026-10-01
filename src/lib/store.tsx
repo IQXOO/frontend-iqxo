@@ -1052,13 +1052,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const base = isRefresh || pageNum === 0 ? [] : prev;
         const existingIds = new Set(base.map(e => e.id));
         const filteredNew = formatted.filter(e => !existingIds.has(e.id));
-        const merged = [...base, ...filteredNew];
-        
-        setActiveHasMore(formatted.length === PAGE_SIZE);
-        
-        return merged;
+        return [...base, ...filteredNew];
       });
 
+      setActiveHasMore(formatted.length === PAGE_SIZE);
       setActivePage(pageNum);
     } catch (err) {
       devError("Events", "Failed to load active events page", err);
@@ -1094,13 +1091,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const base = isRefresh || pageNum === 0 ? [] : prev;
         const existingIds = new Set(base.map(e => e.id));
         const filteredNew = formatted.filter(e => !existingIds.has(e.id));
-        const merged = [...base, ...filteredNew];
-        
-        setArchiveHasMore(formatted.length === PAGE_SIZE);
-        
-        return merged;
+        return [...base, ...filteredNew];
       });
 
+      setArchiveHasMore(formatted.length === PAGE_SIZE);
       setArchivePage(pageNum);
     } catch (err) {
       devError("Events", "Failed to load archive events page", err);
