@@ -7,6 +7,16 @@ import { Button } from "../components/ui/button";
 import { Calendar, Plus, Trash2 } from "lucide-react";
 import { toast } from "../components/ui/use-toast";
 
+function getDeviceName(): string {
+  if (typeof navigator === "undefined") return "Device";
+  const ua = navigator.userAgent;
+  if (/android/i.test(ua)) return "Android";
+  if (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) return "iPhone";
+  if (/Mac/i.test(ua)) return "Mac";
+  if (/Win/i.test(ua)) return "Windows";
+  return "Device";
+}
+
 export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }) {
   const navigate = useNavigate();
   const { user, setCalendarOnboardingDone } = useApp();
@@ -195,11 +205,21 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
                     22
                   </span>
                 </div>
-                <span className="font-medium text-card-foreground">Calendars from iPhone</span>
+                <span className="font-medium text-card-foreground">Calendars from {getDeviceName()}</span>
               </div>
               <Switch 
                 checked={syncLocal} 
-                onCheckedChange={setSyncLocal} 
+                onCheckedChange={async (val) => {
+                  setSyncLocal(val);
+                  if (user) {
+                    await supabase.auth.updateUser({
+                      data: { sync_local_calendar: val }
+                    });
+                  }
+                  if (val && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+                    (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestCalendarEvents' }));
+                  }
+                }} 
               />
             </div>
           </section>
