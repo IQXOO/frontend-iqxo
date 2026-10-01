@@ -1129,8 +1129,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await fetchArchivePage(userId, archivePage + 1);
   }, [archiveLoading, archiveHasMore, userId, archivePage, fetchArchivePage]);
 
-  const fetchInitialData = useCallback(async (uid: string) => {
-    setLoading(true);
+  const fetchInitialData = useCallback(async (uid: string, isBackground = false) => {
+    if (!isBackground) setLoading(true);
     try {
       if (!uid) {
         devWarn("Events", "fetchInitialData called without uid — aborting");
@@ -1192,7 +1192,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   }, []);
 
@@ -1202,7 +1202,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ── refreshEvents: public method called after schedule edits ─────────────────
   const refreshEvents = useCallback(async () => {
-    if (userId) await fetchInitialData(userId);
+    if (userId) await fetchInitialData(userId, true);
   }, [userId, fetchInitialData]);
 
   useEffect(() => {
