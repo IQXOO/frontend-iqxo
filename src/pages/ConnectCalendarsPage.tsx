@@ -314,27 +314,6 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
         </div>
       )}
       
-      {/* Hidden Debug Button */}
-      <div className="mt-8 text-center">
-        <button 
-          onClick={async () => {
-            try {
-              const { session } = (await supabase.auth.getSession()).data;
-              const backendUrl = import.meta.env.VITE_BACKEND_API || "https://backend-iqxo.fly.dev";
-              const res = await fetch(`${backendUrl}/api/calendar/debug-sync`, {
-                headers: { 'Authorization': `Bearer ${session?.access_token}` }
-              });
-              const data = await res.json();
-              alert(JSON.stringify(data, null, 2));
-            } catch (err: any) {
-              alert("Debug failed: " + err.message);
-            }
-          }}
-          className="text-[10px] text-muted-foreground/30 hover:text-muted-foreground"
-        >
-          Debug Sync
-        </button>
-      </div>
     </div>
   );
 }
