@@ -6,8 +6,8 @@ import { useToast } from "../hooks/use-toast";
 import { navigateToPath } from "../lib/navigation";
 
 const _PRICING = {
-  monthlyEUR: 9.99,
-  yearlyEUR: 79,
+  monthlyEUR: 4.99,
+  yearlyEUR: 39.99,
 };
 
 const _PAYMENT_LINKS = {
@@ -81,13 +81,13 @@ const translations = {
     proLabel: "Upgrade to Pro",
     monthlyText: "Monthly",
     yearlyText: "Yearly",
-    yearlySavings: "-34%",
-    monthlyAmount: "€9",
+    yearlySavings: "-33%",
+    monthlyAmount: "€4",
     monthlyAmountSpan: ".99",
     monthlyPeriod: "per month",
-    yearlyAmount: "€79",
+    yearlyAmount: "€39.99",
     yearlyPeriod: "per year",
-    yearlySavingsText: "Save €40.88 vs monthly",
+    yearlySavingsText: "Save €19.89 vs monthly",
     feature1: "Unlimited captures",
     feature2: "All features unlocked",
     feature3: "Cancel anytime",
@@ -165,13 +165,13 @@ const translations = {
     proLabel: "Améliorez Votre Journée",
     monthlyText: "Monthly",
     yearlyText: "Yearly",
-    yearlySavings: "-34%",
-    monthlyAmount: "9",
+    yearlySavings: "-33%",
+    monthlyAmount: "4",
     monthlyAmountSpan: ",99 €",
     monthlyPeriod: "par mois",
-    yearlyAmount: "79",
+    yearlyAmount: "39,99",
     yearlyPeriod: "par an",
-    yearlySavingsText: "Économisez 40,88 € vs mensuel",
+    yearlySavingsText: "Économisez 19,89 € vs mensuel",
     feature1: "Captures illimitées",
     feature2: "Toutes les fonctionnalités débloquées",
     feature3: "Annulation à tout moment",
