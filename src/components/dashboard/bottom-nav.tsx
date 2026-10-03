@@ -859,17 +859,6 @@ export const BottomNav = memo(function BottomNav({
     stopCameraStream();
   };
 
-  const handleCalendarImport = () => {
-    // Calendar import is a Pro-only feature
-    if (planStatus !== "pro" && planStatus !== "free_trial") {
-      setMenuOpen(false);
-      setShowPhotoOptions(false);
-      window.dispatchEvent(new Event("trigger-paywall"));
-      return;
-    }
-    setShowPhotoOptions(false);
-    setShowCalendarOptions(true);
-  };
 
   // Request events from the native app's calendar bridge
   const handleSyncPhoneCalendar = () => {
@@ -1131,21 +1120,30 @@ export const BottomNav = memo(function BottomNav({
                         </div>
                       </motion.button>
 
-                      {/* Import from Calendar — Pro only — opens sub-menu */}
+                      {/* Connect Calendars */}
                       <motion.button
-                        onClick={handleCalendarImport}
+                        onClick={() => {
+                          setCalendarOnboardingDone(false); // Make sure they can see the page without getting redirected
+                          handleClose();
+                          navigate("/connect-calendars");
+                        }}
                         className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-secondary/60 transition-colors text-left group"
                         whileTap={{ scale: 0.98 }}
                       >
                         <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                          <Calendar className="w-5 h-5 text-emerald-500" />
+                          <svg className="w-5 h-5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                            <line x1="16" y1="2" x2="16" y2="6" />
+                            <line x1="8" y1="2" x2="8" y2="6" />
+                            <line x1="3" y1="10" x2="21" y2="10" />
+                          </svg>
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-medium text-foreground flex items-center gap-2">
-                            {language === "ar" ? "استيراد من التقويم" : language === "fr" ? "Importer depuis Calendrier" : "Import from Calendar"}
+                            {language === "ar" ? "ربط التقويم" : language === "fr" ? "Associer les calendriers" : "Connect Calendars"}
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {language === "ar" ? "تقويم الهاتف أو ملف .ics" : language === "fr" ? "Calendrier du téléphone ou fichier .ics" : "Phone calendar or .ics file"}
+                            {language === "ar" ? "تقويم الهاتف، Google، Outlook" : language === "fr" ? "Téléphone, Google, Outlook" : "Phone, Google, Outlook"}
                           </p>
                         </div>
                         <span className="text-muted-foreground text-xs">›</span>
@@ -1153,144 +1151,6 @@ export const BottomNav = memo(function BottomNav({
                     </div>
                   </motion.div>
                 )}
-
-                {/* ── Calendar Options sub-menu ── */}
-                {showCalendarOptions && !showCalendarImport && !showNativePreview && (
-                  <motion.div
-                    key="calOptions"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="rounded-2xl bg-background border border-border shadow-2xl overflow-hidden"
-                  >
-                    <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
-                      <button
-                        onClick={() => setShowCalendarOptions(false)}
-                        className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <span className="text-sm leading-none">‹</span>
-                      </button>
-                      <span className="text-sm font-semibold text-foreground flex-1">
-                        {language === "ar" ? "استيراد من التقويم" : language === "fr" ? "Importer depuis Calendrier" : "Import from Calendar"}
-                      </span>
-                      <button
-                        onClick={handleClose}
-                        className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    <div className="p-3 space-y-2">
-                      {/* Option 1: Sync Phone Calendar */}
-                      <motion.button
-                        onClick={handleSyncPhoneCalendar}
-                        className="w-full flex items-center gap-4 px-4 py-4 rounded-xl bg-gradient-to-r from-emerald-500/10 to-teal-500/5 border border-emerald-500/20 hover:border-emerald-500/40 transition-all text-left"
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <div className="w-11 h-11 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
-                          <Smartphone className="w-5 h-5 text-emerald-400" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-foreground">
-                            {language === "ar" ? "مزامنة تقويم الهاتف" : language === "fr" ? "Synchroniser le calendrier" : "Sync Phone Calendar"}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {language === "ar" ? "جلب كل المواعيد تلقائياً" : language === "fr" ? "Importer tous vos événements automatiquement" : "Auto-fetch all your events"}
-                          </p>
-                        </div>
-                        <span className="text-emerald-500 text-xs font-bold">✦</span>
-                      </motion.button>
-
-                      {/* Option 2: Upload .ics file */}
-                      <motion.button
-                        onClick={() => { setShowCalendarOptions(false); setShowCalendarImport(true); }}
-                        className="w-full flex items-center gap-4 px-4 py-4 rounded-xl hover:bg-secondary/60 transition-colors text-left"
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <div className="w-11 h-11 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                          <FolderOpen className="w-5 h-5 text-blue-500" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-foreground">
-                            {language === "ar" ? "رفع ملف .ics" : language === "fr" ? "Importer un fichier .ics" : "Upload .ics File"}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {language === "ar" ? "Apple، Google، Outlook" : language === "fr" ? "Apple, Google, Outlook" : "Apple, Google, Outlook"}
-                          </p>
-                        </div>
-                        <span className="text-muted-foreground text-xs">›</span>
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* ── Native Calendar Preview ── */}
-                {showNativePreview && (
-                  <motion.div
-                    key="nativePreview"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="rounded-2xl bg-background border border-border shadow-2xl overflow-hidden"
-                  >
-                    <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
-                      <button
-                        onClick={() => { setShowNativePreview(false); setNativeCalEvents(null); setNativeCalError(null); setNativeCalLoading(false); setShowCalendarOptions(true); }}
-                        className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <span className="text-sm leading-none">‹</span>
-                      </button>
-                      <span className="text-sm font-semibold text-foreground flex-1">
-                        {language === "ar" ? "تقويم الهاتف" : language === "fr" ? "Calendrier du téléphone" : "Phone Calendar"}
-                      </span>
-                      <button onClick={handleClose} className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {/* Loading */}
-                    {nativeCalLoading && (
-                      <div className="flex flex-col items-center gap-4 py-12 px-6">
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                          className="w-10 h-10 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full"
-                        />
-                        <p className="text-sm text-muted-foreground">
-                          {language === "ar" ? "جارٍ قراءة التقويم…" : language === "fr" ? "Lecture du calendrier…" : "Reading your calendar…"}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Error / not-in-app notice */}
-                    {!nativeCalLoading && nativeCalError && !nativeCalEvents && (
-                      <div className="p-5 space-y-4">
-                        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                          <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                          <p className="text-xs text-amber-300 leading-relaxed">{nativeCalError}</p>
-                        </div>
-                        <button
-                          onClick={handleClose}
-                          className="w-full py-3 rounded-xl bg-secondary text-foreground text-sm font-medium hover:bg-secondary/80 transition-colors"
-                        >
-                          {language === "ar" ? "إغلاق" : language === "fr" ? "Fermer" : "Close"}
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Events loaded — show selectable preview */}
-                    {!nativeCalLoading && nativeCalEvents && (
-                      <NativeCalendarPreview
-                        events={nativeCalEvents}
-                        language={language}
-                        onClose={handleClose}
-                        onImport={async (evts) => { await handleImportedEvents(evts); handleClose(); }}
-                      />
-                    )}
-                  </motion.div>
-                )}
-
                 {/* ── Photo sub-options ── */}
                 {showPhotoOptions && !showCalendarImport && (
                   <motion.div
