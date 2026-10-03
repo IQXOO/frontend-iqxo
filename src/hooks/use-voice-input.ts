@@ -71,8 +71,6 @@ export interface VoiceLang {
 
 // Comprehensive language list - Web Speech API supports all of these
 export const VOICE_LANGUAGES: VoiceLang[] = [
-  { code: "ar-EG", label: "عربي مصري", flag: "EG" },
-  { code: "ar-SA", label: "عربي خليجي", flag: "SA" },
   { code: "en-US", label: "English", flag: "US" },
   { code: "fr-FR", label: "Francais", flag: "FR" },
   { code: "it-IT", label: "Italiano", flag: "IT" },
@@ -87,6 +85,8 @@ export const VOICE_LANGUAGES: VoiceLang[] = [
   { code: "ru-RU", label: "Русский", flag: "RU" },
   { code: "nl-NL", label: "Nederlands", flag: "NL" },
   { code: "pl-PL", label: "Polski", flag: "PL" },
+  { code: "ar-EG", label: "عربي مصري", flag: "EG" },
+  { code: "ar-SA", label: "عربي خليجي", flag: "SA" },
 ];
 
 interface UseVoiceInputReturn {
@@ -126,6 +126,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
   const isAndroidModeRef = useRef(false);
   // guard: يمنع إضافة sessionFinalRef مرتين (مرة في flush ومرة في onend)
   const sessionCommittedRef = useRef(false);
+  const currentLangRef = useRef("");
 
   // Convert WebM to WAV format
   const _convertWebMToWav = async (webmBlob: Blob): Promise<Blob> => {
@@ -167,6 +168,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
   const startListening = useCallback(
     async (langCode?: string) => {
       devLog('Voice', 'Starting voice input');
+      currentLangRef.current = langCode || "";
 
       if (!isSupported) {
         const errorMsg = "Voice input is not supported in this browser";
@@ -496,6 +498,9 @@ export function useVoiceInput(): UseVoiceInputReturn {
             if (user?.id) {
               formData.append("userId", user.id);
             }
+            if (currentLangRef.current) {
+              formData.append("language", currentLangRef.current.split('-')[0]); // Send ISO code like 'en', 'fr', 'ar'
+            }
 
             const headers: Record<string, string> = {}
             if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
@@ -665,6 +670,9 @@ export function useVoiceInput(): UseVoiceInputReturn {
         formData.append("text", finalResult);
         if (user?.id) {
           formData.append("userId", user.id);
+        }
+        if (currentLangRef.current) {
+          formData.append("language", currentLangRef.current.split('-')[0]);
         }
 
         const headers: Record<string, string> = {};
