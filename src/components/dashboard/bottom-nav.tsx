@@ -16,7 +16,7 @@ import {
   Home,
   Smartphone,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "../../lib/store";
 
@@ -734,8 +734,9 @@ export const BottomNav = memo(function BottomNav({
   onComposerOpenChange,
   onImportEvents,
 }: BottomNavProps) {
-  const { language, addEvent, events: existingEvents, user: _user, planStatus, refreshEvents } = useApp();
+  const { language, addEvent, events: existingEvents, user: _user, planStatus, refreshEvents, setCalendarOnboardingDone } = useApp();
   const isRTL = language === "ar";
+  const navigate = useNavigate();
   const [internalMenuOpen, setInternalMenuOpen] = useState(false);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
   const [showCalendarImport, setShowCalendarImport] = useState(false);
