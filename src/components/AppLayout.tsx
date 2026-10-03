@@ -127,7 +127,7 @@ function AppLayoutContent() {
       feature3: "Cancel anytime",
       feature4: "30-day money-back guarantee",
       ctaMonthly: "Upgrade to Pro",
-      ctaYearly: "Commit to Pro",
+      ctaYearly: "Upgrade to Pro",
       guarantee: "No questions asked. Full refund within 30 days.",
       autoRenew: "Recurring billing. Cancel anytime at least 24 hours before the end of the current period in App Store Account Settings.",
       privacyPolicy: "Privacy Policy",

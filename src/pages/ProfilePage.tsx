@@ -89,29 +89,6 @@ export default function ProfilePage() {
               </button>
             )}
 
-            {/* Manage Calendars */}
-            <button
-              onClick={() => {
-                setCalendarOnboardingDone(false); // Reset the flag so they can see the page
-                navigateToPath("/connect-calendars");
-              }}
-              className="px-4 py-3.5 flex items-center justify-between w-full hover:bg-white/5 transition-colors text-left group border-b border-white/5"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary/20 transition-colors">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                    <line x1="16" y1="2" x2="16" y2="6" />
-                    <line x1="8" y1="2" x2="8" y2="6" />
-                    <line x1="3" y1="10" x2="21" y2="10" />
-                  </svg>
-                </div>
-                <span className="text-sm font-medium text-foreground">
-                  {language === "ar" ? "ربط التقويم (Google/Outlook)" : language === "fr" ? "Associer les calendriers" : "Connect Calendars"}
-                </span>
-              </div>
-            </button>
-
             {/* Version Number */}
             <div className="px-4 py-3.5 flex items-center justify-between border-b border-white/5">
               <div className="flex items-center gap-3">
@@ -124,29 +101,6 @@ export default function ProfilePage() {
               </div>
               <span className="text-sm text-muted-foreground font-mono">1.0.0</span>
             </div>
-
-            {/* Reset Onboarding (Dev Tool) */}
-            <button
-              onClick={async () => {
-                try {
-                  await setOnboardingDone(false);
-                  await setCalendarOnboardingDone(false);
-                  window.location.href = "/onboarding";
-                } catch (e) {
-                  console.error(e);
-                }
-              }}
-              className="px-4 py-3.5 flex items-center justify-between w-full hover:bg-white/5 transition-colors text-left group border-b border-white/5"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500/20 transition-colors">
-                  <Info className="w-4 h-4" />
-                </div>
-                <span className="text-sm font-medium text-blue-500">
-                  Reset Onboarding Flow
-                </span>
-              </div>
-            </button>
 
             {/* Delete Account */}
             <AlertDialog>
