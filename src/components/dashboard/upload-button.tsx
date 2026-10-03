@@ -142,19 +142,50 @@ export function UploadButton({
       return
     }
 
-    // Synchronously create object URLs (No Memory Overhead for Large Images)
-    const newPreviews: FilePreview[] = validFiles.map(file => {
-      const dataUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : ""
-      return {
-        name: file.name,
-        type: file.type,
-        size: formatSize(file.size),
-        dataUrl,
-        base64: "", // Not used anymore
-        mediaType: file.type,
-        file: file,
-      }
-    })
+    // Use FileReader for reliable image rendering on mobile/iOS
+    const newPreviews = await Promise.all(
+      validFiles.map(
+        (file) =>
+          new Promise<FilePreview>((resolve) => {
+            if (file.type.startsWith("image/")) {
+              const reader = new FileReader()
+              reader.onload = (e) => {
+                resolve({
+                  name: file.name,
+                  type: file.type,
+                  size: formatSize(file.size),
+                  dataUrl: e.target?.result as string,
+                  base64: "", // Not used anymore
+                  mediaType: file.type,
+                  file: file,
+                })
+              }
+              reader.onerror = () => {
+                resolve({
+                  name: file.name,
+                  type: file.type,
+                  size: formatSize(file.size),
+                  dataUrl: "",
+                  base64: "",
+                  mediaType: file.type,
+                  file: file,
+                })
+              }
+              reader.readAsDataURL(file)
+            } else {
+              resolve({
+                name: file.name,
+                type: file.type,
+                size: formatSize(file.size),
+                dataUrl: "",
+                base64: "",
+                mediaType: file.type,
+                file: file,
+              })
+            }
+          })
+      )
+    )
 
     if (newPreviews.length > 0) {
       setPreviews(newPreviews)
@@ -173,7 +204,6 @@ export function UploadButton({
       }
       devLog('Upload', 'Files selected', { count: files.length })
       void processFiles(files)
-      e.target.value = ""
     },
     [handleClose, previews, processFiles]
   )
@@ -276,7 +306,6 @@ export function UploadButton({
   }, [previews, onExtractedData, handleClose, session?.access_token, user?.id, toast, t, setTotalUsage])
 
   const primaryPreview = previews[0]
-  const isImage = primaryPreview?.type.startsWith("image/")
 
   return (
     <>
@@ -305,34 +334,6 @@ export function UploadButton({
                   <h3 className="text-sm font-semibold text-foreground">
                     {previews.length > 1 ? `${previews.length} Files Selected` : t("uploadPreview")}
                   </h3>
-                  <div ref={langPickerRef} className="relative">
-                    <button
-                      onClick={() => setLangPickerOpen(!langPickerOpen)}
-                      className="px-2 py-1 rounded-md bg-secondary hover:bg-secondary/80 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-                      title="Select language for analysis"
-                    >
-                      <span>{selectedLang.flag} {selectedLang.label}</span>
-                      <ChevronDown className="h-3 w-3" />
-                    </button>
-                    {langPickerOpen && (
-                      <div className="absolute top-full mt-1 left-0 bg-background border border-border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto w-40">
-                        {VOICE_LANGUAGES.map((lang) => (
-                          <button
-                            key={lang.code}
-                            onClick={() => {
-                              setSelectedLang(lang)
-                              setLangPickerOpen(false)
-                            }}
-                            className={`w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors ${
-                              selectedLang.code === lang.code ? "bg-primary/10 font-medium" : ""
-                            }`}
-                          >
-                            <span>{lang.flag} {lang.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 </div>
                 <button
                   onClick={handleClose}
@@ -342,44 +343,47 @@ export function UploadButton({
                 </button>
               </div>
 
-              <div className="rounded-2xl bg-secondary/50 overflow-hidden flex items-center justify-center h-40 relative">
-                {isImage ? (
-                  <img
-                    src={primaryPreview.dataUrl}
-                    alt={primaryPreview.name}
-                    className="h-full w-full object-contain"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center gap-2 py-6">
-                    <FileText className="h-12 w-12 text-primary/60" />
-                    <span className="text-xs font-mono text-muted-foreground">PDF</span>
-                  </div>
-                )}
-                {previews.length > 1 && (
-                  <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs font-bold px-2 py-1 rounded-lg">
-                    +{previews.length - 1} More
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3">
-                {isImage ? (
-                  <ImageIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-                ) : (
-                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-foreground truncate">
-                    {primaryPreview.name}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">{primaryPreview.size}</p>
+              <div className="rounded-2xl bg-secondary/50 overflow-hidden flex items-center h-40 w-full overflow-x-auto snap-x hide-scrollbar">
+                <div className="flex gap-2 p-2 min-w-max h-full">
+                  {previews.map((preview, idx) => (
+                    preview.type.startsWith("image/") ? (
+                      <div key={idx} className="h-full aspect-square bg-background/50 rounded-xl overflow-hidden shrink-0 snap-center relative shadow-sm">
+                        <img
+                          src={preview.dataUrl}
+                          alt={preview.name}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : (
+                      <div key={idx} className="flex flex-col items-center justify-center h-full aspect-square bg-background/50 rounded-xl shrink-0 snap-center relative shadow-sm">
+                        <FileText className="h-10 w-10 text-primary/60" />
+                        <span className="text-[10px] font-mono text-muted-foreground mt-2">PDF</span>
+                      </div>
+                    )
+                  ))}
                 </div>
               </div>
 
+              {previews.length === 1 && (
+                <div className="flex items-center gap-3 mt-1">
+                  {primaryPreview.type.startsWith("image/") ? (
+                    <ImageIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                  ) : (
+                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-foreground truncate">
+                      {primaryPreview.name}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">{primaryPreview.size}</p>
+                  </div>
+                </div>
+              )}
+
               <button
                 onClick={handleAnalyze}
-                className="w-full rounded-2xl py-4 text-base font-bold text-primary-foreground flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] shadow-lg bg-primary"
+                className="w-full rounded-2xl py-4 text-base font-bold text-primary-foreground flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] shadow-lg bg-primary mt-2"
               >
                 <Sparkles className="h-5 w-5" />
                 {t("uploadAnalyze")} {previews.length > 1 ? `(${previews.length})` : ""}
