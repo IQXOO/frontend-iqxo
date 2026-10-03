@@ -590,7 +590,7 @@ export function StripePricingPage({
                     disabled={isPurchasing}
                     className="mt-8 block w-full rounded-full border border-[rgba(212,168,83,0.15)] bg-[var(--amber-soft)] px-4 py-4 text-[0.9rem] font-medium text-[var(--amber)] transition-all hover:border-[rgba(212,168,83,0.25)] hover:bg-[rgba(212,168,83,0.1)] hover:text-[#E8C070] disabled:opacity-50 disabled:hover:scale-100"
                   >
-                    {isPurchasing ? t("Processing...", "Traitement...", "جاري المعالجة...") : t("Commit to Pro", "S'engager au Pro", "الاشتراك السنوي في Pro")}
+                    {isPurchasing ? t("Processing...", "Traitement...", "جاري المعالجة...") : t("Upgrade to Pro", "Passer au Pro", "الترقية إلى Pro")}
                   </button>
 
                   <div className="mt-5 text-[0.75rem] text-[#6E6E78]">

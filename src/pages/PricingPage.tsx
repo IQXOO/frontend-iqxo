@@ -93,7 +93,7 @@ const translations = {
     feature3: "Cancel anytime",
     feature4: "30-day money-back guarantee",
     proCtaMonthly: "Upgrade to Pro",
-    proCtaYearly: "Commit to Pro",
+    proCtaYearly: "Upgrade to Pro",
     proGuarantee: "No questions asked. Full refund within 30 days.",
     freeTierPart1: "After your 7-day trial, continue Free with 10 captures/month.",
     freeTierPart2: "No credit card required. Upgrade anytime.",
