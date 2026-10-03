@@ -1084,10 +1084,7 @@ export const BottomNav = memo(function BottomNav({
                     <div className="p-3 space-y-2">
                       {/* Photo option */}
                       <motion.button
-                        onClick={() => {
-                          setMenuOpen(false);
-                          onUploadClick({ autoOpenPicker: true });
-                        }}
+                        onClick={() => handleTakePhotoOption(undefined)}
                         className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-secondary/60 transition-colors text-left group"
                         whileTap={{ scale: 0.98 }}
                       >
