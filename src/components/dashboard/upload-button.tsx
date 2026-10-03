@@ -304,6 +304,15 @@ export function UploadButton({
       setState("error")
     }
   }, [previews, onExtractedData, handleClose, session?.access_token, user?.id, toast, t, setTotalUsage])
+  const handleRemovePreview = useCallback((idxToRemove: number) => {
+    setPreviews(prev => {
+      const newPreviews = prev.filter((_, idx) => idx !== idxToRemove);
+      if (newPreviews.length === 0) {
+        handleClose();
+      }
+      return newPreviews;
+    });
+  }, [handleClose]);
 
   const primaryPreview = previews[0]
 
@@ -347,7 +356,10 @@ export function UploadButton({
                 <div className="flex gap-2 p-2 min-w-max h-full">
                   {previews.map((preview, idx) => (
                     preview.type.startsWith("image/") ? (
-                      <div key={idx} className="h-full aspect-square bg-background/50 rounded-xl overflow-hidden shrink-0 snap-center relative shadow-sm">
+                      <div key={idx} className="h-full aspect-square bg-background/50 rounded-xl overflow-hidden shrink-0 snap-center relative shadow-sm group">
+                        <button onClick={() => handleRemovePreview(idx)} className="absolute top-1.5 right-1.5 z-10 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-100 transition-opacity hover:bg-black/80 active:scale-95">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
                         <img
                           src={preview.dataUrl}
                           alt={preview.name}
@@ -356,7 +368,10 @@ export function UploadButton({
                         />
                       </div>
                     ) : (
-                      <div key={idx} className="flex flex-col items-center justify-center h-full aspect-square bg-background/50 rounded-xl shrink-0 snap-center relative shadow-sm">
+                      <div key={idx} className="flex flex-col items-center justify-center h-full aspect-square bg-background/50 rounded-xl shrink-0 snap-center relative shadow-sm group">
+                        <button onClick={() => handleRemovePreview(idx)} className="absolute top-1.5 right-1.5 z-10 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-100 transition-opacity hover:bg-black/80 active:scale-95">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
                         <FileText className="h-10 w-10 text-primary/60" />
                         <span className="text-[10px] font-mono text-muted-foreground mt-2">PDF</span>
                       </div>
