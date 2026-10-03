@@ -1084,7 +1084,10 @@ export const BottomNav = memo(function BottomNav({
                     <div className="p-3 space-y-2">
                       {/* Photo option */}
                       <motion.button
-                        onClick={() => setShowPhotoOptions(true)}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onUploadClick({ autoOpenPicker: true });
+                        }}
                         className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-secondary/60 transition-colors text-left group"
                         whileTap={{ scale: 0.98 }}
                       >
@@ -1099,7 +1102,6 @@ export const BottomNav = memo(function BottomNav({
                             {language === "ar" ? "كاميرا، مكتبة أو ملف" : language === "fr" ? "Caméra, galerie ou fichier" : "Camera, gallery or file"}
                           </p>
                         </div>
-                        <span className="text-muted-foreground text-xs">›</span>
                       </motion.button>
 
                       {/* Manual event */}
@@ -1148,119 +1150,6 @@ export const BottomNav = memo(function BottomNav({
                           </p>
                         </div>
                         <span className="text-muted-foreground text-xs">›</span>
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                )}
-                {/* ── Photo sub-options ── */}
-                {showPhotoOptions && !showCalendarImport && (
-                  <motion.div
-                    key="photo"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="rounded-2xl bg-background border border-border shadow-2xl overflow-hidden"
-                  >
-                    <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
-                      <button
-                        onClick={() => setShowPhotoOptions(false)}
-                        className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <span className="text-sm leading-none">‹</span>
-                      </button>
-                      <span className="text-sm font-semibold text-foreground flex-1">
-                        {language === "ar"
-                          ? "إضافة صورة"
-                          : language === "fr"
-                            ? "Ajouter une photo"
-                            : "Add a Photo"}
-                      </span>
-                      <button
-                        onClick={handleClose}
-                        className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <div className="p-3 space-y-2">
-                      <motion.button
-                        onClick={() => handleTakePhotoOption("environment")}
-                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-secondary/60 transition-colors text-left"
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                          <Camera className="w-5 h-5 text-amber-500" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            {language === "ar"
-                              ? "التقاط صورة"
-                              : language === "fr"
-                                ? "Prendre une photo"
-                                : "Take a Photo"}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {language === "ar"
-                              ? "افتح الكاميرا"
-                              : language === "fr"
-                                ? "Ouvrir la caméra"
-                                : "Open camera"}
-                          </p>
-                        </div>
-                      </motion.button>
-                      <motion.button
-                        onClick={() => handleTakePhotoOption(undefined)}
-                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-secondary/60 transition-colors text-left"
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                          <ImageIcon className="w-5 h-5 text-emerald-500" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            {language === "ar"
-                              ? "من المعرض"
-                              : language === "fr"
-                                ? "Depuis la galerie"
-                                : "Upload from Gallery"}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {language === "ar"
-                              ? "صورة من هاتفك"
-                              : language === "fr"
-                                ? "Choisir depuis photos"
-                                : "Choose from your photos"}
-                          </p>
-                        </div>
-                      </motion.button>
-                      <motion.button
-                        onClick={() => {
-                          setMenuOpen(false);
-                          setShowPhotoOptions(false);
-                          onUploadClick({ autoOpenPicker: true });
-                        }}
-                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-secondary/60 transition-colors text-left"
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                          <FolderOpen className="w-5 h-5 text-blue-500" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            {language === "ar"
-                              ? "من الملفات"
-                              : language === "fr"
-                                ? "Depuis les fichiers"
-                                : "From Files or Drive"}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {language === "ar"
-                              ? "PDF أو ملف من السحابة"
-                              : language === "fr"
-                                ? "PDF ou cloud"
-                                : "PDF, iCloud, Google Drive"}
-                          </p>
-                        </div>
                       </motion.button>
                     </div>
                   </motion.div>
