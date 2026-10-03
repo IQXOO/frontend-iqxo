@@ -102,29 +102,6 @@ export default function ProfilePage() {
               <span className="text-sm text-muted-foreground font-mono">1.0.0</span>
             </div>
 
-            {/* Reset Onboarding (Dev Tool) */}
-            <button
-              onClick={async () => {
-                try {
-                  await setOnboardingDone(false);
-                  await setCalendarOnboardingDone(false);
-                  window.location.href = "/onboarding";
-                } catch (e) {
-                  console.error(e);
-                }
-              }}
-              className="px-4 py-3.5 flex items-center justify-between w-full hover:bg-white/5 transition-colors text-left group border-b border-white/5"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500/20 transition-colors">
-                  <Info className="w-4 h-4" />
-                </div>
-                <span className="text-sm font-medium text-blue-500">
-                  Reset Onboarding Flow
-                </span>
-              </div>
-            </button>
-
             {/* Delete Account */}
             <AlertDialog>
               <AlertDialogTrigger asChild>
