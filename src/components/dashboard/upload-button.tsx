@@ -7,6 +7,16 @@ import { useApp } from "../../lib/store"
 import type { ParsedEvent } from "../../lib/parse-voice-input"
 import { devError, devLog, fetchWithDiagnostics, getFriendlyErrorMessage, readResponseText, withAsyncDiagnostics } from "../../lib/logger"
 import { useToast } from "../../hooks/use-toast"
+import { supabase } from "../../lib/supabase"
+
+async function uploadToStorage(file: File, userId: string, bucket: string): Promise<string> {
+  const ext = file.name.split(".").pop() ?? "bin";
+  const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error } = await supabase.storage.from(bucket).upload(path, file, { cacheControl: "3600", upsert: false });
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return data.publicUrl;
+}
 
 interface UploadButtonProps {
   externalOpen: boolean
@@ -274,7 +284,23 @@ export function UploadButton({
             throw new Error("No events found in the selected images.")
           }
 
-          onExtractedData?.(allExtractedEvents, previews.map(p => p.dataUrl))
+          // Upload files to Supabase Storage to get permanent URLs
+          const uploadedUrls = await Promise.all(
+            previews.map(async (p) => {
+              try {
+                if (p.file.type.startsWith("image/")) {
+                  return await uploadToStorage(p.file, user?.id || "anon", "event-images");
+                } else if (p.file.type === "application/pdf") {
+                  return await uploadToStorage(p.file, user?.id || "anon", "event-pdfs");
+                }
+              } catch (err) {
+                console.warn("Failed to upload preview to storage, falling back to dataUrl", err);
+              }
+              return p.dataUrl; // Fallback to base64 if upload fails
+            })
+          );
+
+          onExtractedData?.(allExtractedEvents, uploadedUrls)
           handleClose()
         },
         {
