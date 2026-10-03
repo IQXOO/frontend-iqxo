@@ -33,10 +33,10 @@ interface StripePricingPageProps {
 }
 
 const _PRICING = {
-  monthlyEUR: 9.99,
-  yearlyEUR: 79,
-  yearlyPerMonth: (79 / 12).toFixed(2),
-  savingsPct: Math.round(100 - (79 / (9.99 * 12)) * 100),
+  monthlyEUR: 4.99,
+  yearlyEUR: 39.99,
+  yearlyPerMonth: (39.99 / 12).toFixed(2),
+  savingsPct: Math.round(100 - (39.99 / (4.99 * 12)) * 100),
 };
 
 const PAYMENT_LINKS: Record<BillingCycle, string> = {
@@ -83,8 +83,8 @@ export function StripePricingPage({
     setIsIosNative(hasNativeBridge && iosDetected);
   }, []);
 
-  const [localizedMonthly, setLocalizedMonthly] = useState<string>("€9.99");
-  const [localizedYearly, setLocalizedYearly] = useState<string>("€79");
+  const [localizedMonthly, setLocalizedMonthly] = useState<string>("€4.99");
+  const [localizedYearly, setLocalizedYearly] = useState<string>("€39.99");
   const [isPurchasing, setIsPurchasing] = useState(false);
 
   useEffect(() => {
@@ -499,7 +499,7 @@ export function StripePricingPage({
                   </div>
 
                   <div className="mt-8 flex items-end justify-center gap-0.5 tracking-[-0.03em] text-[#E8E8E8]">
-                    <span className="text-[3rem] font-light leading-none">{isIosNative ? localizedMonthly : "€9.99"}</span>
+                    <span className="text-[3rem] font-light leading-none">{isIosNative ? localizedMonthly : "€4.99"}</span>
                   </div>
                   <div className="mt-2 text-[0.85rem] text-[#6E6E78]">
                     {t("per month", "par mois", "شهريًا")}
@@ -560,7 +560,7 @@ export function StripePricingPage({
                   </div>
 
                   <div className="mt-6 flex items-end justify-center gap-0.5 tracking-[-0.03em] text-[#E8E8E8]">
-                    <span className="text-[3rem] font-light leading-none">{isIosNative ? localizedYearly : "€79"}</span>
+                    <span className="text-[3rem] font-light leading-none">{isIosNative ? localizedYearly : "€39.99"}</span>
                   </div>
                   <div className="mt-2 text-[0.85rem] text-[#6E6E78]">
                     {t("per year", "par an", "سنويًا")}
@@ -573,7 +573,7 @@ export function StripePricingPage({
                     {[
                       t("Everything in Monthly", "Tout ce qui est inclus dans Monthly", "كل ما في الخطة الشهرية"),
                       t("12 months of uninterrupted calm", "12 mois de calme ininterrompu", "12 شهرًا من الهدوء المتواصل"),
-                      t("Save €40.88 vs monthly (€119.88/year)", "Économisez 40,88 € vs mensuel (119,88 €/an)", "وفّر 40.88€ مقارنة بالشهرية (119.88€ سنويًا)"),
+                      t("Save €19.89 vs monthly (€59.88/year)", "Économisez 19,89 € vs mensuel (59,88 €/an)", "وفّر 19.89€ مقارنة بالشهرية (59.88€ سنويًا)"),
                       t("30-day money-back guarantee", "Garantie de remboursement 30 jours", "ضمان استرداد خلال 30 يومًا"),
                     ].map((feature, index) => (
                       <div key={feature} className="flex items-center gap-3 border-b border-[var(--border)] py-3 text-left text-[0.9rem] text-[#A0A0A8] last:border-b-0">

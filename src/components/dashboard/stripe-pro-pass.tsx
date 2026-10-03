@@ -154,7 +154,7 @@ export function StripeProPass({ open = true, onClose }: StripeProPassProps) {
                 {/* Price */}
                 <div className="text-center">
                   <div className="inline-flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-white">$9.99</span>
+                    <span className="text-4xl font-bold text-white">€4.99</span>
                     <span className="text-white/40 text-sm">
                       /{language === "ar" ? "شهر" : "month"}
                     </span>

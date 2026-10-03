@@ -73,6 +73,12 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
     }
     return overlapping
   }, [dailyEvents])
+  const allDayEvents = useMemo(() => {
+    return dailyEvents.filter(e => {
+      const timeStr = e.start_time || e.time;
+      return !timeStr || timeStr.trim() === "";
+    });
+  }, [dailyEvents])
 
   // Timeline Math
   const timelineHours = useMemo(() => {
@@ -200,6 +206,71 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
             {/* Main Vertical Timeline Line */}
             <div className="absolute top-0 bottom-0 w-px bg-border/40" style={{ left: isRTL ? 'auto' : '3rem', right: isRTL ? '3rem' : 'auto' }} />
             
+            {/* All Day Events (No Time) */}
+            {allDayEvents.length > 0 && (
+              <div className="relative min-h-[60px] border-b border-border/10 last:border-0 py-3 mb-2">
+                <div 
+                  className={`absolute top-4 w-10 text-xs font-bold text-primary text-right`}
+                  style={{ left: isRTL ? 'auto' : '-3.5rem', right: isRTL ? '-3.5rem' : 'auto', textAlign: isRTL ? 'left' : 'right' }}
+                >
+                  {t("All Day", "Jour", "اليوم كله")}
+                </div>
+                
+                <div 
+                  className="absolute top-5.5 w-2 h-px bg-primary/80"
+                  style={{ left: isRTL ? 'auto' : '-0.5rem', right: isRTL ? '-0.5rem' : 'auto', marginTop: '11px' }}
+                />
+
+                <div className="pl-4 pr-4 space-y-2 mt-1">
+                  <AnimatePresence>
+                    {allDayEvents.map((event) => {
+                      const hasConflict = conflicts.has(event.id);
+                      return (
+                        <motion.div
+                          key={event.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          onClick={() => onEventClick(event)}
+                          className={`relative p-3.5 rounded-xl border cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
+                            hasConflict ? "border-red-500/40 bg-red-500/5 shadow-[0_0_15px_rgba(239,68,68,0.1)]" : "border-border/40 bg-card shadow-sm hover:shadow-md"
+                          }`}
+                        >
+                          <div 
+                            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-background z-10 shadow-sm"
+                            style={{ 
+                              backgroundColor: event.color || '#3b82f6',
+                              left: isRTL ? 'auto' : '-1.35rem',
+                              right: isRTL ? '-1.35rem' : 'auto',
+                              transform: isRTL ? 'translate(50%, -50%)' : 'translate(-50%, -50%)'
+                            }}
+                          />
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <h4 className={`font-semibold text-sm flex items-center gap-2 truncate ${hasConflict ? 'text-red-500' : 'text-foreground'}`}>
+                                {event.title}
+                                {hasConflict && (
+                                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 animate-pulse" />
+                                )}
+                              </h4>
+                              {event.location && (
+                                <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                                  <div className="flex items-center gap-1 truncate max-w-[120px]">
+                                    <MapPin className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">{event.location}</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )
+                    })}
+                  </AnimatePresence>
+                </div>
+              </div>
+            )}
+
             {timelineHours.map(({ hour, events }) => {
               const hourLabel = `${String(hour).padStart(2, '0')}:00`;
               const isPastHour = currentDate.getDate() === selectedDate.getDate() && new Date().getHours() > hour;
