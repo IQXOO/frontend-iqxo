@@ -114,23 +114,31 @@ function InfoCard({
   );
 
   if (href) {
-    const handleHrefClick = (e: React.MouseEvent) => {
-      const isNative = typeof window !== "undefined" && (window as any).ReactNativeWebView;
-      if (isNative) {
-        e.preventDefault();
-        (window as any).ReactNativeWebView.postMessage(JSON.stringify({
-          type: "openExternal",
-          url: href
-        }));
-      }
-    };
+    const isNative = typeof window !== "undefined" && !!(window as any).ReactNativeWebView;
+    
+    if (isNative) {
+      return (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            (window as any).ReactNativeWebView.postMessage(JSON.stringify({
+              type: "openExternal",
+              url: href
+            }));
+          }}
+          className="w-full text-left block hover:opacity-80 transition-opacity"
+        >
+          {inner}
+        </button>
+      );
+    }
 
     return (
       <a
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={handleHrefClick}
         className="block hover:opacity-80 transition-opacity"
       >
         {inner}
@@ -460,9 +468,13 @@ ${origin}`;
 
               {/* Location */}
               {event.location && (() => {
-                const urlMatch = event.location.match(/https?:\/\/[^\s]+/);
-                const extractedUrl = urlMatch ? urlMatch[0] : null;
+                const urlMatch = event.location.match(/(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9-]+\.(com|us|net|org|io|co|me|ai|ly|gl)(\/[^\s]*)?)/i);
+                let extractedUrl = urlMatch ? urlMatch[0] : null;
                 const isOnlyUrl = extractedUrl && extractedUrl === event.location.trim();
+                
+                if (extractedUrl && !/^https?:\/\//i.test(extractedUrl)) {
+                  extractedUrl = "https://" + extractedUrl;
+                }
                 
                 const href = extractedUrl 
                   ? extractedUrl 

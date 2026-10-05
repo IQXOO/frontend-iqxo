@@ -399,19 +399,33 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
                   {language === "ar" ? "مرفق" : language === "fr" ? "Joindre" : "Attachment"}
                 </span>
               </div>
-              {/* Show attached file name if any */}
+              {/* Show attached file name/preview if any */}
               {(imagePreview || hasPdf) && (
-                <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary/30 border border-border min-w-0">
-                  <span className="text-xs text-foreground truncate flex-1">
-                    {imagePreview && hasPdf ? (language === "ar" ? "صورة + PDF" : "Photo + PDF")
-                      : imagePreview ? (language === "ar" ? "صورة مرفقة" : language === "fr" ? "Photo jointe" : "Photo attached")
-                      : pdfName || "PDF"}
-                  </span>
-                  <button type="button"
-                    onClick={() => { setImagePreview(null); setImageFile(null); setPdfFile(null); setPdfName(null); setExistingPdfUrl(null); }}
-                    className="text-muted-foreground hover:text-destructive transition-colors shrink-0">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+                <div className="flex-1 flex flex-wrap items-center gap-2">
+                  {imagePreview && (
+                    <div className="relative h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-xl overflow-hidden border border-border/50 bg-black/10 group">
+                      <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
+                      <button type="button"
+                        onClick={() => { setImagePreview(null); setImageFile(null); }}
+                        className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-black/80 rounded-full p-0.5 transition-opacity"
+                      >
+                        <X className="h-3 w-3 text-white" />
+                      </button>
+                    </div>
+                  )}
+                  {hasPdf && (
+                    <div className="h-12 sm:h-14 flex-1 flex items-center gap-2 px-3 rounded-xl bg-secondary/30 border border-border min-w-0">
+                      <FileCheck className="h-4 w-4 shrink-0 text-red-400" />
+                      <span className="text-xs text-foreground truncate flex-1">
+                        {pdfName || "PDF"}
+                      </span>
+                      <button type="button"
+                        onClick={() => { setPdfFile(null); setPdfName(null); setExistingPdfUrl(null); }}
+                        className="text-muted-foreground hover:text-destructive transition-colors shrink-0">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
