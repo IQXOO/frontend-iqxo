@@ -114,11 +114,23 @@ function InfoCard({
   );
 
   if (href) {
+    const handleHrefClick = (e: React.MouseEvent) => {
+      const isNative = typeof window !== "undefined" && (window as any).ReactNativeWebView;
+      if (isNative) {
+        e.preventDefault();
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({
+          type: "openExternal",
+          url: href
+        }));
+      }
+    };
+
     return (
       <a
         href={href}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={handleHrefClick}
         className="block hover:opacity-80 transition-opacity"
       >
         {inner}
