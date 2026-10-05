@@ -152,15 +152,15 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
       const options = {
         redirectTo,
         scopes: provider === 'google' 
-          ? 'https://www.googleapis.com/auth/calendar' 
-          : 'Calendars.ReadWrite',
+          ? 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events' 
+          : 'email profile offline_access https://graph.microsoft.com/Calendars.ReadWrite',
         queryParams: {
           access_type: 'offline',
-          prompt: 'consent',
+          prompt: 'consent', // Forces the consent screen so we always get a refresh token
         },
       };
 
-      if (hasProvider) {
+      if (!user || hasProvider) {
         const { error } = await supabase.auth.signInWithOAuth({ provider, options });
         if (error) throw error;
       } else {
@@ -224,7 +224,13 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
                       <div className="text-[9px] text-[#6E6E78]">{t.localCalDesc}</div>
                     </div>
                   </div>
-                  <input type="checkbox" checked={syncLocal} onChange={(e) => setSyncLocal(e.target.checked)} className="w-4 h-4 accent-[#5BC0DE] cursor-pointer" />
+                  <input type="checkbox" checked={syncLocal} onChange={(e) => {
+                    const val = e.target.checked;
+                    setSyncLocal(val);
+                    if (val && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+                      (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestCalendarEvents' }));
+                    }
+                  }} className="w-4 h-4 accent-[#5BC0DE] cursor-pointer" />
                 </div>
               </div>
 
@@ -236,7 +242,11 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
                       <Chrome className="w-4 h-4 text-[#5BC0DE]" />
                       <span className="text-gray-200">Google Calendar</span>
                     </div>
-                    <Plus className="w-3.5 h-3.5 text-gray-500" />
+                    {user?.identities?.some(id => id.provider === 'google') ? (
+                      <CheckCircle className="w-4 h-4 text-[#5BC0DE]" />
+                    ) : (
+                      <Plus className="w-3.5 h-3.5 text-gray-500" />
+                    )}
                   </div>
                   
                   {/* Outlook */}
@@ -249,7 +259,11 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
                       </div>
                       <span className="text-gray-200">Outlook</span>
                     </div>
-                    <Plus className="w-3.5 h-3.5 text-gray-500" />
+                    {user?.identities?.some(id => id.provider === 'azure') ? (
+                      <CheckCircle className="w-4 h-4 text-[#5BC0DE]" />
+                    ) : (
+                      <Plus className="w-3.5 h-3.5 text-gray-500" />
+                    )}
                   </div>
 
                   {/* Microsoft 365 */}
@@ -265,7 +279,11 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
                       </div>
                       <span className="text-gray-200">Microsoft 365</span>
                     </div>
-                    <Plus className="w-3.5 h-3.5 text-gray-500" />
+                    {user?.identities?.some(id => id.provider === 'azure') ? (
+                      <CheckCircle className="w-4 h-4 text-[#5BC0DE]" />
+                    ) : (
+                      <Plus className="w-3.5 h-3.5 text-gray-500" />
+                    )}
                   </div>
                 </div>
               </div>

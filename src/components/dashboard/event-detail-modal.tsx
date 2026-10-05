@@ -447,22 +447,32 @@ ${origin}`;
               )}
 
               {/* Location */}
-              {event.location && (
-                <InfoCard
-                  iconEmoji="📍"
-                  iconBg="bg-purple-500/10"
-                  label={
-                    language === "ar"
-                      ? "الموقع"
-                      : language === "fr"
-                        ? "LIEU"
-                        : "LOCATION"
-                  }
-                  href={`https://maps.google.com/?q=${encodeURIComponent(event.location)}`}
-                >
-                  {event.location}
-                </InfoCard>
-              )}
+              {event.location && (() => {
+                const urlMatch = event.location.match(/https?:\/\/[^\s]+/);
+                const extractedUrl = urlMatch ? urlMatch[0] : null;
+                const isOnlyUrl = extractedUrl && extractedUrl === event.location.trim();
+                
+                const href = extractedUrl 
+                  ? extractedUrl 
+                  : `https://maps.google.com/?q=${encodeURIComponent(event.location)}`;
+                  
+                return (
+                  <InfoCard
+                    iconEmoji={extractedUrl ? "🔗" : "📍"}
+                    iconBg={extractedUrl ? "bg-blue-500/10" : "bg-purple-500/10"}
+                    label={
+                      language === "ar"
+                        ? (extractedUrl ? "رابط" : "الموقع")
+                        : language === "fr"
+                          ? (extractedUrl ? "LIEN" : "LIEU")
+                          : (extractedUrl ? "LINK" : "LOCATION")
+                    }
+                    href={href}
+                  >
+                    <span className="break-all">{event.location}</span>
+                  </InfoCard>
+                );
+              })()}
 
               {/* Phone */}
               {event.phone && (
