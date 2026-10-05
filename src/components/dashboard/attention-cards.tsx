@@ -77,15 +77,15 @@ function UrgentEventCard({
         </span>
       </div>
 
-      <div className={`flex flex-col ${isRTL ? "items-end text-right" : "items-start text-left"}`}>
-        <div className={`flex items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
+      <div className={`w-full flex flex-col ${isRTL ? "items-end text-right" : "items-start text-left"}`}>
+        <div className={`w-full flex items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
           {event.color && (
             <div 
               className="w-2.5 h-2.5 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.1)] border border-white/10" 
               style={{ backgroundColor: event.color }} 
             />
           )}
-          <h3 className="text-sm font-semibold text-foreground leading-snug truncate">
+          <h3 className="flex-1 text-sm font-semibold text-foreground leading-snug truncate">
             {event.title}
           </h3>
         </div>
@@ -95,15 +95,15 @@ function UrgentEventCard({
       </div>
 
       {(event.phone || event.location) && (
-        <div className="flex items-center gap-2 mt-auto">
+        <div className="flex items-center gap-2 mt-auto w-full min-w-0">
           {event.phone && (
-            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
               <Phone className="h-3 w-3" />
               <span className="sr-only">{t("call")}</span>
             </span>
           )}
           {event.location && (
-            <span className="flex items-center gap-1 text-[10px] text-muted-foreground truncate">
+            <span className="flex-1 flex items-center gap-1 text-[10px] text-muted-foreground min-w-0">
               <MapPin className="h-3 w-3 shrink-0" />
               <span className="truncate">{event.location}</span>
             </span>

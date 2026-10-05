@@ -76,7 +76,7 @@ export function PdfPreviewPage() {
           onClick={() => navigate(-1)}
           style={{ padding: "10px 20px", background: "#3b82f6", color: "white", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "bold", cursor: "pointer" }}
         >
-          Back / العودة
+          Back
         </button>
       </div>
     )
@@ -90,7 +90,7 @@ export function PdfPreviewPage() {
           onClick={() => navigate(-1)}
           style={{ padding: "8px 14px", background: "#64748b", color: "white", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "bold", cursor: "pointer" }}
         >
-          Back / العودة
+          Back
         </button>
         <button
           onClick={handleDownload}
