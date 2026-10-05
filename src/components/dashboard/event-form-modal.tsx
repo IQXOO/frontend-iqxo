@@ -97,14 +97,14 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
       setTitle(editEvent.title); setDate(editEvent.date); setTime(editEvent.start_time || editEvent.time || ""); setEndTime(editEvent.end_time || "");
       setColor(editEvent.color || "#3b82f6"); setRecurrence(editEvent.recurrence_rule || ""); setReminders(editEvent.reminders || []);
       setPhone(editEvent.phone || ""); setEmail(editEvent.email || ""); setLocation(editEvent.location || ""); setNotes(editEvent.notes || "");
-      setImagePreview(editEvent.image_url || null); setImageFile(null);
-      setExistingPdfUrl(editEvent.pdf_url || null); setPdfFile(null);
-      setPdfName(editEvent.pdf_url ? decodeURIComponent(editEvent.pdf_url.split("/").pop() ?? "document.pdf") : null);
+      setImagePreview(editEvent.image_url && editEvent.image_url !== "null" && editEvent.image_url !== "undefined" ? editEvent.image_url : null); setImageFile(null);
+      setExistingPdfUrl(editEvent.pdf_url && editEvent.pdf_url !== "null" && editEvent.pdf_url !== "undefined" ? editEvent.pdf_url : null); setPdfFile(null);
+      setPdfName(editEvent.pdf_url && editEvent.pdf_url !== "null" && editEvent.pdf_url !== "undefined" ? decodeURIComponent(editEvent.pdf_url.split("/").pop() ?? "document.pdf") : null);
     } else if (prefillData) {
       setTitle(prefillData.title || ""); setDate(prefillData.date || ""); setTime(prefillData.start_time || prefillData.time || ""); setEndTime(prefillData.end_time || "");
       setColor(prefillData.color || "#3b82f6"); setRecurrence(prefillData.recurrence_rule || ""); setReminders(prefillData.reminders || []);
       setPhone(prefillData.phone || ""); setLocation(prefillData.location || ""); setNotes(prefillData.notes || "");
-      setImagePreview(prefillImageUrl || null); setImageFile(null); setPdfFile(null); setPdfName(null); setExistingPdfUrl(null);
+      setImagePreview(prefillImageUrl && prefillImageUrl !== "null" && prefillImageUrl !== "undefined" ? prefillImageUrl : null); setImageFile(null); setPdfFile(null); setPdfName(null); setExistingPdfUrl(null);
     } else {
       setTitle(""); setDate(""); setTime(""); setEndTime(""); setColor("#3b82f6"); setRecurrence(""); setReminders([]); setPhone(""); setLocation(""); setNotes("");
       setImagePreview(null); setImageFile(null); setPdfFile(null); setPdfName(null); setExistingPdfUrl(null);
@@ -215,8 +215,15 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
     if (!file) return;
     
     setImageFile(file);
-    // Use createObjectURL instead of FileReader for large mobile images (memory safe & instant)
-    setImagePreview(URL.createObjectURL(file));
+    
+    // Use FileReader for robust preview (blob URLs can fail in some WebViews/CSP)
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (ev.target?.result) {
+        setImagePreview(ev.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
     
     // Reset input so selecting the same file again works
     e.target.value = "";
@@ -364,7 +371,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
             {/* Preview when photo attached */}
             {imagePreview && (
               <div className="relative rounded-[20px] overflow-hidden border border-border">
-                <img src={imagePreview} alt="Event" className="w-full h-36 object-cover" loading="lazy" />
+                <img src={imagePreview} alt="Event" className="w-full h-36 object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                 <button type="button" onClick={() => { setImagePreview(null); setImageFile(null); }}
                   className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors">
@@ -404,7 +411,7 @@ export function EventFormModal({ open, onOpenChange, editEvent, prefillData, voi
                 <div className="flex-1 flex flex-wrap items-center gap-2">
                   {imagePreview && (
                     <div className="relative h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-xl overflow-hidden border border-border/50 bg-black/10 group">
-                      <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
+                      <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                       <button type="button"
                         onClick={() => { setImagePreview(null); setImageFile(null); }}
                         className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-black/80 rounded-full p-0.5 transition-opacity"
