@@ -163,7 +163,9 @@ export default function AppController() {
       const triggerSync = () => {
         // Only request native calendar if the user explicitly enabled it
         if (user.user_metadata?.sync_local_calendar === true) {
-          (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestCalendarEvents' }));
+          if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+            (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestCalendarEvents' }));
+          }
         }
       };
 
