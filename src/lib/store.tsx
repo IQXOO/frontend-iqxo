@@ -945,38 +945,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           }
           
-          // Only save if provider is a valid calendar provider (google or azure)
+          // Only save if provider is a valid calendar provider AND user explicitly initiated a calendar link
           if (provider !== 'google' && provider !== 'azure') {
             // Not a calendar OAuth - skip saving
           } else {
-            const payload: any = {
-              user_id: sess.user.id,
-              provider: provider,
-              access_token: sess.provider_token,
-              sync_state: 'active'
-            };
-            
-            if (sess.provider_refresh_token) {
-              payload.refresh_token = sess.provider_refresh_token;
-            }
-            
-            if (sess.expires_in) {
-              payload.expires_at = new Date(Date.now() + sess.expires_in * 1000).toISOString();
-            }
-
-            supabase.from('calendar_integrations').upsert(
-              payload,
-              { onConflict: 'user_id,provider' }
-            ).then(({ error: upsertErr }) => {
-              if (upsertErr) {
-                console.error("[Auth] Failed to save calendar integration:", upsertErr);
-              } else {
-                console.log(`[Auth] Saved ${provider} calendar integration tokens securely.`);
-                if (typeof window !== 'undefined') {
-                  window.dispatchEvent(new CustomEvent('calendarIntegrationSaved', { detail: { provider } }));
-                }
+            const linkingIntent = typeof window !== 'undefined' ? localStorage.getItem('iqxo_linking_provider') : null;
+            if (linkingIntent === provider) {
+              const payload: any = {
+                user_id: sess.user.id,
+                provider: provider,
+                access_token: sess.provider_token,
+                sync_state: 'active'
+              };
+              
+              if (sess.provider_refresh_token) {
+                payload.refresh_token = sess.provider_refresh_token;
               }
-            });
+              
+              if (sess.expires_in) {
+                payload.expires_at = new Date(Date.now() + sess.expires_in * 1000).toISOString();
+              }
+
+              supabase.from('calendar_integrations').upsert(
+                payload,
+                { onConflict: 'user_id,provider' }
+              ).then(({ error: upsertErr }) => {
+                if (upsertErr) {
+                  console.error("[Auth] Failed to save calendar integration:", upsertErr);
+                } else {
+                  console.log(`[Auth] Saved ${provider} calendar integration tokens securely.`);
+                  if (typeof window !== 'undefined') {
+                    localStorage.removeItem('iqxo_linking_provider');
+                    window.dispatchEvent(new CustomEvent('calendarIntegrationSaved', { detail: { provider } }));
+                  }
+                }
+              });
+            }
           }
         }
       },

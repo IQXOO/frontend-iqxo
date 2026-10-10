@@ -85,7 +85,26 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
   
   const [step, setStep] = useState(3); // Start directly at Calendar step (3)
   const [lang, setLang] = useState<'fr' | 'en'>('en');
-  const [syncLocal, setSyncLocal] = useState(user?.user_metadata?.sync_local_calendar === true);
+  // Default to true for new users (if undefined), false only if explicitly disabled
+  const [syncLocal, setSyncLocal] = useState(user?.user_metadata?.sync_local_calendar !== false);
+  const [integrations, setIntegrations] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadIntegrations = async () => {
+      if (!user) return;
+      const { data } = await supabase.from('calendar_integrations').select('*').eq('user_id', user.id);
+      if (data) setIntegrations(data);
+    };
+    
+    loadIntegrations();
+
+    const handleIntegrationSaved = () => {
+      loadIntegrations();
+    };
+
+    window.addEventListener('calendarIntegrationSaved', handleIntegrationSaved);
+    return () => window.removeEventListener('calendarIntegrationSaved', handleIntegrationSaved);
+  }, [user]);
 
   useEffect(() => {
     const browserLang = (
@@ -242,7 +261,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
                       <Chrome className="w-4 h-4 text-[#5BC0DE]" />
                       <span className="text-gray-200">Google Calendar</span>
                     </div>
-                    {user?.identities?.some(id => id.provider === 'google') ? (
+                    {integrations.some(i => i.provider === 'google') ? (
                       <CheckCircle className="w-4 h-4 text-[#5BC0DE]" />
                     ) : (
                       <Plus className="w-3.5 h-3.5 text-gray-500" />
@@ -259,7 +278,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
                       </div>
                       <span className="text-gray-200">Outlook</span>
                     </div>
-                    {user?.identities?.some(id => id.provider === 'azure') ? (
+                    {integrations.some(i => i.provider === 'azure') ? (
                       <CheckCircle className="w-4 h-4 text-[#5BC0DE]" />
                     ) : (
                       <Plus className="w-3.5 h-3.5 text-gray-500" />
@@ -279,7 +298,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
                       </div>
                       <span className="text-gray-200">Microsoft 365</span>
                     </div>
-                    {user?.identities?.some(id => id.provider === 'azure') ? (
+                    {integrations.some(i => i.provider === 'azure') ? (
                       <CheckCircle className="w-4 h-4 text-[#5BC0DE]" />
                     ) : (
                       <Plus className="w-3.5 h-3.5 text-gray-500" />
