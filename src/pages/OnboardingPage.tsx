@@ -200,7 +200,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
       const options = {
         redirectTo,
         scopes: provider === 'google' 
-          ? 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events' 
+          ? 'https://www.googleapis.com/auth/calendar.events' 
           : 'email profile offline_access https://graph.microsoft.com/Calendars.ReadWrite',
         queryParams: {
           access_type: 'offline',
