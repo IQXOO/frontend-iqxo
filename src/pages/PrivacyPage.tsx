@@ -70,7 +70,7 @@ export default function PrivacyPage() {
 
                 <h2 className="text-xl font-semibold mt-8 mb-4">3. Données des API Google et Intégration d'Agendas</h2>
                 <p>
-                  Lorsque vous connectez votre compte Google Agenda à IQXO, notre application accède à vos données d'agenda via les API Google (notamment <code>https://www.googleapis.com/auth/calendar.readonly</code> et <code>https://www.googleapis.com/auth/calendar.events</code>).
+                  Lorsque vous connectez votre compte Google Agenda à IQXO, notre application accède à vos données d'agenda via les API Google (spécifiquement <code>https://www.googleapis.com/auth/calendar.events</code>).
                 </p>
                 <ul className="list-disc pl-5 space-y-2 text-muted-foreground mt-2">
                   <li><strong>Données collectées :</strong> Titres des événements, dates et heures de début et fin, descriptions, lieux et identifiants des événements.</li>
@@ -146,7 +146,7 @@ export default function PrivacyPage() {
 
                 <h2 className="text-xl font-semibold mt-8 mb-4">3. Google API Data & Calendar Integration</h2>
                 <p>
-                  When you connect your Google Calendar account to IQXO, our application accesses your calendar data via Google APIs (specifically <code>https://www.googleapis.com/auth/calendar.readonly</code> and <code>https://www.googleapis.com/auth/calendar.events</code>).
+                  When you connect your Google Calendar account to IQXO, our application accesses your calendar data via Google APIs (specifically <code>https://www.googleapis.com/auth/calendar.events</code>).
                 </p>
                 <ul className="list-disc pl-5 space-y-2 text-muted-foreground mt-2">
                   <li><strong>Data Accessed:</strong> Calendar event titles, start and end dates/times, event descriptions, locations, and unique event IDs.</li>
