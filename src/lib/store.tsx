@@ -18,6 +18,7 @@ import {
 } from "./logger";
 import { toast } from "../hooks/use-toast";
 import { normalizeBillingPlanStatus } from "./billing-utils";
+import { computeEventPriority } from "./recurrence";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type Priority = "urgent" | "upcoming" | "later" | "past";
@@ -846,7 +847,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Helpers for synchronizing state updates
   const addEventToState = useCallback((event: IQXOEvent) => {
-    const isPast = computePriority(event.date) === "past";
+    const isPast = computeEventPriority(event) === "past";
     if (isPast) {
       setArchiveEvents((prev) => [event, ...prev]);
     } else {
@@ -860,7 +861,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateEventInState = useCallback((id: string, updatedEvent: IQXOEvent) => {
-    const isPast = computePriority(updatedEvent.date) === "past";
+    const isPast = computeEventPriority(updatedEvent) === "past";
     setActiveEvents((prev) => {
       const filtered = prev.filter((e) => e.id !== id);
       if (!isPast) return [updatedEvent, ...filtered];
@@ -1883,7 +1884,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (priority: Priority) =>
       events.filter(
         (e) =>
-          computePriority(e.date) === priority &&
+          computeEventPriority(e) === priority &&
           e.source !== "work_schedule" &&
           e.source !== "work_schedule_virtual"
       ),

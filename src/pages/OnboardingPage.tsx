@@ -247,7 +247,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
                     const val = e.target.checked;
                     setSyncLocal(val);
                     if (val && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
-                      (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestCalendarEvents' }));
+                      if ((window as any).__IQXO_postMessage) { (window as any).__IQXO_postMessage(JSON.stringify({ type: 'requestCalendarEvents' })); } else if ((window as any).ReactNativeWebView) { (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestCalendarEvents' })); }
                     }
                   }} className="w-4 h-4 accent-[#5BC0DE] cursor-pointer" />
                 </div>

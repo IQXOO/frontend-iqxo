@@ -281,7 +281,7 @@ export default function Page() {
             ) : (
               <>
                 {urgentEvents.length > 0 && (
-                  <UrgentCards onEventClick={handleEventClick} />
+                  <UrgentCards events={urgentEvents} onEventClick={handleEventClick} />
                 )}
                 <EventList
                   priority="upcoming"

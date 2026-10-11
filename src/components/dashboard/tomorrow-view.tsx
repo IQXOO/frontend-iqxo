@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 import { Zap, MapPin, Phone, Clock, ChevronRight } from "lucide-react"
 import { useApp } from "../../lib/store"
 import { toLocalDateStr, parseLocalDate } from "../../lib/store"
+import { isEventOnDate } from "../../lib/recurrence"
 import type { IQXOEvent } from "../../lib/types"
 import { TomorrowSkeleton } from "./skeleton"
 
@@ -25,7 +26,7 @@ export function TomorrowView({ onEventClick }: TomorrowViewProps) {
   // Filter events for tomorrow (exclude work schedule events)
   const tomorrowEvents = events.filter(
     (e) =>
-      e.date === tomorrowDateStr &&
+      isEventOnDate(e, tomorrowDateStr) &&
       e.source !== "work_schedule" &&
       e.source !== "work_schedule_virtual"
   )
@@ -70,7 +71,7 @@ export function TomorrowView({ onEventClick }: TomorrowViewProps) {
 
       <div className="space-y-2.5">
         {tomorrowEvents.map((event, idx) => {
-          const eventDate = parseLocalDate(event.date)
+          const eventDate = parseLocalDate(tomorrowDateStr)
           return (
             <motion.div
               key={event.id}

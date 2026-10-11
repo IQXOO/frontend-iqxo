@@ -5,7 +5,7 @@ import { useApp } from "../../lib/store"
 import { generateAIInsight } from "../../lib/ai-insights"
 import type { IQXOEvent, Priority } from "../../lib/types"
 import { format, isToday, isTomorrow } from "../../lib/date-utils"
-import { getNextOccurrence } from "../../lib/recurrence"
+import { getNextOccurrence, getEventDisplayDate } from "../../lib/recurrence"
 
 interface EventListProps {
   priority: Priority
@@ -125,8 +125,7 @@ function EventGridCard({
   isFeature: boolean
   onDelete?: (id: string) => void
 }) {
-  const nextOcc = getNextOccurrence(event)
-  const eventDate = nextOcc || new Date(event.date)
+  const eventDate = getEventDisplayDate(event)
   const { t, language } = useApp()
   const isRTL = language === "ar"
   const config = priorityConfig[priority] || priorityConfig.upcoming    

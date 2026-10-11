@@ -27,12 +27,12 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
-import { useApp, computePriority } from "@/lib/store";
+import { useApp } from "@/lib/store";
 import { parseLocalDate } from "@/lib/store";
 import { ImageLightbox } from "./image-lightbox";
 import type { IQXOEvent } from "@/lib/types";
 import { format, isToday, isTomorrow } from "@/lib/date-utils";
-import { getNextOccurrence } from "@/lib/recurrence";
+import { getNextOccurrence, getEventDisplayDate, computeEventPriority } from "@/lib/recurrence";
 
 interface EventDetailModalProps {
   open: boolean;
@@ -59,7 +59,7 @@ function getCategoryFromEvent(event: IQXOEvent): {
       border: "border-cyan-500/20",
     };
   }
-  const priority = computePriority(event.date);
+  const priority = computeEventPriority(event);
   if (priority === "urgent") {
     return {
       label: "Urgent",
@@ -175,8 +175,8 @@ export function EventDetailModal({
 
   if (!event) return null;
 
-  const _priority = computePriority(event.date);
-  const localDate = getNextOccurrence(event) || parseLocalDate(event.date);
+  const _priority = computeEventPriority(event);
+  const localDate = getEventDisplayDate(event);
   const dateStr = format(localDate, "EEEE, MMMM d, yyyy");
   const isEventToday = isToday(localDate);
   const isEventTomorrow = isTomorrow(localDate);
