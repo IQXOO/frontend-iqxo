@@ -6,6 +6,7 @@ import { X, Stethoscope, FileText, Wrench, Zap, Clock, MapPin, ArrowDown, Calend
 import { useApp } from "@/lib/store"
 import { toLocalDateStr, parseLocalDate } from "@/lib/store"
 import { isTomorrow, format } from "@/lib/date-utils"
+import { isEventOnDate } from "@/lib/recurrence"
 import type { IQXOEvent } from "@/lib/types"
 
 // --- Types ---
@@ -206,11 +207,15 @@ export function TomorrowChainModal({ open, onClose }: TomorrowChainModalProps) {
   const { events, language } = useApp()
   const isRTL = language === "ar"
 
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const tomorrowDateStr = toLocalDateStr(tomorrow)
+
   const realTomorrowEvents = useMemo(() =>
     events
-      .filter((e) => isTomorrow(new Date(e.date)))
-      .sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00")),
-    [events]
+      .filter((e) => isEventOnDate(e, tomorrowDateStr) && e.source !== "work_schedule" && e.source !== "work_schedule_virtual")
+      .sort((a, b) => (a.time || a.start_time || "00:00").localeCompare(b.time || b.start_time || "00:00")),
+    [events, tomorrowDateStr]
   )
 
   // Use mock events when nothing is scheduled

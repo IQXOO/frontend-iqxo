@@ -2,7 +2,8 @@
 
 import { History } from "lucide-react"
 import { EventList } from "./event-list"
-import { useApp, computePriority } from "@/lib/store"
+import { useApp } from "@/lib/store"
+import { computeEventPriority } from "@/lib/recurrence"
 import type { IQXOEvent } from "@/lib/types"
 import { useMemo, useEffect } from "react"
 import { InfiniteScroll } from "./infinite-scroll"
@@ -32,7 +33,7 @@ export function HistoryView({ onEventClick }: HistoryViewProps) {
       events
         .filter(
           (e) =>
-            computePriority(e.date) === "past" &&
+            computeEventPriority(e) === "past" &&
             e.source !== "work_schedule" &&
             e.source !== "work_schedule_virtual"
         )

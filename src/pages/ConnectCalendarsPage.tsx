@@ -217,7 +217,7 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
                     });
                   }
                   if (val && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
-                    (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestCalendarEvents' }));
+                    if ((window as any).__IQXO_postMessage) { (window as any).__IQXO_postMessage(JSON.stringify({ type: 'requestCalendarEvents' })); } else if ((window as any).ReactNativeWebView) { (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestCalendarEvents' })); }
                   }
                 }} 
               />

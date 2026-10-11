@@ -4,15 +4,16 @@ import { Bell, Phone, MapPin } from "lucide-react"
 import { useApp } from "@/lib/store"
 import type { IQXOEvent } from "@/lib/types"
 import { format, isToday, isTomorrow } from "@/lib/date-utils"
-import { getNextOccurrence } from "@/lib/recurrence"
+import { getNextOccurrence, getEventDisplayDate } from "@/lib/recurrence"
 
 interface UrgentCardsProps {
   onEventClick: (event: IQXOEvent) => void
+  events?: IQXOEvent[]
 }
 
-export function UrgentCards({ onEventClick }: UrgentCardsProps) {
+export function UrgentCards({ onEventClick, events: propEvents }: UrgentCardsProps) {
   const { getEventsByPriority, t } = useApp()
-  const urgentEvents = getEventsByPriority("urgent")
+  const urgentEvents = propEvents ?? getEventsByPriority("urgent")
 
   if (urgentEvents.length === 0) return null
 
@@ -51,8 +52,7 @@ function UrgentEventCard({
 }) {
   const { t, language } = useApp()
   const isRTL = language === "ar"
-  const nextOcc = getNextOccurrence(event)
-  const eventDate = nextOcc || new Date(event.date)
+  const eventDate = getEventDisplayDate(event)
 
   const dateLabel = isToday(eventDate)
     ? t("today")
