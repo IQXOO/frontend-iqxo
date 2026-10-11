@@ -98,6 +98,34 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
     
     loadIntegrations();
 
+    // Check if returning from OAuth redirect with tokens in hash
+    const checkOAuthReturn = async () => {
+      if (typeof window === "undefined" || !user) return;
+      const hash = window.location.hash.replace(/^#/, '');
+      if (!hash) return;
+      const params = new URLSearchParams(hash);
+      const providerToken = params.get('provider_token');
+      const providerRefreshToken = params.get('provider_refresh_token');
+      const linkingProvider = localStorage.getItem('iqxo_linking_provider') || 'google';
+
+      if (providerToken) {
+        const payload: any = {
+          user_id: user.id,
+          provider: linkingProvider,
+          access_token: providerToken,
+          sync_state: 'active'
+        };
+        if (providerRefreshToken) payload.refresh_token = providerRefreshToken;
+        const expiresIn = params.get('expires_in');
+        if (expiresIn) payload.expires_at = new Date(Date.now() + parseInt(expiresIn, 10) * 1000).toISOString();
+
+        await supabase.from('calendar_integrations').upsert(payload, { onConflict: 'user_id,provider' });
+        localStorage.removeItem('iqxo_linking_provider');
+        await loadIntegrations();
+      }
+    };
+    checkOAuthReturn();
+
     const handleIntegrationSaved = () => {
       loadIntegrations();
     };
@@ -158,6 +186,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
     try {
       if (typeof window !== "undefined") {
         localStorage.setItem('iqxo_linking_provider', provider);
+        localStorage.setItem('iqxo_return_url', '/onboarding');
       }
       
       const hasProvider = user?.identities?.some(id => id.provider === provider);

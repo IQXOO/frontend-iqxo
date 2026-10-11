@@ -20,7 +20,7 @@ function getDeviceName(): string {
 export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }) {
   const navigate = useNavigate();
   const { user, setCalendarOnboardingDone } = useApp();
-  const [syncLocal, setSyncLocal] = useState(user?.user_metadata?.sync_local_calendar === true);
+  const [syncLocal, setSyncLocal] = useState(user?.user_metadata?.sync_local_calendar !== false);
   const [loading, setLoading] = useState(false);
   const [integrations, setIntegrations] = useState<any[]>([]);
 
@@ -31,7 +31,45 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
   };
 
   useEffect(() => {
+    if (user?.user_metadata?.sync_local_calendar !== undefined) {
+      setSyncLocal(user.user_metadata.sync_local_calendar !== false);
+    }
+  }, [user]);
+
+  useEffect(() => {
     loadIntegrations();
+
+    // Check if returning from OAuth redirect with tokens in hash
+    const checkOAuthReturn = async () => {
+      if (typeof window === "undefined" || !user) return;
+      const hash = window.location.hash.replace(/^#/, '');
+      if (!hash) return;
+      const params = new URLSearchParams(hash);
+      const providerToken = params.get('provider_token');
+      const providerRefreshToken = params.get('provider_refresh_token');
+      const linkingProvider = localStorage.getItem('iqxo_linking_provider') || 'google';
+
+      if (providerToken) {
+        const payload: any = {
+          user_id: user.id,
+          provider: linkingProvider,
+          access_token: providerToken,
+          sync_state: 'active'
+        };
+        if (providerRefreshToken) payload.refresh_token = providerRefreshToken;
+        const expiresIn = params.get('expires_in');
+        if (expiresIn) payload.expires_at = new Date(Date.now() + parseInt(expiresIn, 10) * 1000).toISOString();
+
+        await supabase.from('calendar_integrations').upsert(payload, { onConflict: 'user_id,provider' });
+        localStorage.removeItem('iqxo_linking_provider');
+        await loadIntegrations();
+        toast({
+          title: "Calendar Connected!",
+          description: `Successfully linked your ${linkingProvider} calendar.`,
+        });
+      }
+    };
+    checkOAuthReturn();
 
     const handleIntegrationSaved = (e: any) => {
       const provider = e.detail?.provider;
@@ -79,6 +117,7 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
     try {
       if (typeof window !== "undefined") {
         localStorage.setItem('iqxo_linking_provider', provider);
+        localStorage.setItem('iqxo_return_url', '/connect-calendars');
       }
       
       const hasProvider = user?.identities?.some(id => id.provider === provider);
