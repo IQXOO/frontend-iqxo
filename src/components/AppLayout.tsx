@@ -8,11 +8,7 @@ import { EventEditorProvider, useEventEditor } from "../lib/event-editor-context
 import { shouldAutoOpenBillingRoute, normalizeBillingPlanStatus } from "../lib/billing-utils";
 import { launchAppWithFallback } from "../lib/auth-urls";
 
-const CommandPalette = React.lazy(() =>
-  import("../components/dashboard/command-palette").then((module) => ({
-    default: module.CommandPalette,
-  }))
-);
+import { CommandPalette } from "../components/dashboard/command-palette";
 
 function AppLayoutContent() {
   const { events, signOut, toggleTheme, user, session, planStatus, planResolved, trialEndsAt, language } = useApp();

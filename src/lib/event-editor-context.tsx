@@ -4,16 +4,8 @@ import React, { Suspense, createContext, useCallback, useContext, useMemo, useSt
 import type { IQXOEvent } from "./types";
 import type { ParsedEvent } from "./parse-voice-input";
 
-const EventFormModal = React.lazy(() =>
-  import("../components/dashboard/event-form-modal").then((module) => ({
-    default: module.EventFormModal,
-  })),
-);
-const EventDetailModal = React.lazy(() =>
-  import("../components/dashboard/event-detail-modal").then((module) => ({
-    default: module.EventDetailModal,
-  })),
-);
+import { EventFormModal } from "../components/dashboard/event-form-modal";
+import { EventDetailModal } from "../components/dashboard/event-detail-modal";
 
 interface EventEditorContextValue {
   openEventDetail: (event: IQXOEvent) => void;

@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense } from "react"
-import { Moon, Sun, Languages } from "lucide-react"
+import { Moon, Sun, Languages, Search } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { useApp } from "../../lib/store"
 import { motion } from "framer-motion"
@@ -46,16 +46,11 @@ export function DashboardHeader({
         {/* Search Button */}
         <motion.button
           onClick={onSearchClick}
-          className={`glass rounded-xl p-2.5 transition-all duration-200 ${
-            activeTab === "home" ? "bg-primary/20" : "hover:bg-secondary/50"
-          } active:scale-95`}
+          className="glass rounded-xl p-2.5 transition-all duration-200 hover:bg-secondary/50 active:scale-95"
           aria-label="Search"
           whileTap={{ scale: 0.95 }}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={`h-5 w-5 ${activeTab === "home" ? "text-primary" : "text-muted-foreground"}`} aria-hidden="true">
-            <path d="m21 21-4.34-4.34"></path>
-            <circle cx="11" cy="11" r="8"></circle>
-          </svg>
+          <Search className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
         </motion.button>
 
         {/* Language Toggle */}

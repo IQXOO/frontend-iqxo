@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../lib/store";
 import { supabase } from "../lib/supabase";
+import { Switch } from "../components/ui/switch";
 import { 
-  ArrowRight, Chrome, Calendar, Bell, Mic, Camera, PenTool, 
-  CheckCircle, Plus, Building2 
+  ArrowRight, Calendar, Bell, Mic, Camera, PenTool, 
+  CheckCircle, Plus, Trash2 
 } from "lucide-react";
 import { toast } from "../components/ui/use-toast";
 
@@ -14,11 +15,21 @@ interface OnboardingPageProps {
   onDone?: () => void;
 }
 
+function getDeviceName(): string {
+  if (typeof navigator === "undefined") return "Device";
+  const ua = navigator.userAgent;
+  if (/android/i.test(ua)) return "Android";
+  if (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) return "iPhone";
+  if (/Mac/i.test(ua)) return "Mac";
+  if (/Win/i.test(ua)) return "Windows";
+  return "Device";
+}
+
 const i18n = {
   fr: {
     calendarTitle: "Rassemblez vos agendas.",
     calendarSub: "Liez vos calendriers pour que tout soit au même endroit.",
-    localCalendar: "Calendrier local (iPhone)",
+    localCalendar: "Calendrier local",
     localCalDesc: "Agenda sur cet appareil",
     permissionCalTitle: "Permettez à IQXO de consulter votre agenda.",
     permissionCalSub: "Cela permet à IQXO de comprendre votre emploi du temps.",
@@ -35,7 +46,7 @@ const i18n = {
     trialTitle: "Votre journée est prête.",
     trialSub: "IQXO est prêt à vous accompagner au quotidien.",
     btnContinue: "Continuer",
-    btnConnect: "Lier les agendas",
+    btnConnect: "Continuer",
     btnAllow: "Autoriser l'accès",
     doneBtn: "Accéder à mon agenda",
     event: "Événement"
@@ -43,7 +54,7 @@ const i18n = {
   en: {
     calendarTitle: "Let's bring your schedule together.",
     calendarSub: "Connect your calendars so IQXO can keep everything in one place.",
-    localCalendar: "Local Calendar (iPhone)",
+    localCalendar: "Local Calendar",
     localCalDesc: "On-device calendars",
     permissionCalTitle: "Let IQXO see your schedule.",
     permissionCalSub: "This helps IQXO understand what's already on your calendar.",
@@ -60,7 +71,7 @@ const i18n = {
     trialTitle: "Your day is set up.",
     trialSub: "IQXO is ready to help you manage your daily life.",
     btnContinue: "Continue",
-    btnConnect: "Connect calendars",
+    btnConnect: "Continue",
     btnAllow: "Allow Access",
     doneBtn: "Go to my schedule",
     event: "Event"
@@ -89,13 +100,55 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
   const [syncLocal, setSyncLocal] = useState(user?.user_metadata?.sync_local_calendar !== false);
   const [integrations, setIntegrations] = useState<any[]>([]);
 
-  useEffect(() => {
-    const loadIntegrations = async () => {
-      if (!user) return;
-      const { data } = await supabase.from('calendar_integrations').select('*').eq('user_id', user.id);
-      if (data) setIntegrations(data);
-    };
+  const loadIntegrations = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase.from('calendar_integrations').select('*').eq('user_id', user.id);
+    if (data) setIntegrations(data);
+  }, [user]);
+
+  const toggleIntegration = async (id: string, currentStatus: string) => {
+    const newState = currentStatus === 'active' ? 'paused' : 'active';
+    setIntegrations(prev => prev.map(i => i.id === id ? { ...i, sync_state: newState } : i));
     
+    const { error } = await supabase.from('calendar_integrations').update({ sync_state: newState }).eq('id', id);
+    if (error) {
+      toast({ title: "Failed to update", description: error.message, variant: "destructive" });
+      loadIntegrations();
+    }
+  };
+
+  const removeIntegration = async (id: string, providerTitle: string, providerName: string) => {
+    if (!window.confirm(`Are you sure you want to completely disconnect your ${providerTitle} calendar?`)) return;
+    
+    setIntegrations(prev => prev.filter(i => i.id !== id));
+    
+    const { error } = await supabase.from('calendar_integrations').delete().eq('id', id);
+    if (error) {
+      toast({ title: "Failed to disconnect", description: error.message, variant: "destructive" });
+      loadIntegrations();
+      return;
+    } 
+    
+    if (user?.identities) {
+      const identity = user.identities.find(ident => ident.provider === providerName);
+      if (identity) {
+        await supabase.auth.unlinkIdentity(identity);
+      }
+    }
+    
+    toast({ title: "Disconnected", description: `Your ${providerTitle} calendar has been disconnected.` });
+  };
+
+  const googleInt = integrations.find(i => i.provider === 'google');
+  const outlookInt = integrations.find(i => i.provider === 'azure');
+
+  useEffect(() => {
+    if (user?.user_metadata?.sync_local_calendar !== undefined) {
+      setSyncLocal(user.user_metadata.sync_local_calendar !== false);
+    }
+  }, [user]);
+
+  useEffect(() => {
     loadIntegrations();
 
     // Check if returning from OAuth redirect with tokens in hash
@@ -122,6 +175,10 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
         await supabase.from('calendar_integrations').upsert(payload, { onConflict: 'user_id,provider' });
         localStorage.removeItem('iqxo_linking_provider');
         await loadIntegrations();
+        toast({
+          title: "Calendar Connected!",
+          description: `Successfully linked your ${linkingProvider} calendar.`,
+        });
       }
     };
     checkOAuthReturn();
@@ -132,7 +189,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
 
     window.addEventListener('calendarIntegrationSaved', handleIntegrationSaved);
     return () => window.removeEventListener('calendarIntegrationSaved', handleIntegrationSaved);
-  }, [user]);
+  }, [user, loadIntegrations]);
 
   useEffect(() => {
     const browserLang = (
@@ -266,58 +323,139 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
                 <span className="text-[10px] text-[#6E6E78] uppercase tracking-wider block">Local Calendar</span>
                 <div className="p-3 rounded-2xl bg-[#161618] border border-white/5 flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center font-medium text-xs text-[#E8E8E8]">22</div>
+                    <div className="w-8 h-8 rounded-xl bg-white/10 flex flex-col items-center justify-center overflow-hidden border border-white/10">
+                      <span className="text-[8px] text-[#5BC0DE] font-bold uppercase leading-none">
+                        {new Date().toLocaleDateString('en-US', { weekday: 'short' })}
+                      </span>
+                      <span className="text-xs font-bold leading-none mt-0.5 text-[#E8E8E8]">
+                        {new Date().getDate()}
+                      </span>
+                    </div>
                     <div>
-                      <div className="text-xs font-medium text-[#E8E8E8]">{t.localCalendar}</div>
+                      <div className="text-xs font-medium text-[#E8E8E8]">
+                        {t.localCalendar} ({getDeviceName()})
+                      </div>
                       <div className="text-[9px] text-[#6E6E78]">{t.localCalDesc}</div>
                     </div>
                   </div>
-                  <input type="checkbox" checked={syncLocal} onChange={(e) => {
-                    const val = e.target.checked;
-                    setSyncLocal(val);
-                    if (val && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
-                      if ((window as any).__IQXO_postMessage) { (window as any).__IQXO_postMessage(JSON.stringify({ type: 'requestCalendarEvents' })); } else if ((window as any).ReactNativeWebView) { (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestCalendarEvents' })); }
-                    }
-                  }} className="w-4 h-4 accent-[#5BC0DE] cursor-pointer" />
+                  <Switch 
+                    checked={syncLocal} 
+                    onCheckedChange={async (val) => {
+                      setSyncLocal(val);
+                      if (user) {
+                        await supabase.auth.updateUser({
+                          data: { sync_local_calendar: val }
+                        });
+                      }
+                      if (val && typeof window !== 'undefined') {
+                        if ((window as any).__IQXO_postMessage) { 
+                          (window as any).__IQXO_postMessage(JSON.stringify({ type: 'requestCalendarEvents' })); 
+                        } else if ((window as any).ReactNativeWebView) { 
+                          (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestCalendarEvents' })); 
+                        }
+                      }
+                    }} 
+                  />
                 </div>
               </div>
 
               <div className="space-y-1.5 pt-1">
                 <span className="text-[10px] text-[#6E6E78] uppercase tracking-wider block">Add Accounts</span>
                 <div className="space-y-1.5">
-                  <div onClick={() => linkProvider('google')} className="p-2.5 rounded-xl bg-[#161618] border border-white/5 flex items-center justify-between text-xs cursor-pointer hover:border-white/10 transition-colors">
+                  {/* Google Calendar */}
+                  <div 
+                    onClick={() => { if (!googleInt) linkProvider('google'); }}
+                    className={`p-2.5 rounded-xl bg-[#161618] border border-white/5 flex items-center justify-between text-xs transition-colors ${!googleInt ? 'cursor-pointer hover:border-white/10' : ''}`}
+                  >
                     <div className="flex items-center space-x-2.5">
-                      <Chrome className="w-4 h-4 text-[#5BC0DE]" />
+                      <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center p-0.5 shrink-0">
+                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5">
+                          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                        </svg>
+                      </div>
                       <span className="text-gray-200">Google Calendar</span>
                     </div>
-                    {integrations.some(i => i.provider === 'google') ? (
-                      <CheckCircle className="w-4 h-4 text-[#5BC0DE]" />
+                    {googleInt ? (
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Switch 
+                          checked={googleInt.sync_state === 'active'}
+                          onCheckedChange={() => toggleIntegration(googleInt.id, googleInt.sync_state)}
+                        />
+                        <button 
+                          type="button" 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            removeIntegration(googleInt.id, 'Google Calendar', 'google'); 
+                          }} 
+                          className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
+                          title="Disconnect"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     ) : (
-                      <Plus className="w-3.5 h-3.5 text-gray-500" />
+                      <button 
+                        type="button" 
+                        onClick={() => linkProvider('google')} 
+                        className="p-1 text-gray-400 hover:text-white transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
                     )}
                   </div>
                   
                   {/* Outlook */}
-                  <div onClick={() => linkProvider('azure')} className="p-2.5 rounded-xl bg-[#161618] border border-white/5 flex items-center justify-between text-xs cursor-pointer hover:border-white/10 transition-colors">
+                  <div 
+                    onClick={() => { if (!outlookInt) linkProvider('azure'); }}
+                    className={`p-2.5 rounded-xl bg-[#161618] border border-white/5 flex items-center justify-between text-xs transition-colors ${!outlookInt ? 'cursor-pointer hover:border-white/10' : ''}`}
+                  >
                     <div className="flex items-center space-x-2.5">
-                      <div className="w-4 h-4 flex items-center justify-center rounded-sm bg-[#0078D4]">
-                        <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 fill-white">
+                      <div className="w-5 h-5 flex items-center justify-center rounded-full bg-[#0078D4] shrink-0">
+                        <svg viewBox="0 0 24 24" className="w-3 h-3 fill-white">
                           <path d="M2 3h20v18H2V3zm18 16V5H4v14h16zm-5-3h-6V8h6v8zm-4-2h2v-4h-2v4z" />
                         </svg>
                       </div>
                       <span className="text-gray-200">Outlook</span>
                     </div>
-                    {integrations.some(i => i.provider === 'azure') ? (
-                      <CheckCircle className="w-4 h-4 text-[#5BC0DE]" />
+                    {outlookInt ? (
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Switch 
+                          checked={outlookInt.sync_state === 'active'}
+                          onCheckedChange={() => toggleIntegration(outlookInt.id, outlookInt.sync_state)}
+                        />
+                        <button 
+                          type="button" 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            removeIntegration(outlookInt.id, 'Outlook', 'azure'); 
+                          }} 
+                          className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
+                          title="Disconnect"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     ) : (
-                      <Plus className="w-3.5 h-3.5 text-gray-500" />
+                      <button 
+                        type="button" 
+                        onClick={() => linkProvider('azure')} 
+                        className="p-1 text-gray-400 hover:text-white transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
                     )}
                   </div>
 
                   {/* Microsoft 365 */}
-                  <div onClick={() => linkProvider('azure')} className="p-2.5 rounded-xl bg-[#161618] border border-white/5 flex items-center justify-between text-xs cursor-pointer hover:border-white/10 transition-colors">
+                  <div 
+                    onClick={() => { if (!outlookInt) linkProvider('azure'); }}
+                    className={`p-2.5 rounded-xl bg-[#161618] border border-white/5 flex items-center justify-between text-xs transition-colors ${!outlookInt ? 'cursor-pointer hover:border-white/10' : ''}`}
+                  >
                     <div className="flex items-center space-x-2.5">
-                      <div className="w-4 h-4 flex items-center justify-center rounded-sm bg-white p-[1px]">
+                      <div className="w-5 h-5 flex items-center justify-center rounded-full bg-white border border-white/10 p-1 shrink-0">
                         <svg viewBox="0 0 23 23" className="w-full h-full">
                           <path fill="#f35325" d="M1 1h10v10H1z"/>
                           <path fill="#81bc06" d="M12 1h10v10H12z"/>
@@ -327,10 +465,32 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
                       </div>
                       <span className="text-gray-200">Microsoft 365</span>
                     </div>
-                    {integrations.some(i => i.provider === 'azure') ? (
-                      <CheckCircle className="w-4 h-4 text-[#5BC0DE]" />
+                    {outlookInt ? (
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Switch 
+                          checked={outlookInt.sync_state === 'active'}
+                          onCheckedChange={() => toggleIntegration(outlookInt.id, outlookInt.sync_state)}
+                        />
+                        <button 
+                          type="button" 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            removeIntegration(outlookInt.id, 'Microsoft 365', 'azure'); 
+                          }} 
+                          className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
+                          title="Disconnect"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     ) : (
-                      <Plus className="w-3.5 h-3.5 text-gray-500" />
+                      <button 
+                        type="button" 
+                        onClick={() => linkProvider('azure')} 
+                        className="p-1 text-gray-400 hover:text-white transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
                     )}
                   </div>
                 </div>
@@ -424,8 +584,7 @@ export default function OnboardingPage({ onDone }: OnboardingPageProps) {
             className="w-full h-[52px] bg-[#5BC0DE]/10 hover:bg-[#5BC0DE]/20 border border-[#5BC0DE]/20 text-[#5BC0DE] font-medium rounded-full flex items-center justify-center space-x-2 active:scale-[0.98] transition-all py-3.5 cursor-pointer"
           >
             <span className="text-sm">
-              {step === 3 ? t.btnConnect :
-               step === 4 || step === 5 ? t.btnAllow :
+              {step === 4 || step === 5 ? t.btnAllow :
                step === 7 || step === 8 ? t.doneBtn :
                t.btnContinue}
             </span>
