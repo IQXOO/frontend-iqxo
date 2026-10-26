@@ -30,14 +30,14 @@ function NotificationSkeleton() {
       {Array.from({ length: 4 }).map((_, index) => (
         <div
           key={index}
-          className="animate-pulse rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+          className="animate-pulse rounded-2xl border border-border/70 bg-card/60 p-4 dark:border-white/10 dark:bg-white/[0.03]"
         >
           <div className="flex gap-3">
-            <div className="h-11 w-11 rounded-2xl bg-white/10" />
+            <div className="h-11 w-11 rounded-2xl bg-muted dark:bg-white/10" />
             <div className="flex-1 space-y-3">
-              <div className="h-4 w-3/5 rounded-full bg-white/10" />
-              <div className="h-3 w-full rounded-full bg-white/10" />
-              <div className="h-3 w-4/5 rounded-full bg-white/10" />
+              <div className="h-4 w-3/5 rounded-full bg-muted dark:bg-white/10" />
+              <div className="h-3 w-full rounded-full bg-muted dark:bg-white/10" />
+              <div className="h-3 w-4/5 rounded-full bg-muted dark:bg-white/10" />
             </div>
           </div>
         </div>
@@ -124,7 +124,7 @@ export function NotificationPanel({
             <button
               type="button"
               onClick={() => void onRetry()}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-secondary/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]"
               aria-label={localized.retry}
             >
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -132,7 +132,7 @@ export function NotificationPanel({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-secondary/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]"
               aria-label="Close notifications"
             >
               <X className="h-4 w-4" />
@@ -151,7 +151,7 @@ export function NotificationPanel({
             variant="outline"
             onClick={() => void onMarkAllAsRead()}
             disabled={unreadCount === 0 || loading}
-            className="h-9 rounded-xl border-white/10 bg-white/[0.03] text-xs shadow-none hover:bg-white/[0.06]"
+            className="h-9 rounded-xl border-border/70 bg-secondary/50 text-foreground text-xs shadow-none hover:bg-secondary dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]"
           >
             {localized.markAll}
           </Button>
@@ -160,17 +160,17 @@ export function NotificationPanel({
 
       <div className="flex-1 overflow-y-auto px-5 py-4">
         {error && notifications.length > 0 && (
-          <div className="mb-4 rounded-3xl border border-amber-500/20 bg-amber-500/10 p-4">
+          <div className="mb-4 rounded-3xl border border-amber-500/30 bg-amber-500/10 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-amber-200">{localized.errorTitle}</p>
-                <p className="mt-1 text-sm text-amber-100/80">{error}</p>
+                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">{localized.errorTitle}</p>
+                <p className="mt-1 text-sm text-amber-800/90 dark:text-amber-100/80">{error}</p>
               </div>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => void onRetry()}
-                className="h-9 rounded-xl border-amber-500/20 bg-amber-500/10 text-xs text-amber-100 hover:bg-amber-500/15"
+                className="h-9 rounded-xl border-amber-500/30 bg-amber-500/15 text-xs font-semibold text-amber-900 hover:bg-amber-500/25 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100 dark:hover:bg-amber-500/15"
               >
                 {localized.retry}
               </Button>
@@ -181,14 +181,14 @@ export function NotificationPanel({
         {loading ? (
           <NotificationSkeleton />
         ) : error && notifications.length === 0 ? (
-          <div className="rounded-3xl border border-rose-500/20 bg-rose-500/10 p-5 text-center">
-            <p className="text-sm font-semibold text-rose-300">{localized.errorTitle}</p>
-            <p className="mt-1 text-sm text-rose-100/80">{error}</p>
+          <div className="rounded-3xl border border-rose-500/30 bg-rose-500/10 p-5 text-center dark:border-rose-500/20 dark:bg-rose-500/10">
+            <p className="text-sm font-semibold text-rose-900 dark:text-rose-300">{localized.errorTitle}</p>
+            <p className="mt-1 text-sm text-rose-800/90 dark:text-rose-100/80">{error}</p>
             <Button
               type="button"
               variant="outline"
               onClick={() => void onRetry()}
-              className="mt-4 h-10 rounded-xl border-rose-500/20 bg-rose-500/10 text-rose-100 hover:bg-rose-500/15"
+              className="mt-4 h-10 rounded-xl border-rose-500/30 bg-rose-500/15 text-rose-900 font-semibold hover:bg-rose-500/25 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-100 dark:hover:bg-rose-500/15"
             >
               {localized.retry}
             </Button>
@@ -302,7 +302,7 @@ export function NotificationPanel({
                 transition={{ type: "spring", stiffness: 300, damping: 32 }}
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-white/15" />
+                <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-muted-foreground/30 dark:bg-white/15" />
                 {panelBody}
               </motion.div>
             </motion.div>

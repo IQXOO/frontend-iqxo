@@ -28,50 +28,50 @@ const kindStyles: Record<
 > = {
   event: {
     icon: CalendarClock,
-    iconClass: "text-blue-400",
-    ringClass: "bg-blue-500/10",
+    iconClass: "text-blue-600 dark:text-blue-400",
+    ringClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
     glowClass: "from-blue-500/15 to-cyan-500/5",
     label: "Event",
   },
   ai: {
     icon: Sparkles,
-    iconClass: "text-amber-400",
-    ringClass: "bg-amber-500/10",
+    iconClass: "text-amber-600 dark:text-amber-400",
+    ringClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
     glowClass: "from-amber-500/15 to-orange-500/5",
     label: "AI",
   },
   voice: {
     icon: Mic,
-    iconClass: "text-emerald-400",
-    ringClass: "bg-emerald-500/10",
+    iconClass: "text-emerald-600 dark:text-emerald-400",
+    ringClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     glowClass: "from-emerald-500/15 to-teal-500/5",
     label: "Voice",
   },
   document: {
     icon: FileText,
-    iconClass: "text-violet-400",
-    ringClass: "bg-violet-500/10",
+    iconClass: "text-violet-600 dark:text-violet-400",
+    ringClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
     glowClass: "from-violet-500/15 to-fuchsia-500/5",
     label: "Document",
   },
   billing: {
     icon: CreditCard,
-    iconClass: "text-cyan-400",
-    ringClass: "bg-cyan-500/10",
+    iconClass: "text-cyan-600 dark:text-cyan-400",
+    ringClass: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
     glowClass: "from-cyan-500/15 to-blue-500/5",
     label: "Billing",
   },
   deadline: {
     icon: TimerReset,
-    iconClass: "text-rose-400",
-    ringClass: "bg-rose-500/10",
+    iconClass: "text-rose-600 dark:text-rose-400",
+    ringClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
     glowClass: "from-rose-500/15 to-red-500/5",
     label: "Deadline",
   },
   system: {
     icon: BadgeAlert,
-    iconClass: "text-slate-300",
-    ringClass: "bg-white/10",
+    iconClass: "text-slate-600 dark:text-slate-300",
+    ringClass: "bg-muted text-slate-600 dark:bg-white/10 dark:text-slate-300",
     glowClass: "from-white/10 to-white/5",
     label: "Update",
   },
@@ -106,12 +106,12 @@ export function NotificationItem({ notification, locale, onMarkAsRead, highlight
       aria-label={`${notification.title}${isUnread ? ", unread notification" : ""}`}
       className={`group relative overflow-hidden rounded-2xl border p-4 text-left outline-none transition-all focus-visible:ring-2 focus-visible:ring-primary/40 ${
         isUnread
-          ? `border-white/10 bg-gradient-to-br ${presentation.glowClass} shadow-lg shadow-black/10`
-          : "border-border/70 bg-white/[0.03] opacity-90"
-      } ${highlight ? "ring-1 ring-[rgba(59,130,246,0.30)]" : ""}`}
+          ? `border-border/80 bg-card shadow-xs hover:border-border dark:border-white/10 dark:bg-gradient-to-br ${presentation.glowClass} dark:shadow-lg dark:shadow-black/10`
+          : "border-border/60 bg-muted/30 opacity-90 dark:border-border/70 dark:bg-white/[0.03]"
+      } ${highlight ? "ring-1 ring-primary/40" : ""}`}
     >
       <div className="relative flex gap-3">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 ${presentation.ringClass}`}>
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border/50 dark:border-white/10 ${presentation.ringClass}`}>
           <presentation.icon className={`h-5 w-5 ${presentation.iconClass}`} strokeWidth={1.6} />
         </div>
 
@@ -140,13 +140,13 @@ export function NotificationItem({ notification, locale, onMarkAsRead, highlight
                     event.stopPropagation()
                     void onMarkAsRead(notification.id)
                   }}
-                  className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium text-foreground/80 transition-colors hover:bg-white/[0.08] hover:text-foreground"
+                  className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-secondary/80 px-2.5 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-secondary dark:border-white/10 dark:bg-white/[0.05] dark:hover:bg-white/[0.08]"
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
                   Mark read
                 </button>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-muted-foreground/70">
+                <span className="inline-flex items-center gap-1 rounded-full border border-border/50 bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground/70 dark:border-white/10 dark:bg-white/[0.03]">
                   <CheckCheck className="h-3.5 w-3.5" />
                   Read
                 </span>
@@ -155,11 +155,11 @@ export function NotificationItem({ notification, locale, onMarkAsRead, highlight
           </div>
 
           <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/75">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground dark:border-white/10 dark:bg-black/10 dark:text-muted-foreground/75">
               {presentation.label}
             </div>
             {isUnread && (
-              <span className="text-[11px] font-medium text-primary/90">Tap to mark as read</span>
+              <span className="text-[11px] font-medium text-primary">Tap to mark as read</span>
             )}
           </div>
         </div>

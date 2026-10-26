@@ -813,6 +813,7 @@ export const BottomNav = memo(function BottomNav({
         .catch(() => {
           // Fallback: regular file input
           if (hiddenFileInputRef.current) {
+            hiddenFileInputRef.current.accept = "image/*";
             hiddenFileInputRef.current.multiple = true;
             hiddenFileInputRef.current.removeAttribute("capture");
             hiddenFileInputRef.current.click();
@@ -823,6 +824,7 @@ export const BottomNav = memo(function BottomNav({
 
     // Standard browser / gallery flow
     if (hiddenFileInputRef.current) {
+      hiddenFileInputRef.current.accept = "image/*,application/pdf";
       if (capture) {
         hiddenFileInputRef.current.removeAttribute("multiple");
         hiddenFileInputRef.current.setAttribute("capture", capture);

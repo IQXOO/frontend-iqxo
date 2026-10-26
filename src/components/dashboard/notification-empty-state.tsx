@@ -22,8 +22,8 @@ export function NotificationEmptyState({ title, description }: NotificationEmpty
       <h3 className="text-base font-semibold text-foreground">{title}</h3>
       <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
 
-      <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
-        <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+      <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/50 px-3 py-1.5 text-[11px] font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.04]">
+        <Sparkles className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
         <span><BrandLogo as="span" className="text-[11px] font-medium tracking-[-0.01em]" /> keeps watch so you can stay focused.</span>
       </div>
     </motion.div>
