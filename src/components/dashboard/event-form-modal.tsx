@@ -544,7 +544,7 @@ export function EventFormModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] bg-background border-none flex flex-col p-0 gap-0 top-0 left-0 max-w-md mx-auto rounded-none sm:max-w-[430px] sm:h-[90dvh] sm:max-h-[850px] sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:border sm:border-border sm:shadow-2xl overflow-hidden outline-none duration-150 data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100"
+        className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] bg-background border-0 border-none shadow-none flex flex-col p-0 gap-0 top-0 left-0 right-0 bottom-0 translate-x-0 translate-y-0 max-w-md mx-auto rounded-none sm:inset-auto sm:max-w-[430px] sm:h-[90dvh] sm:max-h-[850px] sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:border sm:border-border sm:shadow-2xl overflow-hidden outline-none duration-150 data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100"
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">
