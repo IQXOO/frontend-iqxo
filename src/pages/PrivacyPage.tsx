@@ -16,7 +16,13 @@ export default function PrivacyPage() {
       <header className="sticky top-0 z-50 glass border-b border-white/5 px-5 py-4 flex items-center justify-between">
         <div className="flex items-center">
           <button 
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (typeof window !== "undefined" && window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate("/");
+              }
+            }}
             className="mr-4 p-2 rounded-xl hover:bg-secondary/50 transition-colors"
             aria-label={isFr ? "Retour" : "Go back"}
           >

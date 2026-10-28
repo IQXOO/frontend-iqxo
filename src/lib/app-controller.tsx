@@ -34,8 +34,14 @@ export default function AppController() {
   }, [user, planResolved, shouldAutoOpenPricing, location.pathname, navigate]);
   */
 
+  // Normalize path without trailing slash for robust routing checks
+  const path = location.pathname.toLowerCase().replace(/\/+$/, "") || "/";
+  // Public standalone pages that must NEVER be redirected away from under any circumstances
+  const isPublicStandalonePage = path === "/terms" || path === "/privacy" || path === "/reset-password" || path === "/pricing";
+
   useEffect(() => {
-    if (!user || !shouldAutoOpenPricing || planStatus !== "free_trial" || !trialEndsAt || location.pathname === "/pricing") return;
+    if (isPublicStandalonePage) return;
+    if (!user || !shouldAutoOpenPricing || planStatus !== "free_trial" || !trialEndsAt || path === "/pricing") return;
 
     const check = () => {
       if (trialEndsAt < new Date()) navigate("/pricing");
@@ -44,47 +50,47 @@ export default function AppController() {
     check();
     const interval = setInterval(check, 60_000);
     return () => clearInterval(interval);
-  }, [user, planStatus, trialEndsAt, shouldAutoOpenPricing, location.pathname, navigate]);
+  }, [user, planStatus, trialEndsAt, shouldAutoOpenPricing, path, navigate, isPublicStandalonePage]);
 
   // Prevent logged-in users from seeing /login
   useEffect(() => {
-    if (authLoading) return;
-    if (user && location.pathname === "/login") {
+    if (authLoading || isPublicStandalonePage) return;
+    if (user && path === "/login") {
       if (!onboardingDone) {
         navigate("/onboarding", { replace: true });
       } else {
         navigate("/home", { replace: true });
       }
     }
-  }, [user, onboardingDone, authLoading, location.pathname, navigate]);
+  }, [user, onboardingDone, authLoading, path, navigate, isPublicStandalonePage]);
 
   // Prevent logged-in users from seeing /onboarding if they already completed it
   // Or force them to /onboarding if they haven't completed it!
   useEffect(() => {
-    if (authLoading || !user) return;
-    if (!onboardingDone && location.pathname !== "/onboarding") {
+    if (authLoading || !user || isPublicStandalonePage) return;
+    if (!onboardingDone && path !== "/onboarding") {
       navigate("/onboarding", { replace: true });
-    } else if (onboardingDone && location.pathname === "/onboarding") {
+    } else if (onboardingDone && path === "/onboarding") {
       navigate("/home", { replace: true });
     }
-  }, [user, onboardingDone, authLoading, location.pathname, navigate]);
+  }, [user, onboardingDone, authLoading, path, navigate, isPublicStandalonePage]);
 
   // Calendar Onboarding: if user hasn't done calendar onboarding, force them there.
   // Otherwise, if they try to access it after finishing, they can (e.g. from settings) or we can let them.
   useEffect(() => {
-    if (authLoading) return;
-    if (user && onboardingDone) {
-      if (!calendarOnboardingDone && location.pathname !== "/connect-calendars") {
+    if (authLoading || !user || isPublicStandalonePage) return;
+    if (onboardingDone) {
+      if (!calendarOnboardingDone && path !== "/connect-calendars") {
         navigate("/connect-calendars", { replace: true });
       }
     }
-  }, [user, onboardingDone, calendarOnboardingDone, authLoading, location.pathname, navigate]);
+  }, [user, onboardingDone, calendarOnboardingDone, authLoading, path, navigate, isPublicStandalonePage]);
 
   // If not authenticated and not on a public path, redirect appropriately
   useEffect(() => {
     if (authLoading) return;
-    const publicPaths = new Set(["/terms", "/privacy", "/reset-password", "/index.html", "/login", "/welcome", "/connect-calendars"]);
-    if (!user && !publicPaths.has(location.pathname)) {
+    const publicPaths = new Set(["/terms", "/privacy", "/reset-password", "/index.html", "/login", "/welcome", "/connect-calendars", "/pricing"]);
+    if (!user && !publicPaths.has(path)) {
       const isDismissed = typeof window !== "undefined" && localStorage.getItem("iqxo_intro_dismissed") === "1";
       if (!isDismissed) {
         navigate("/welcome", { replace: true });
@@ -92,7 +98,7 @@ export default function AppController() {
         navigate("/login", { replace: true });
       }
     }
-  }, [user, authLoading, location.pathname, navigate]);
+  }, [user, authLoading, path, navigate]);
 
   // Global Native Calendar Auto-Sync (Runs on startup & foreground)
   useEffect(() => {
