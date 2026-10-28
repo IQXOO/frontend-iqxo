@@ -44,14 +44,17 @@ export function DashboardHeader({
       {/* Header Controls */}
       <div className="flex items-center gap-2">
         {/* Search Button */}
-        <motion.button
-          onClick={onSearchClick}
-          className="glass rounded-xl p-2.5 transition-all duration-200 hover:bg-secondary/50 active:scale-95"
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSearchClick?.();
+          }}
+          className="glass rounded-xl p-2.5 transition-all duration-200 hover:bg-secondary/50 active:scale-95 cursor-pointer touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
           aria-label="Search"
-          whileTap={{ scale: 0.95 }}
         >
           <Search className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-        </motion.button>
+        </button>
 
         {/* Language Toggle */}
         <button

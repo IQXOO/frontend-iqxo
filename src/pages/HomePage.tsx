@@ -181,12 +181,18 @@ export default function Page() {
       const dataArray = Array.isArray(data) ? data : [data];
       const urlArray = Array.isArray(imageUrls) ? imageUrls : (imageUrls ? [imageUrls] : undefined);
       
+      // If single event extracted, open the modern EventFormModal directly with prefill and attached image
+      if (dataArray.length === 1) {
+        openEventForm(null, { prefillData: dataArray[0], prefillImageUrl: urlArray?.[0] });
+        return;
+      }
+
       _setConfirmData(dataArray);
       _setConfirmImageUrls(urlArray);
       _setConfirmSource("photo");
       setConfirmOpen(true);
     },
-    [],
+    [openEventForm],
   );
 
   useEffect(() => {

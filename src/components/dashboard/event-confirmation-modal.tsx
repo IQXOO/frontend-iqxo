@@ -1,9 +1,23 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, CheckCircle, AlertCircle, Trash2, Calendar, Clock, Edit2, ChevronLeft } from "lucide-react"
+import { X, CheckCircle, AlertCircle, Trash2, Calendar, Clock, Edit2, ChevronLeft, MapPin, Phone } from "lucide-react"
 import { useApp } from "../../lib/store"
 import type { ParsedEvent } from "../../lib/parse-voice-input"
+import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover"
+
+const COLOR_PALETTE = [
+  "#00C2FF", // Cyan / Sky
+  "#007AFF", // Blue
+  "#FF3B30", // Red
+  "#34C759", // Green
+  "#FF9500", // Orange
+  "#AF52DE", // Purple
+  "#FF2D55", // Pink
+  "#EAB308", // Yellow
+  "#5856D6", // Indigo
+  "#14B8A6", // Teal
+]
 
 interface EventConfirmationModalProps {
   open: boolean
@@ -152,22 +166,6 @@ export function EventConfirmationModal({
     done: language === "ar" ? "تم" : language === "fr" ? "Terminé" : "Done"
   }
 
-  const inputClass = "w-full px-4 py-3.5 rounded-[20px] border border-border bg-secondary/40 text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-300 focus:border-[#5BC0DE] focus:ring-4 focus:ring-[#5BC0DE]/15"
-  const labelClass = "text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block"
-
-  const availableColors = [
-    "#007AFF", // Blue
-    "#FF3B30", // Red
-    "#34C759", // Green
-    "#FF9500", // Orange
-    "#AF52DE", // Purple
-    "#FF2D55", // Pink
-    "#06B6D4", // Cyan
-    "#EAB308", // Yellow
-    "#5856D6", // Indigo
-    "#14B8A6"  // Teal
-  ]
-
   const editingEvent = events.find(ev => ev._id === editingId)
 
   return (
@@ -193,18 +191,27 @@ export function EventConfirmationModal({
         {/* Header */}
         <div className="flex items-center justify-between mb-5 shrink-0 px-1">
           {editingEvent ? (
-            <div className="flex items-center gap-3 w-full">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingId(null)}
+                  className="h-9 w-9 rounded-full bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  aria-label="Back"
+                >
+                  <ChevronLeft className="h-5 w-5 rtl:rotate-180" />
+                </button>
+                <h3 className="text-lg font-bold text-foreground tracking-tight truncate">
+                  {labels.editEvent}
+                </h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setEditingId(null)}
-                className="h-9 w-9 rounded-full bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                aria-label="Back"
+                className="px-4 py-1.5 rounded-xl bg-[#5BC0DE]/15 hover:bg-[#5BC0DE]/25 border border-[#5BC0DE]/30 text-[#5BC0DE] font-semibold text-xs sm:text-sm transition-all active:scale-95 shadow-sm"
               >
-                <ChevronLeft className="h-5 w-5" />
+                {labels.done}
               </button>
-              <h3 className="text-lg font-bold text-foreground tracking-tight truncate">
-                {labels.editEvent}
-              </h3>
             </div>
           ) : (
             <div className="flex items-center justify-between w-full">
@@ -232,158 +239,183 @@ export function EventConfirmationModal({
           
           {editingEvent ? (
             /* ================= EDIT VIEW ================= */
-            <div className="space-y-5 px-1 pb-6 animate-in slide-in-from-right-4 duration-300">
+            <div className="space-y-4 px-1 pb-6 animate-in slide-in-from-right-4 duration-300">
               
-              {/* Title */}
+              {/* Title & Color */}
               <div className="flex flex-col">
-                <label className={labelClass}>{labels.title}</label>
-                <input
-                  type="text"
-                  value={editingEvent.title || ""}
-                  onChange={(e) => updateEventField(editingEvent._id, "title", e.target.value)}
-                  className={inputClass}
-                  placeholder="e.g. Weekly Team Meeting"
-                />
+                <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
+                  {labels.title}
+                </label>
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="text"
+                    value={editingEvent.title || ""}
+                    onChange={(e) => updateEventField(editingEvent._id, "title", e.target.value)}
+                    className="flex-1 px-4 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium"
+                    placeholder="e.g. Weekly Team Meeting"
+                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="w-12 h-12 rounded-2xl border border-border/80 shrink-0 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+                        style={{ backgroundColor: editingEvent.color || "#00C2FF" }}
+                        aria-label="Color"
+                      >
+                        <div className="w-4 h-4 rounded-full bg-white/30 backdrop-blur-sm border border-white/40" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="bottom" align="end" className="p-3 w-auto bg-card border border-border/80 shadow-2xl rounded-2xl">
+                      <div className="grid grid-cols-5 gap-2">
+                        {COLOR_PALETTE.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => updateEventField(editingEvent._id, "color", c)}
+                            className="w-7 h-7 rounded-xl transition-all hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer"
+                            style={{ backgroundColor: c }}
+                          >
+                            {(editingEvent.color || "#00C2FF") === c && (
+                              <div className="w-2 h-2 rounded-full bg-white shadow-sm" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
 
-              {/* Date, Start Time, & End Time */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col min-w-0">
-                  <label className={labelClass}>{labels.date}</label>
-                  <div className="w-full rounded-[20px] border border-border bg-secondary/40 transition-all duration-300 focus-within:border-[#5BC0DE] focus-within:ring-4 focus-within:ring-[#5BC0DE]/15 overflow-hidden flex items-center">
+              {/* Date & Time (Unified Card) */}
+              <div className="flex flex-col">
+                <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
+                  {language === "ar" ? "التاريخ والوقت" : "DATE & TIME"}
+                </label>
+                <div className="rounded-2xl border border-border/80 bg-secondary/30 p-3 flex flex-col gap-2.5">
+                  {/* Date Row */}
+                  <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-background/50 border border-border/50">
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs font-semibold uppercase">
+                      <Calendar className="w-4 h-4 text-[#5BC0DE]" />
+                      <span>{labels.date}</span>
+                    </div>
                     <input
                       type="date"
                       value={editingEvent.date || ""}
                       onChange={(e) => updateEventField(editingEvent._id, "date", e.target.value)}
-                      className="w-full bg-transparent border-none outline-none px-3 sm:px-4 py-3.5 text-sm sm:text-base text-foreground min-w-0 [color-scheme:dark]"
+                      className="bg-transparent border-none outline-none text-sm sm:text-base text-foreground font-medium text-right cursor-pointer [color-scheme:dark]"
                     />
                   </div>
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <label className={labelClass}>{labels.startTime}</label>
-                  <div className="w-full rounded-[20px] border border-border bg-secondary/40 transition-all duration-300 focus-within:border-[#5BC0DE] focus-within:ring-4 focus-within:ring-[#5BC0DE]/15 overflow-hidden flex items-center">
-                    <input
-                      type="time"
-                      value={editingEvent.start_time || editingEvent.time || ""}
-                      onChange={(e) => {
-                        updateEventField(editingEvent._id, "start_time", e.target.value)
-                        updateEventField(editingEvent._id, "time", e.target.value)
-                      }}
-                      className="w-full bg-transparent border-none outline-none px-3 sm:px-4 py-3.5 text-sm sm:text-base text-foreground min-w-0 [color-scheme:dark]"
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <label className={labelClass}>{labels.endTime}</label>
-                  <div className="w-full rounded-[20px] border border-border bg-secondary/40 transition-all duration-300 focus-within:border-[#5BC0DE] focus-within:ring-4 focus-within:ring-[#5BC0DE]/15 overflow-hidden flex items-center">
-                    <input
-                      type="time"
-                      value={editingEvent.end_time || ""}
-                      onChange={(e) => updateEventField(editingEvent._id, "end_time", e.target.value)}
-                      className="w-full bg-transparent border-none outline-none px-3 sm:px-4 py-3.5 text-sm sm:text-base text-foreground min-w-0 [color-scheme:dark]"
-                    />
+
+                  {/* Times Row (Start & End) */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-background/50 border border-border/50">
+                      <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-semibold uppercase">
+                        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span>{labels.startTime}</span>
+                      </div>
+                      <input
+                        type="time"
+                        value={editingEvent.start_time || editingEvent.time || ""}
+                        onChange={(e) => {
+                          updateEventField(editingEvent._id, "start_time", e.target.value);
+                          updateEventField(editingEvent._id, "time", e.target.value);
+                        }}
+                        className="bg-transparent border-none outline-none text-sm text-foreground font-medium text-right cursor-pointer [color-scheme:dark]"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-background/50 border border-border/50">
+                      <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-semibold uppercase">
+                        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span>{labels.endTime}</span>
+                      </div>
+                      <input
+                        type="time"
+                        value={editingEvent.end_time || ""}
+                        onChange={(e) => updateEventField(editingEvent._id, "end_time", e.target.value)}
+                        className="bg-transparent border-none outline-none text-sm text-foreground font-medium text-right cursor-pointer [color-scheme:dark]"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Color Picker */}
+              {/* Location */}
               <div className="flex flex-col">
-                <label className={labelClass}>{labels.color}</label>
-                <div className="grid grid-cols-5 gap-3 bg-background/50 p-4 rounded-[20px] border border-border/50 justify-items-center">
-                  {availableColors.map(c => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => updateEventField(editingEvent._id, "color", c)}
-                      className={`w-10 h-10 rounded-full transition-all duration-300 flex items-center justify-center ${
-                        editingEvent.color === c 
-                          ? 'scale-110 ring-2 ring-offset-2 ring-offset-background shadow-[0_0_15px_rgba(255,255,255,0.15)]' 
-                          : 'hover:scale-110 opacity-70 hover:opacity-100 shadow-sm hover:shadow-md'
-                      }`}
-                      style={{ backgroundColor: c, '--tw-ring-color': c } as React.CSSProperties}
-                      aria-label={`Select color ${c}`}
-                    >
-                      {editingEvent.color === c && (
-                        <div className="w-2.5 h-2.5 rounded-full bg-white/90 shadow-sm" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recurrence & Reminder */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col min-w-0">
-                  <label className={labelClass}>{labels.recurrence}</label>
-                  <select 
-                    value={editingEvent.recurrence_rule || ""} 
-                    onChange={(e) => updateEventField(editingEvent._id, "recurrence_rule", e.target.value)}
-                    className={inputClass}>
-                    <option value="">{language === "ar" ? "بدون تكرار" : language === "fr" ? "Jamais" : "Never"}</option>
-                    <option value="FREQ=DAILY">{language === "ar" ? "يومياً" : language === "fr" ? "Quotidien" : "Daily"}</option>
-                    <option value="FREQ=WEEKLY">{language === "ar" ? "أسبوعياً" : language === "fr" ? "Hebdomadaire" : "Weekly"}</option>
-                    <option value="FREQ=MONTHLY">{language === "ar" ? "شهرياً" : language === "fr" ? "Mensuel" : "Monthly"}</option>
-                  </select>
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <label className={labelClass}>{labels.reminder}</label>
-                  <select 
-                    value={editingEvent.reminders && editingEvent.reminders.length > 0 ? String(editingEvent.reminders[0].minutes_before) : ""} 
-                    onChange={(e) => updateEventField(editingEvent._id, "reminders", e.target.value ? [{minutes_before: parseInt(e.target.value)}] : [])}
-                    className={inputClass}>
-                    <option value="">{language === "ar" ? "بدون تذكير" : language === "fr" ? "Aucun" : "None"}</option>
-                    <option value="0">{language === "ar" ? "في وقت الحدث" : language === "fr" ? "A l'heure" : "At time of event"}</option>
-                    <option value="10">{language === "ar" ? "قبل 10 دقائق" : language === "fr" ? "10 min avant" : "10 min before"}</option>
-                    <option value="30">{language === "ar" ? "قبل 30 دقيقة" : language === "fr" ? "30 min avant" : "30 min before"}</option>
-                    <option value="60">{language === "ar" ? "قبل ساعة" : language === "fr" ? "1 heure avant" : "1 hour before"}</option>
-                    <option value="1440">{language === "ar" ? "قبل يوم" : language === "fr" ? "1 jour avant" : "1 day before"}</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Phone & Location */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col">
-                  <label className={labelClass}>{labels.phone}</label>
-                  <input
-                    type="tel"
-                    value={editingEvent.phone || ""}
-                    onChange={(e) => updateEventField(editingEvent._id, "phone", e.target.value)}
-                    className={inputClass}
-                    placeholder="e.g. +1 555 0123"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className={labelClass}>{labels.location}</label>
+                <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
+                  {labels.location}
+                </label>
+                <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground">
+                  <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
                   <input
                     type="text"
                     value={editingEvent.location || ""}
                     onChange={(e) => updateEventField(editingEvent._id, "location", e.target.value)}
-                    className={inputClass}
-                    placeholder="Location"
+                    placeholder={language === "ar" ? "الموقع / الرابط" : "Location / Link"}
+                    className="flex-1 bg-transparent border-none outline-none text-[16px] text-foreground placeholder:text-muted-foreground/40 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Schedule (Repeat & Reminder) */}
+              <div className="flex flex-col">
+                <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
+                  {language === "ar" ? "الجدول" : "SCHEDULE"}
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <select 
+                    value={editingEvent.recurrence_rule || ""} 
+                    onChange={(e) => updateEventField(editingEvent._id, "recurrence_rule", e.target.value)}
+                    className="w-full px-3.5 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground text-[14px] font-medium outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 cursor-pointer">
+                    <option value="">{language === "ar" ? "بدون تكرار" : "Repeat: Never"}</option>
+                    <option value="FREQ=DAILY">{language === "ar" ? "يومياً" : "Repeat: Daily"}</option>
+                    <option value="FREQ=WEEKLY">{language === "ar" ? "أسبوعياً" : "Repeat: Weekly"}</option>
+                    <option value="FREQ=MONTHLY">{language === "ar" ? "شهرياً" : "Repeat: Monthly"}</option>
+                  </select>
+                  <select 
+                    value={editingEvent.reminders && editingEvent.reminders.length > 0 ? String(editingEvent.reminders[0].minutes_before) : ""} 
+                    onChange={(e) => updateEventField(editingEvent._id, "reminders", e.target.value ? [{minutes_before: parseInt(e.target.value)}] : [])}
+                    className="w-full px-3.5 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground text-[14px] font-medium outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 cursor-pointer">
+                    <option value="">{language === "ar" ? "بدون تذكير" : "Reminder: None"}</option>
+                    <option value="0">{language === "ar" ? "في وقت الحدث" : "Reminder: At time"}</option>
+                    <option value="10">{language === "ar" ? "قبل 10 دقائق" : "Reminder: 10m before"}</option>
+                    <option value="30">{language === "ar" ? "قبل 30 دقيقة" : "Reminder: 30m before"}</option>
+                    <option value="60">{language === "ar" ? "قبل ساعة" : "Reminder: 1h before"}</option>
+                    <option value="1440">{language === "ar" ? "قبل يوم" : "Reminder: 1d before"}</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div className="flex flex-col">
+                <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
+                  {labels.phone}
+                </label>
+                <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground">
+                  <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <input
+                    type="tel"
+                    value={editingEvent.phone || ""}
+                    onChange={(e) => updateEventField(editingEvent._id, "phone", e.target.value)}
+                    className="flex-1 bg-transparent border-none outline-none text-[16px] text-foreground placeholder:text-muted-foreground/40 font-medium"
+                    placeholder="e.g. +1 555 0123"
                   />
                 </div>
               </div>
 
               {/* Notes */}
               <div className="flex flex-col">
-                <label className={labelClass}>{labels.notes}</label>
+                <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
+                  {labels.notes}
+                </label>
                 <textarea
                   value={editingEvent.notes || ""}
                   onChange={(e) => updateEventField(editingEvent._id, "notes", e.target.value)}
                   rows={2}
-                  className={`${inputClass} resize-none`}
-                  placeholder="Add any extra details..."
+                  className="w-full px-4 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium resize-none"
+                  placeholder={language === "ar" ? "أضف ملاحظة..." : "Add a note..."}
                 />
               </div>
-              
-              <button
-                type="button"
-                onClick={() => setEditingId(null)}
-                className="w-full mt-4 rounded-[20px] bg-secondary/80 py-4 text-base font-bold text-foreground hover:bg-secondary transition-colors"
-              >
-                {labels.done}
-              </button>
             </div>
           ) : (
             /* ================= LIST VIEW ================= */

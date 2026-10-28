@@ -544,7 +544,7 @@ export function EventFormModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="fixed inset-0 z-50 w-full h-full max-h-screen bg-background border-none flex flex-col p-0 gap-0 translate-x-0 translate-y-0 top-0 left-0 max-w-none rounded-none sm:max-w-[430px] sm:h-[90vh] sm:max-h-[850px] sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:border sm:border-border sm:shadow-2xl overflow-hidden outline-none"
+        className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] bg-background border-none flex flex-col p-0 gap-0 top-0 left-0 max-w-md mx-auto rounded-none sm:max-w-[430px] sm:h-[90dvh] sm:max-h-[850px] sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:border sm:border-border sm:shadow-2xl overflow-hidden outline-none duration-150 data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100"
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">
@@ -597,7 +597,7 @@ export function EventFormModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={labels.eventTitlePlaceholder}
-                className="flex-1 px-4 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-sm sm:text-base font-medium"
+                className="flex-1 px-4 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium"
               />
 
               {/* Color Swatch & Popover */}
@@ -663,7 +663,7 @@ export function EventFormModal({
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className={`w-full bg-transparent border-none outline-none text-xs sm:text-sm font-semibold text-foreground cursor-pointer min-w-0 p-0 ${
+                  className={`w-full bg-transparent border-none outline-none text-[16px] sm:text-sm font-semibold text-foreground cursor-pointer min-w-0 p-0 ${
                     theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"
                   }`}
                   required
@@ -679,7 +679,7 @@ export function EventFormModal({
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className={`w-full bg-transparent border-none outline-none text-xs sm:text-sm font-semibold text-foreground cursor-pointer min-w-0 p-0 ${
+                  className={`w-full bg-transparent border-none outline-none text-[16px] sm:text-sm font-semibold text-foreground cursor-pointer min-w-0 p-0 ${
                     theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"
                   }`}
                 />
@@ -694,7 +694,7 @@ export function EventFormModal({
                   type="time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className={`w-full bg-transparent border-none outline-none text-xs sm:text-sm font-semibold text-foreground cursor-pointer min-w-0 p-0 ${
+                  className={`w-full bg-transparent border-none outline-none text-[16px] sm:text-sm font-semibold text-foreground cursor-pointer min-w-0 p-0 ${
                     theme === "dark" ? "[color-scheme:dark]" : "[color-scheme:light]"
                   }`}
                 />
@@ -714,7 +714,7 @@ export function EventFormModal({
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder={labels.locationPlaceholder}
-                className="w-full pl-11 pr-4 rtl:pl-4 rtl:pr-11 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-sm font-medium"
+                className="w-full pl-11 pr-4 rtl:pl-4 rtl:pr-11 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium"
               />
             </div>
           </div>
@@ -730,7 +730,7 @@ export function EventFormModal({
                 <select
                   value={recurrence}
                   onChange={(e) => setRecurrence(e.target.value)}
-                  className="w-full appearance-none px-3.5 sm:px-4 py-3.5 pr-9 rtl:pr-3.5 rtl:pl-9 rounded-2xl border border-border/80 bg-secondary/40 text-foreground text-xs sm:text-sm font-medium outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 cursor-pointer truncate"
+                  className="w-full appearance-none px-3.5 sm:px-4 py-3.5 pr-9 rtl:pr-3.5 rtl:pl-9 rounded-2xl border border-border/80 bg-secondary/40 text-foreground text-[16px] sm:text-sm font-medium outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 cursor-pointer truncate"
                 >
                   <option value="">{labels.repeatNever}</option>
                   <option value="FREQ=DAILY">{labels.repeatDaily}</option>
@@ -749,7 +749,7 @@ export function EventFormModal({
                       e.target.value ? [{ minutes_before: parseInt(e.target.value, 10) }] : []
                     )
                   }
-                  className="w-full appearance-none px-3.5 sm:px-4 py-3.5 pr-9 rtl:pr-3.5 rtl:pl-9 rounded-2xl border border-border/80 bg-secondary/40 text-foreground text-xs sm:text-sm font-medium outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 cursor-pointer truncate"
+                  className="w-full appearance-none px-3.5 sm:px-4 py-3.5 pr-9 rtl:pr-3.5 rtl:pl-9 rounded-2xl border border-border/80 bg-secondary/40 text-foreground text-[16px] sm:text-sm font-medium outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 cursor-pointer truncate"
                 >
                   <option value="">{labels.reminderNone}</option>
                   <option value="0">{labels.reminderAtTime}</option>
@@ -778,7 +778,7 @@ export function EventFormModal({
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder={labels.phonePlaceholder}
-                  className="w-full pl-10 pr-3.5 rtl:pl-3.5 rtl:pr-10 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-xs sm:text-sm font-medium"
+                  className="w-full pl-10 pr-3.5 rtl:pl-3.5 rtl:pr-10 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] sm:text-sm font-medium"
                 />
               </div>
 
@@ -790,7 +790,7 @@ export function EventFormModal({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={labels.emailPlaceholder}
-                  className="w-full pl-10 pr-3.5 rtl:pl-3.5 rtl:pr-10 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-xs sm:text-sm font-medium"
+                  className="w-full pl-10 pr-3.5 rtl:pl-3.5 rtl:pr-10 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] sm:text-sm font-medium"
                 />
               </div>
             </div>
@@ -807,7 +807,7 @@ export function EventFormModal({
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder={labels.notesPlaceholder}
                 rows={3}
-                className="w-full bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/40 text-sm font-medium resize-none pb-7 leading-relaxed"
+                className="w-full bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/40 text-[16px] font-medium resize-none pb-7 leading-relaxed"
               />
 
               {/* Bottom bar inside notes box: Attachment icon */}
@@ -927,7 +927,7 @@ export function EventFormModal({
         </div>
 
         {/* ── STICKY FOOTER ── */}
-        <div className="border-t border-border/80 px-5 py-4 shrink-0 bg-background/95 backdrop-blur-xl">
+        <div className="border-t border-border/80 px-5 pt-3.5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] shrink-0 bg-background/95 backdrop-blur-xl">
           <button
             onClick={handleSave}
             disabled={isUploading}

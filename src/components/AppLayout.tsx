@@ -441,34 +441,30 @@ function AppLayoutContent() {
         </div>
       )}
 
-      {commandOpen && (
-        <React.Suspense fallback={null}>
-          <CommandPalette
-            isOpen={commandOpen}
-            onOpenChange={setCommandOpen}
-            onAddEvent={() => {
-              setCommandOpen(false);
-              navigateToPath("/home");
-              window.setTimeout(() => openAddEvent(), 0);
-            }}
-            onToggleDarkMode={() => {
-              toggleTheme();
-            }}
-            onExportPDF={async () => {
-              const { exportEventsToPDF } = await import("../lib/export-pdf");
-              exportEventsToPDF(events, user?.email || "user@example.com");
-            }}
-            onLogout={async () => {
-              await signOut();
-            }}
-            onEventSelect={(event) => {
-              setCommandOpen(false);
-              navigateToPath("/home");
-              window.setTimeout(() => openEventDetail(event), 0);
-            }}
-          />
-        </React.Suspense>
-      )}
+      <CommandPalette
+        isOpen={commandOpen}
+        onOpenChange={setCommandOpen}
+        onAddEvent={() => {
+          setCommandOpen(false);
+          navigateToPath("/home");
+          window.setTimeout(() => openAddEvent(), 0);
+        }}
+        onToggleDarkMode={() => {
+          toggleTheme();
+        }}
+        onExportPDF={async () => {
+          const { exportEventsToPDF } = await import("../lib/export-pdf");
+          exportEventsToPDF(events, user?.email || "user@example.com");
+        }}
+        onLogout={async () => {
+          await signOut();
+        }}
+        onEventSelect={(event) => {
+          setCommandOpen(false);
+          navigateToPath("/home");
+          window.setTimeout(() => openEventDetail(event), 0);
+        }}
+      />
     </div>
   );
 }
