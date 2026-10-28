@@ -8,6 +8,7 @@ import type { ParsedEvent } from "../../lib/parse-voice-input"
 import { devError, devLog, fetchWithDiagnostics, getFriendlyErrorMessage, readResponseText, withAsyncDiagnostics } from "../../lib/logger"
 import { useToast } from "../../hooks/use-toast"
 import { supabase } from "../../lib/supabase"
+import { compressImage } from "../../lib/compress-image"
 
 async function uploadToStorage(file: File, userId: string, bucket: string): Promise<string> {
   const ext = file.name.split(".").pop() ?? "bin";
@@ -245,9 +246,22 @@ export function UploadButton({
 
           const formData = new FormData()
           if (user?.id) formData.append("userId", user.id)
+          formData.append("language", language || "ar")
+          formData.append("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC")
+          formData.append("clientDate", new Date().toISOString())
 
           for (const preview of previews) {
-            formData.append("images", preview.file, preview.name)
+            let fileToUpload = preview.file
+            if (fileToUpload.type.startsWith("image/")) {
+              try {
+                const compressedBlob = await compressImage(fileToUpload, 2.0, 2048, 2048, 0.9, "image/jpeg")
+                const safeName = (preview.name || "image").replace(/\.[^/.]+$/, "") + ".jpg"
+                fileToUpload = new File([compressedBlob], safeName, { type: "image/jpeg" })
+              } catch (compressErr) {
+                devLog('Upload', 'Image pre-compression fallback to original', compressErr)
+              }
+            }
+            formData.append("images", fileToUpload, fileToUpload.name)
           }
 
           const headers: Record<string, string> = {}
@@ -281,7 +295,13 @@ export function UploadButton({
           }
 
           if (allExtractedEvents.length === 0) {
-            throw new Error("No events found in the selected images.")
+            throw new Error(
+              language === "ar"
+                ? "لم نتمكن من العثور على أي أحداث أو تفاصيل مواعيد في الصور المحددة. يرجى التأكد من وضوح الصورة وتفاصيل الموعد."
+                : language === "fr"
+                ? "Aucun événement trouvé dans les images sélectionnées. Veuillez vous assurer que les détails sont bien lisibles."
+                : "No events found in the selected images. Please make sure the event details are clear."
+            )
           }
 
           // Upload files to Supabase Storage to get permanent URLs
@@ -349,7 +369,7 @@ export function UploadButton({
         id="iqxo-upload-input"
         type="file"
         multiple
-        accept="image/*,application/pdf"
+        accept="image/*"
         onChange={handleFileSelect}
         className="hidden"
         aria-label={t("uploadLabel")}

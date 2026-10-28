@@ -12,6 +12,8 @@ import {
   X,
   FileCheck,
   AlertTriangle,
+  Link as LinkIcon,
+  ExternalLink,
 } from "lucide-react";
 import {
   Dialog,
@@ -748,20 +750,38 @@ export function EventFormModal({
             )}
           </div>
 
-          {/* ── 3. LOCATION ── */}
+          {/* ── 3. LOCATION / LINK ── */}
           <div className="flex flex-col">
             <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
               {labels.location}
             </label>
             <div className="relative flex items-center">
-              <MapPin className="w-4 h-4 text-[#5BC0DE] absolute left-4 rtl:left-auto rtl:right-4 pointer-events-none" />
+              {location.startsWith("http://") || location.startsWith("https://") ? (
+                <LinkIcon className="w-4 h-4 text-[#5BC0DE] absolute left-4 rtl:left-auto rtl:right-4 pointer-events-none" />
+              ) : (
+                <MapPin className="w-4 h-4 text-[#5BC0DE] absolute left-4 rtl:left-auto rtl:right-4 pointer-events-none" />
+              )}
               <input
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder={labels.locationPlaceholder}
-                className="w-full pl-11 pr-4 rtl:pl-4 rtl:pr-11 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium"
+                className={`w-full pl-11 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium ${
+                  location.startsWith("http://") || location.startsWith("https://")
+                    ? "pr-11 rtl:pr-4 rtl:pl-11"
+                    : "pr-4 rtl:pl-4 rtl:pr-11"
+                }`}
               />
+              {(location.startsWith("http://") || location.startsWith("https://")) && (
+                <button
+                  type="button"
+                  onClick={() => window.open(location, "_blank", "noopener,noreferrer")}
+                  className="absolute right-3 rtl:right-auto rtl:left-3 p-1.5 rounded-xl text-[#5BC0DE] hover:bg-[#5BC0DE]/15 active:scale-95 transition-all"
+                  title={language === "ar" ? "فتح الرابط" : "Open Link"}
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
 

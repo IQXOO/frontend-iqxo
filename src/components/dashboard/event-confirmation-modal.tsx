@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, CheckCircle, AlertCircle, Trash2, Calendar, Clock, Edit2, ChevronLeft, MapPin, Phone } from "lucide-react"
+import { X, CheckCircle, AlertCircle, Trash2, Calendar, Clock, Edit2, ChevronLeft, MapPin, Phone, Link as LinkIcon, ExternalLink } from "lucide-react"
 import { useApp } from "../../lib/store"
 import type { ParsedEvent } from "../../lib/parse-voice-input"
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover"
@@ -389,15 +389,33 @@ export function EventConfirmationModal({
                 <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
                   {labels.location}
                 </label>
-                <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground">
-                  <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                <div className="relative flex items-center">
+                  {(editingEvent.location || "").startsWith("http://") || (editingEvent.location || "").startsWith("https://") ? (
+                    <LinkIcon className="w-4 h-4 text-[#5BC0DE] absolute left-4 rtl:left-auto rtl:right-4 pointer-events-none" />
+                  ) : (
+                    <MapPin className="w-4 h-4 text-muted-foreground absolute left-4 rtl:left-auto rtl:right-4 pointer-events-none" />
+                  )}
                   <input
                     type="text"
                     value={editingEvent.location || ""}
                     onChange={(e) => updateEventField(editingEvent._id, "location", e.target.value)}
                     placeholder={language === "ar" ? "الموقع / الرابط" : "Location / Link"}
-                    className="flex-1 bg-transparent border-none outline-none text-[16px] text-foreground placeholder:text-muted-foreground/40 font-medium"
+                    className={`w-full pl-11 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none text-[16px] font-medium ${
+                      (editingEvent.location || "").startsWith("http://") || (editingEvent.location || "").startsWith("https://")
+                        ? "pr-11 rtl:pr-4 rtl:pl-11"
+                        : "pr-4 rtl:pl-4 rtl:pr-11"
+                    }`}
                   />
+                  {((editingEvent.location || "").startsWith("http://") || (editingEvent.location || "").startsWith("https://")) && (
+                    <button
+                      type="button"
+                      onClick={() => window.open(editingEvent.location!, "_blank", "noopener,noreferrer")}
+                      className="absolute right-3 rtl:right-auto rtl:left-3 p-1.5 rounded-xl text-[#5BC0DE] hover:bg-[#5BC0DE]/15 active:scale-95 transition-all"
+                      title={language === "ar" ? "فتح الرابط" : "Open Link"}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -501,6 +519,16 @@ export function EventConfirmationModal({
                             <Clock className="h-3.5 w-3.5 opacity-70" />
                             {ev.start_time || ev.time || "---"}
                           </span>
+                          {ev.location && (
+                            <span className="flex items-center gap-1.5 max-w-[140px] truncate" title={ev.location}>
+                              {ev.location.startsWith("http://") || ev.location.startsWith("https://") ? (
+                                <LinkIcon className="h-3.5 w-3.5 opacity-70 text-[#5BC0DE] shrink-0" />
+                              ) : (
+                                <MapPin className="h-3.5 w-3.5 opacity-70 shrink-0" />
+                              )}
+                              <span className="truncate">{ev.location}</span>
+                            </span>
+                          )}
                           {isEventPast(ev.date, ev.start_time || ev.time) && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30">
                               <AlertCircle className="w-3 h-3" />
