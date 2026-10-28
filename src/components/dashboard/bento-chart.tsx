@@ -5,6 +5,11 @@ import { useApp } from "@/lib/store"
 export function BentoChart() {
   const { events, language } = useApp()
 
+  // Real events excluding virtual and work schedule shifts
+  const realEvents = events.filter(
+    (e) => e.source !== "work_schedule" && e.source !== "work_schedule_virtual"
+  )
+
   // Calculate statistics for the current week
   const now = new Date()
   const weekStart = new Date(now)
@@ -13,33 +18,33 @@ export function BentoChart() {
   const weekEnd = new Date(weekStart)
   weekEnd.setDate(weekEnd.getDate() + 7)
 
-  const thisWeekEvents = events.filter((e) => {
+  const thisWeekEvents = realEvents.filter((e) => {
     const eventDate = new Date(e.date)
     return eventDate >= weekStart && eventDate <= weekEnd
   })
 
   // Categories
   const categories = {
-    documents: events.filter((e) =>
+    documents: realEvents.filter((e) =>
       e.title.toLowerCase().includes("insurance") ||
       e.title.toLowerCase().includes("passport") ||
       e.title.toLowerCase().includes("visa") ||
       e.title.toLowerCase().includes("document") ||
       e.title.toLowerCase().includes("contract")
     ).length,
-    health: events.filter((e) =>
+    health: realEvents.filter((e) =>
       e.title.toLowerCase().includes("doctor") ||
       e.title.toLowerCase().includes("medical") ||
       e.title.toLowerCase().includes("health") ||
       e.title.toLowerCase().includes("appointment")
     ).length,
-    personal: events.filter((e) =>
+    personal: realEvents.filter((e) =>
       e.title.toLowerCase().includes("meeting") ||
       e.title.toLowerCase().includes("event") ||
       e.title.toLowerCase().includes("party")
     ).length,
     other: thisWeekEvents.length -
-      events.filter((e) =>
+      realEvents.filter((e) =>
         e.title.toLowerCase().includes("insurance") ||
         e.title.toLowerCase().includes("passport") ||
         e.title.toLowerCase().includes("doctor") ||
@@ -119,7 +124,7 @@ export function BentoChart() {
             <p className="text-xs text-muted-foreground mb-1">
               {language === "ar" ? "إجمالي المهام" : language === "fr" ? "Total des tâches" : "Total Tasks"}
             </p>
-            <p className="text-2xl font-bold text-foreground">{events.length}</p>
+            <p className="text-2xl font-bold text-foreground">{realEvents.length}</p>
           </div>
           <div className="p-3 rounded-lg bg-secondary/30 backdrop-blur-sm border border-border/50">
             <p className="text-xs text-muted-foreground mb-1">

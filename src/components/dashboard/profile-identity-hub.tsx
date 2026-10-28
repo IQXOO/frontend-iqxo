@@ -162,10 +162,13 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
     }
   }
 
-  // Calculate life stats
-  const totalEvents = events.length
-  const completedEvents = events.filter((e) => new Date(e.date) < new Date()).length
-  const upcomingEvents = events.filter((e) => new Date(e.date) >= new Date()).length
+  // Calculate life stats excluding virtual work shifts
+  const realEvents = events.filter(
+    (e) => e.source !== "work_schedule" && e.source !== "work_schedule_virtual"
+  )
+  const totalEvents = realEvents.length
+  const completedEvents = realEvents.filter((e) => new Date(e.date) < new Date()).length
+  const upcomingEvents = realEvents.filter((e) => new Date(e.date) >= new Date()).length
   const organizationScore = Math.min(100, Math.round((completedEvents / Math.max(totalEvents, 1)) * 100))
 
   // Calculate hours saved (estimate: 5 mins per event)

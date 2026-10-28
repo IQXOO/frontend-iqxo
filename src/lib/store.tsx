@@ -843,7 +843,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [archiveHasMore, setArchiveHasMore] = useState(true);
   const [archiveLoading, setArchiveLoading] = useState(false);
 
-  const PAGE_SIZE = 40;
+  const ACTIVE_PAGE_SIZE = 500;
+  const ARCHIVE_PAGE_SIZE = 40;
 
   // Helpers for synchronizing state updates
   const addEventToState = useCallback((event: IQXOEvent) => {
@@ -1050,8 +1051,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const todayStr = toLocalDateStr();
       const endOfMonthStr = toEndOfMonthStr();
-      const from = pageNum * PAGE_SIZE;
-      const to = (pageNum + 1) * PAGE_SIZE - 1;
+      const from = pageNum * ACTIVE_PAGE_SIZE;
+      const to = (pageNum + 1) * ACTIVE_PAGE_SIZE - 1;
 
       const { data, error } = await supabase
         .from("events")
@@ -1074,7 +1075,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return [...base, ...filteredNew];
       });
 
-      setActiveHasMore(formatted.length === PAGE_SIZE);
+      setActiveHasMore(formatted.length === ACTIVE_PAGE_SIZE);
       setActivePage(pageNum);
     } catch (err) {
       devError("Events", "Failed to load active events page", err);
@@ -1088,8 +1089,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setArchiveLoading(true);
     try {
       const todayStr = toLocalDateStr();
-      const from = pageNum * PAGE_SIZE;
-      const to = (pageNum + 1) * PAGE_SIZE - 1;
+      const from = pageNum * ARCHIVE_PAGE_SIZE;
+      const to = (pageNum + 1) * ARCHIVE_PAGE_SIZE - 1;
 
       const { data, error } = await supabase
         .from("events")
@@ -1113,7 +1114,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return [...base, ...filteredNew];
       });
 
-      setArchiveHasMore(formatted.length === PAGE_SIZE);
+      setArchiveHasMore(formatted.length === ARCHIVE_PAGE_SIZE);
       setArchivePage(pageNum);
     } catch (err) {
       devError("Events", "Failed to load archive events page", err);
@@ -1154,7 +1155,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           .eq("user_id", uid)
           .or(`date.gte.${toLocalDateStr()},recurrence_rule.not.is.null`)
           .order("date", { ascending: true })
-          .range(0, PAGE_SIZE - 1),
+          .range(0, ACTIVE_PAGE_SIZE - 1),
         supabase
           .from("work_schedules")
           .select("day_of_week,start_time,end_time,is_active,location,schedule_label")
@@ -1167,7 +1168,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setActiveEvents(formatted);
       setActivePage(0);
 
-      setActiveHasMore(formatted.length === PAGE_SIZE);
+      setActiveHasMore(formatted.length === ACTIVE_PAGE_SIZE);
 
       if (!scheduleRes.error && scheduleRes.data) {
         setWorkScheduleRows(
