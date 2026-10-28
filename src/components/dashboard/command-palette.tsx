@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import { Search, Lightbulb, Plus, Palette, Download, LogOut, X, Calendar } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useApp } from "@/lib/store"
@@ -38,6 +39,25 @@ export function CommandPalette({
   }
   const [search, setSearch] = useState("")
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [mounted, setMounted] = useState(false)
+  const openTimeRef = useRef<number>(0)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (open) {
+      openTimeRef.current = Date.now()
+      setSearch("")
+      setSelectedIndex(0)
+      const timer = setTimeout(() => {
+        inputRef.current?.focus()
+      }, 60)
+      return () => clearTimeout(timer)
+    }
+  }, [open])
 
   // Listen for Cmd+K or Ctrl+K
   useEffect(() => {
@@ -73,9 +93,6 @@ export function CommandPalette({
     logout: language === "ar" ? "تسجيل الخروج" : "Sign Out",
     logoutDesc: language === "ar" ? "تسجيل الخروج من حسابك" : "Log out from your account",
     noResults: language === "ar" ? "لا توجد نتائج مطابقة" : "No results found",
-    navigate: language === "ar" ? "↑↓ للتنقل" : "↑↓ Navigate",
-    select: language === "ar" ? "↵ للاختيار" : "↵ Select",
-    esc: language === "ar" ? "ESC للإغلاق" : "ESC to close",
   }
 
   const commands = [
@@ -176,32 +193,48 @@ export function CommandPalette({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [open, allItems, selectedIndex])
 
-  return (
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Ignore synthetic click from opening tap on mobile (within 350ms)
+    if (Date.now() - openTimeRef.current < 350) return
+    setOpen(false)
+  }
+
+  if (!mounted || typeof document === "undefined") {
+    return null
+  }
+
+  return createPortal(
     <AnimatePresence>
       {open && (
-        <>
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-start pt-16 sm:pt-24 px-3 sm:px-4 pointer-events-auto overscroll-contain">
           {/* Backdrop Overlay */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-[99] bg-black/60 backdrop-blur-md"
+            transition={{ duration: 0.15 }}
+            onClick={handleBackdropClick}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md"
           />
 
-          {/* Palette Container (Top-anchored for mobile keyboards) */}
+          {/* Palette Container */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -15 }}
+            initial={{ opacity: 0, scale: 0.95, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -15 }}
+            exit={{ opacity: 0, scale: 0.95, y: -10 }}
             transition={{ duration: 0.15 }}
-            className="fixed top-10 sm:top-20 left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-2rem)] max-w-xl"
+            onClick={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            className="relative z-10 w-full max-w-xl"
           >
             <div className="rounded-2xl sm:rounded-3xl bg-background/95 backdrop-blur-2xl border border-border/80 shadow-2xl overflow-hidden flex flex-col">
               {/* Search Header Input */}
               <div className="flex items-center gap-3 px-4 sm:px-5 py-3.5 border-b border-border/60">
                 <Search className="w-5 h-5 text-muted-foreground shrink-0" />
                 <input
+                  ref={inputRef}
                   autoFocus
                   type="text"
                   placeholder={t.placeholder}
@@ -210,32 +243,34 @@ export function CommandPalette({
                     setSearch(e.target.value)
                     setSelectedIndex(0)
                   }}
-                  className="flex-1 bg-transparent text-sm sm:text-base text-foreground placeholder:text-muted-foreground/50 outline-none"
+                  className="flex-1 bg-transparent text-[16px] sm:text-base text-foreground placeholder:text-muted-foreground/50 outline-none"
                 />
 
-                {/* Clear search or ESC */}
-                {search ? (
+                {/* Clear search */}
+                {search && (
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation()
                       setSearch("")
                       setSelectedIndex(0)
+                      inputRef.current?.focus()
                     }}
-                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+                    className="p-1 rounded-full bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    aria-label="Clear search"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
-                ) : (
-                  <kbd className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary text-[11px] font-semibold text-muted-foreground border border-border">
-                    <span>ESC</span>
-                  </kbd>
                 )}
 
-                {/* Mobile close button */}
+                {/* Close button */}
                 <button
                   type="button"
-                  onClick={() => setOpen(false)}
-                  className="sm:hidden p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setOpen(false)
+                  }}
+                  className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors cursor-pointer"
                   aria-label="Close"
                 >
                   <X className="w-4 h-4" />
@@ -243,7 +278,7 @@ export function CommandPalette({
               </div>
 
               {/* Search Results List */}
-              <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto p-1.5 sm:p-2 divide-y divide-border/20">
+              <div className="max-h-[50vh] sm:max-h-96 overflow-y-auto p-1.5 sm:p-2 divide-y divide-border/20 overscroll-contain">
                 {allItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-center">
                     <Lightbulb className="w-8 h-8 text-muted-foreground/40 mb-2" />
@@ -262,7 +297,10 @@ export function CommandPalette({
                             : `cmd-${(item.item as (typeof commands)[0]).id}`
                         }
                         type="button"
-                        onClick={() => handleSelect(item)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleSelect(item)
+                        }}
                         onMouseEnter={() => setSelectedIndex(index)}
                         className={`w-full px-4 py-3 rounded-xl flex items-center gap-3.5 transition-colors cursor-pointer text-start ${
                           isSelected
@@ -311,19 +349,11 @@ export function CommandPalette({
                   })
                 )}
               </div>
-
-              {/* Bottom Footer Shortcuts */}
-              <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 border-t border-border/60 bg-secondary/20 text-[11px] font-medium text-muted-foreground">
-                <div className="flex items-center gap-3">
-                  <span>{t.navigate}</span>
-                  <span>{t.select}</span>
-                </div>
-                <span>{t.esc}</span>
-              </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }
