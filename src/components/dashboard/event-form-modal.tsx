@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   ArrowLeft,
   Check,
@@ -148,6 +148,19 @@ export function EventFormModal({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [conflictTitle, setConflictTitle] = useState<string | null>(null);
   const [isDuplicate, setIsDuplicate] = useState(false);
+
+  // Check if selected date/time is in the past
+  const isPastDate = useMemo(() => {
+    if (!date) return false;
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    if (date < todayStr) return true;
+    if (date === todayStr && time) {
+      const nowTimeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      return time < nowTimeStr;
+    }
+    return false;
+  }, [date, time]);
 
   // ── Fill form on open ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -483,8 +496,18 @@ export function EventFormModal({
 
       onOpenChange(false);
       toast({
-        title: language === "ar" ? "تم الحفظ" : "Saved",
-        description: language === "ar" ? "تم حفظ الحدث بنجاح" : "Event saved successfully",
+        title: language === "ar" ? "تم الحفظ" : language === "fr" ? "Enregistré" : "Saved",
+        description: isPastDate
+          ? language === "ar"
+            ? "تم حفظ الحدث بنجاح في الأرشيف (موعد قديم)"
+            : language === "fr"
+            ? "Événement enregistré dans les archives (date passée)"
+            : "Event saved to Archive (past date)"
+          : language === "ar"
+            ? "تم حفظ الحدث بنجاح"
+            : language === "fr"
+            ? "Événement enregistré avec succès"
+            : "Event saved successfully",
       });
     } catch (err) {
       const message = getFriendlyErrorMessage(
@@ -700,6 +723,29 @@ export function EventFormModal({
                 />
               </div>
             </div>
+
+            {/* Past Date Warning Banner */}
+            {isPastDate && (
+              <div className="mt-2.5 flex items-start gap-2.5 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 animate-in fade-in slide-in-from-top-1 duration-200">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+                <div className="text-xs font-medium leading-relaxed">
+                  <p className="font-bold">
+                    {language === "ar"
+                      ? "تنبيه: هذا الموعد في الماضي وقد مضى بالفعل"
+                      : language === "fr"
+                      ? "Attention : Cette date est déjà passée"
+                      : "Notice: This date has already passed"}
+                  </p>
+                  <p className="text-[11px] opacity-80 mt-0.5">
+                    {language === "ar"
+                      ? "يمكنك تسجيل الحدث وحفظه بشكل طبيعي؛ سيتم إدراجه في الأرشيف تلقائياً."
+                      : language === "fr"
+                      ? "Vous pouvez enregistrer cet événement normalement ; il sera archivé automatiquement."
+                      : "You can still save this event normally; it will be stored in your Archive automatically."}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── 3. LOCATION ── */}

@@ -88,6 +88,18 @@ export function EventConfirmationModal({
     if (editingId === id) setEditingId(null)
   }
 
+  const isEventPast = (eventDate?: string, eventTime?: string) => {
+    if (!eventDate) return false;
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    if (eventDate < todayStr) return true;
+    if (eventDate === todayStr && eventTime) {
+      const nowTimeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      return eventTime < nowTimeStr;
+    }
+    return false;
+  };
+
   const handleConfirm = async () => {
     const validEvents = events.filter(ev => ev.selected && ev.title?.trim() && ev.date)
 
@@ -120,7 +132,16 @@ export function EventConfirmationModal({
         }))
       )
 
-      setToast({ type: "success", message: getSuccessMessage() })
+      const hasAnyPastEvent = validEvents.some(ev => isEventPast(ev.date, ev.start_time || ev.time))
+      const successMsg = hasAnyPastEvent
+        ? language === "ar"
+          ? "تم حفظ الأحداث بنجاح (الأحداث السابقة نُقلت للأرشيف)"
+          : language === "fr"
+          ? "Événements enregistrés (les événements passés sont archivés)"
+          : "Events saved successfully (past events stored in Archive)"
+        : getSuccessMessage()
+
+      setToast({ type: "success", message: successMsg })
 
       setTimeout(() => {
         setToast(null)
@@ -338,6 +359,29 @@ export function EventConfirmationModal({
                     </div>
                   </div>
                 </div>
+
+                {/* Past Date Warning Banner */}
+                {isEventPast(editingEvent.date, editingEvent.start_time || editingEvent.time) && (
+                  <div className="mt-2.5 flex items-start gap-2.5 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+                    <div className="leading-relaxed font-medium">
+                      <span className="font-bold block">
+                        {language === "ar"
+                          ? "تنبيه: هذا الموعد في الماضي وقد مضى بالفعل"
+                          : language === "fr"
+                          ? "Attention : Cette date est déjà passée"
+                          : "Notice: This date has already passed"}
+                      </span>
+                      <span className="text-[11px] opacity-80 mt-0.5 block">
+                        {language === "ar"
+                          ? "يمكنك حفظه بشكل طبيعي؛ سيتم إدراجه في الأرشيف تلقائياً."
+                          : language === "fr"
+                          ? "Vous pouvez l'enregistrer normalement ; il sera archivé automatiquement."
+                          : "You can save it normally; it will be stored in your Archive automatically."}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Location */}
@@ -457,6 +501,12 @@ export function EventConfirmationModal({
                             <Clock className="h-3.5 w-3.5 opacity-70" />
                             {ev.start_time || ev.time || "---"}
                           </span>
+                          {isEventPast(ev.date, ev.start_time || ev.time) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30">
+                              <AlertCircle className="w-3 h-3" />
+                              {language === "ar" ? "تاريخ قديم" : language === "fr" ? "Date passée" : "Past date"}
+                            </span>
+                          )}
                         </div>
                       </div>
 

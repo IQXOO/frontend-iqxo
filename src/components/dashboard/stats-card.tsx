@@ -18,27 +18,38 @@ export function StatsCard() {
     );
   }, [user, language]);
 
+  // Real events excluding virtual and work schedule shifts
+  const realEvents = useMemo(() => {
+    return events.filter(
+      (e) => e.source !== "work_schedule" && e.source !== "work_schedule_virtual"
+    );
+  }, [events]);
+
   // Memoize event counts to avoid recalculation on unrelated state updates
-  const { urgentCount, upcomingCount, laterCount } = useMemo(() => {
+  const { urgentCount, upcomingCount, laterCount, totalCount } = useMemo(() => {
+    const urgent = getEventsByPriority("urgent").length;
+    const upcoming = getEventsByPriority("upcoming").length;
+    const later = getEventsByPriority("later").length;
     return {
-      urgentCount: getEventsByPriority("urgent").length,
-      upcomingCount: getEventsByPriority("upcoming").length,
-      laterCount: getEventsByPriority("later").length,
+      urgentCount: urgent,
+      upcomingCount: upcoming,
+      laterCount: later,
+      totalCount: urgent + upcoming + later,
     };
-  }, [events, getEventsByPriority]);
+  }, [getEventsByPriority]);
 
   const smartGreeting = useMemo(() => {
-    return getSmartGreeting(displayName, events, language);
-  }, [displayName, events, language]);
+    return getSmartGreeting(displayName, realEvents, language);
+  }, [displayName, realEvents, language]);
 
   // Memoize top 3 critical items for highlighting (filtering and sorting can be heavy)
   const criticalItems = useMemo(() => {
-    return events
+    return realEvents
       .map((e) => ({ ...e, criticality: computeCriticalityScore(e) }))
       .filter((e) => e.criticality >= 40)
       .sort((a, b) => b.criticality - a.criticality)
       .slice(0, 3);
-  }, [events]);
+  }, [realEvents]);
 
   return (
     <section className="px-5 py-2 space-y-3">
@@ -115,7 +126,7 @@ export function StatsCard() {
               <Calendar className="h-5 w-5 text-primary" />
             </div>
             <span className="text-xl font-bold text-foreground font-mono">
-              {events.length}
+              {totalCount}
             </span>
             <span className="text-[10px] text-muted-foreground font-medium text-center leading-tight">
               {t("totalEvents")}
