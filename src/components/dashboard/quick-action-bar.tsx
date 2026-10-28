@@ -1,6 +1,6 @@
 "use client"
 
-import { Phone, MapPin, Calendar, Share2 } from "lucide-react"
+import { Phone, MapPin, Calendar, Share2, Link as LinkIcon } from "lucide-react"
 import type { IQXOEvent } from "@/lib/types"
 
 interface QuickActionBarProps {
@@ -9,6 +9,8 @@ interface QuickActionBarProps {
 }
 
 export function QuickActionBar({ event, language }: QuickActionBarProps) {
+  const isLink = !!event.location && (event.location.startsWith("http://") || event.location.startsWith("https://"))
+
   const actions = [
     event.phone && {
       icon: Phone,
@@ -17,10 +19,18 @@ export function QuickActionBar({ event, language }: QuickActionBarProps) {
       color: "text-blue-500",
     },
     event.location && {
-      icon: MapPin,
-      label: language === "fr" ? "Carte" : language === "ar" ? "الخريطة" : "Map",
-      onClick: () => window.location.href = `https://maps.google.com/maps/search/${encodeURIComponent(event.location!)}`,
-      color: "text-green-500",
+      icon: isLink ? LinkIcon : MapPin,
+      label: isLink
+        ? (language === "ar" ? "فتح الرابط" : language === "fr" ? "Ouvrir le lien" : "Open Link")
+        : (language === "fr" ? "Carte" : language === "ar" ? "الخريطة" : "Map"),
+      onClick: () => {
+        if (isLink) {
+          window.open(event.location!, "_blank", "noopener,noreferrer")
+        } else {
+          window.open(`https://maps.google.com/maps/search/${encodeURIComponent(event.location!)}`, "_blank", "noopener,noreferrer")
+        }
+      },
+      color: isLink ? "text-[#5BC0DE]" : "text-green-500",
     },
     {
       icon: Calendar,
