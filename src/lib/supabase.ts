@@ -21,3 +21,7 @@ export const supabase = createClient(
   hasSupabaseConfig ? supabaseUrl : "https://placeholder.supabase.co",
   hasSupabaseConfig ? supabaseAnonKey : "placeholder-anon-key"
 );
+
+if (typeof window !== "undefined") {
+  (window as unknown as { supabase?: typeof supabase }).supabase = supabase;
+}

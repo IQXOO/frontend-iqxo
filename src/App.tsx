@@ -16,13 +16,24 @@ import { launchAppWithFallback } from "./lib/auth-urls";
 // the OS opens the IQXO native app and passes the tokens back to the WebView.
 function useNativeAppOAuthRedirect() {
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isNative = Boolean(
+      (window as unknown as { isNativeApp?: boolean; __IQXO_IS_NATIVE?: boolean }).isNativeApp ||
+      (window as unknown as { __IQXO_IS_NATIVE?: boolean }).__IQXO_IS_NATIVE ||
+      (typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("IQXONativeApp"))
+    );
+    if (isNative) return;
+
     const params = new URLSearchParams(window.location.search);
     const hash = window.location.hash; // "#access_token=xxx&..."
     const hasIqxoApp = params.get("iqxo_app") === "1" || hash.includes("iqxo_app=1");
+    const code = params.get("code");
+    const hasTokens = hash.includes("access_token") || Boolean(code);
 
-    if (hasIqxoApp && hash.includes("access_token")) {
+    if (hasIqxoApp && hasTokens) {
       // Use the helper to determine the correct deep link and handle store fallbacks
-      launchAppWithFallback(hash, window.location.href);
+      const payload = code ? `?code=${code}` : hash;
+      launchAppWithFallback(payload, window.location.href);
     }
   }, []);
 }
@@ -208,7 +219,8 @@ function _AppShell() {
 
 function RootRedirect() {
   const { user, authLoading } = useApp();
-  if (authLoading) return null;
+  // If still loading auth, render RouteFallback (dark spinner) instead of null to prevent white screen
+  if (authLoading) return <RouteFallback />;
   if (user) {
     return <Navigate to="/home" replace />;
   }
@@ -220,16 +232,23 @@ function RootRedirect() {
 }
 
 function App() {
-  // Redirect back to native app synchronously if this page was opened after OAuth.
-  // This must run before any hooks or component rendering to prevent React Router
-  // from navigating and stripping the hash/query parameters.
+  // Redirect back to native app synchronously if this page was opened after OAuth in an EXTERNAL browser.
+  // CRITICAL: We must NOT redirect or return null if already running inside the native app WebView!
   if (typeof window !== "undefined") {
+    const isNative = Boolean(
+      (window as unknown as { isNativeApp?: boolean; __IQXO_IS_NATIVE?: boolean }).isNativeApp ||
+      (window as unknown as { __IQXO_IS_NATIVE?: boolean }).__IQXO_IS_NATIVE ||
+      (typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("IQXONativeApp"))
+    );
     const params = new URLSearchParams(window.location.search);
     const hash = window.location.hash; // "#access_token=xxx&..."
     const hasIqxoApp = params.get("iqxo_app") === "1" || hash.includes("iqxo_app=1");
+    const code = params.get("code");
+    const hasTokens = hash.includes("access_token") || Boolean(code);
 
-    if (hasIqxoApp && hash.includes("access_token")) {
-      launchAppWithFallback(hash, window.location.href);
+    if (!isNative && hasIqxoApp && hasTokens) {
+      const payload = code ? `?code=${code}` : hash;
+      launchAppWithFallback(payload, window.location.href);
       return null;
     }
   }

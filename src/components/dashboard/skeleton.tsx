@@ -71,7 +71,7 @@ function EventCardSkeleton({ isFeature = false }: { isFeature?: boolean }) {
   }
 
   return (
-    <div className="glass rounded-2xl p-3 h-[140px] flex flex-col justify-between">
+    <div className="glass rounded-2xl p-3 min-h-[148px] flex flex-col justify-between">
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Skeleton className="h-8 w-8 rounded-lg" />

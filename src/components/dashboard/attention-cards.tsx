@@ -34,9 +34,22 @@ export function UrgentCards({ onEventClick, events: propEvents }: UrgentCardsPro
         </span>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide p-3 snap-mandatory">
+      <div
+        className={
+          urgentEvents.length === 1
+            ? "px-5"
+            : urgentEvents.length === 2
+              ? "grid grid-cols-2 gap-2.5 px-5"
+              : "flex gap-3 overflow-x-auto scrollbar-hide px-5 py-1 snap-mandatory"
+        }
+      >
         {urgentEvents.map((event) => (
-          <UrgentEventCard key={event.id} event={event} onClick={() => onEventClick(event)} />
+          <UrgentEventCard
+            key={event.id}
+            event={event}
+            onClick={() => onEventClick(event)}
+            isGrid={urgentEvents.length <= 2}
+          />
         ))}
       </div>
     </section>
@@ -46,9 +59,11 @@ export function UrgentCards({ onEventClick, events: propEvents }: UrgentCardsPro
 function UrgentEventCard({
   event,
   onClick,
+  isGrid = false,
 }: {
   event: IQXOEvent
   onClick: () => void
+  isGrid?: boolean
 }) {
   const { t, language } = useApp()
   const isRTL = language === "ar"
@@ -63,7 +78,9 @@ function UrgentEventCard({
   return (
     <button
       onClick={onClick}
-      className="snap-start shrink-0 w-[240px] rounded-2xl bg-gradient-to-br from-destructive/15 via-destructive/10 to-transparent glass p-4 flex flex-col gap-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] text-left"
+      className={`snap-start ${
+        isGrid ? "w-full" : "shrink-0 w-[240px]"
+      } rounded-2xl bg-gradient-to-br from-destructive/15 via-destructive/10 to-transparent glass p-3.5 flex flex-col justify-between gap-2.5 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] text-left`}
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">

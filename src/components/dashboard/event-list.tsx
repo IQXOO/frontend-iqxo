@@ -207,7 +207,7 @@ function EventGridCard({
     <div className="relative">
       <button
         onClick={onClick}
-        className={`w-full glass rounded-2xl p-3 flex flex-col justify-between text-${isRTL ? "right" : "left"} transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] group h-[140px] overflow-hidden ${priority === "past" ? "opacity-70" : ""}`}
+        className={`w-full glass rounded-2xl p-3 flex flex-col justify-between text-${isRTL ? "right" : "left"} transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] group min-h-[148px] h-full ${priority === "past" ? "opacity-70" : ""}`}
       >
         <div className="min-w-0 w-full flex-1 flex flex-col justify-start">
           <div className={`flex items-center justify-between mb-1.5 shrink-0 ${isRTL ? "flex-row-reverse" : ""}`}>
@@ -247,21 +247,21 @@ function EventGridCard({
           )}
         </div>
 
-        <div className="mt-1.5 flex flex-col gap-0.5 shrink-0">
-          <div className={`flex items-center gap-1 ${isRTL ? "flex-row-reverse" : ""}`}>
+        <div className="mt-2 flex flex-col gap-0.5 shrink-0 w-full min-w-0">
+          <div className={`flex items-center gap-1 min-w-0 ${isRTL ? "flex-row-reverse" : ""}`}>
             <Clock className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
             <span className="text-[9.5px] text-muted-foreground truncate">
               {dateLabel}{event.time ? ` \u00B7 ${event.time}` : ""}
             </span>
           </div>
           {event.location && (
-            <div className={`flex items-center gap-1 ${isRTL ? "flex-row-reverse" : ""}`}>
+            <div className={`flex items-center gap-1 min-w-0 ${isRTL ? "flex-row-reverse" : ""}`}>
               <MapPin className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
               <span className="text-[9.5px] text-muted-foreground truncate">{event.location}</span>
             </div>
           )}
           {!event.location && event.link && (
-            <div className={`flex items-center gap-1 ${isRTL ? "flex-row-reverse" : ""}`}>
+            <div className={`flex items-center gap-1 min-w-0 ${isRTL ? "flex-row-reverse" : ""}`}>
               <LinkIcon className="h-2.5 w-2.5 text-blue-400 shrink-0" />
               <span className="text-[9.5px] text-muted-foreground truncate">{event.link}</span>
             </div>
