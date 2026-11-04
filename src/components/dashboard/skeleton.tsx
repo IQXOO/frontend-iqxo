@@ -141,10 +141,9 @@ function ArchiveRowSkeleton() {
   );
 }
 
-export function ArchiveSkeleton({ count = 5 }: { count?: number }) {
+export function ArchiveSkeleton({ count = 4 }: { count?: number }) {
   return (
-    <div className="px-5 py-6 space-y-3" aria-label="Loading archive">
-      <Skeleton className="h-3 w-32 rounded-full mb-4" />
+    <div className="px-5 py-6 space-y-4" aria-label="Loading archive">
       {Array.from({ length: count }).map((_, i) => (
         <ArchiveRowSkeleton key={i} />
       ))}

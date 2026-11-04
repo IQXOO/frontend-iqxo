@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, X, Pencil, Calendar, Clock, MapPin, Phone, FileText } from "lucide-react"
+import { Check, X, Pencil, Calendar, Clock, MapPin, Phone, FileText, Link as LinkIcon } from "lucide-react"
 import { motion } from "framer-motion"
 import { useApp } from "../../lib/store"
 import type { IQXOEvent } from "../../lib/types"
@@ -31,6 +31,7 @@ export function VoiceConfirmationScreen({
   const time = "time" in data ? data.time : ""
   const phone = "phone" in data ? data.phone : ""
   const location = "location" in data ? data.location : ""
+  const link = "link" in data ? (data as any).link : ""
   const notes = "notes" in data ? data.notes : ""
 
   const handleConfirm = async () => {
@@ -41,6 +42,7 @@ export function VoiceConfirmationScreen({
         time: time || "",
         phone: phone || undefined,
         location: location || undefined,
+        link: link || undefined,
         notes: notes || "",
         image_url: undefined,
         source: "voice",
@@ -58,6 +60,7 @@ export function VoiceConfirmationScreen({
       time: time || "",
       phone: phone || undefined,
       location: location || undefined,
+      link: link || undefined,
       notes: notes || "",
       image_url: undefined,
       source: "voice",
@@ -155,10 +158,25 @@ export function VoiceConfirmationScreen({
                     <MapPin className="w-4 h-4 text-emerald-500" />
                   </div>
                   <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    {language === "ar" ? "أين" : language === "fr" ? "Où" : "Where"}
+                    {language === "ar" ? "الموقع" : language === "fr" ? "Lieu" : "Location"}
                   </label>
                 </div>
                 <p className="text-sm text-foreground pl-10">{location}</p>
+              </div>
+            )}
+
+            {/* Link */}
+            {link && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <LinkIcon className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    {language === "ar" ? "رابط الاجتماع / الويب" : language === "fr" ? "Lien" : "Link"}
+                  </label>
+                </div>
+                <p className="text-sm text-blue-500 hover:underline break-all pl-10">{link}</p>
               </div>
             )}
 

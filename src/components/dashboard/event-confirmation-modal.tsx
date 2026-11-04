@@ -56,7 +56,8 @@ export function EventConfirmationModal({
           time: ev.time || "",
           start_time: ev.start_time || "",
           end_time: ev.end_time || "",
-          location: ev.location || "",
+          location: ev.location && !/^(https?:\/\/|www\.|zoom\.us|meet\.google\.com)/i.test(ev.location) ? ev.location : (!ev.link && ev.location ? "" : ev.location || ""),
+          link: ev.link || (/^(https?:\/\/|www\.|zoom\.us|meet\.google\.com)/i.test(ev.location || "") ? ev.location : ""),
           phone: ev.phone || "",
           notes: ev.notes || "",
           color: ev.color || "",
@@ -120,7 +121,8 @@ export function EventConfirmationModal({
           time: ev.time || "",
           start_time: ev.start_time || undefined,
           end_time: ev.end_time || undefined,
-          location: ev.location || undefined,
+          location: ev.location?.trim() || undefined,
+          link: ev.link?.trim() || undefined,
           phone: ev.phone || undefined,
           notes: ev.notes || "",
           color: ev.color || undefined,
@@ -172,7 +174,8 @@ export function EventConfirmationModal({
     date: language === "ar" ? "متى" : language === "fr" ? "Quand" : "WHEN",
     startTime: language === "ar" ? "وقت البدء" : language === "fr" ? "Heure de début" : "START TIME",
     endTime: language === "ar" ? "وقت الانتهاء" : language === "fr" ? "Heure de fin" : "END TIME",
-    location: language === "ar" ? "الموقع" : language === "fr" ? "Lieu" : "LOCATION",
+    location: language === "ar" ? "الموقع (العنوان الفعلي)" : language === "fr" ? "Lieu" : "LOCATION",
+    link: language === "ar" ? "رابط الاجتماع / الويب" : language === "fr" ? "Lien de réunion" : "MEETING / WEB LINK",
     phone: language === "ar" ? "الهاتف" : language === "fr" ? "Téléphone" : "PHONE",
     notes: language === "ar" ? "ملاحظات" : language === "fr" ? "Notes" : "NOTES",
     color: language === "ar" ? "اللون" : language === "fr" ? "Couleur" : "COLOR",
@@ -384,32 +387,46 @@ export function EventConfirmationModal({
                 )}
               </div>
 
-              {/* Location */}
+              {/* Location (Physical Venue) */}
               <div className="flex flex-col">
                 <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
                   {labels.location}
                 </label>
                 <div className="relative flex items-center">
-                  {(editingEvent.location || "").startsWith("http://") || (editingEvent.location || "").startsWith("https://") ? (
-                    <LinkIcon className="w-4 h-4 text-[#5BC0DE] absolute left-4 rtl:left-auto rtl:right-4 pointer-events-none" />
-                  ) : (
-                    <MapPin className="w-4 h-4 text-muted-foreground absolute left-4 rtl:left-auto rtl:right-4 pointer-events-none" />
-                  )}
+                  <MapPin className="w-4 h-4 text-muted-foreground absolute left-4 rtl:left-auto rtl:right-4 pointer-events-none" />
                   <input
                     type="text"
                     value={editingEvent.location || ""}
                     onChange={(e) => updateEventField(editingEvent._id, "location", e.target.value)}
-                    placeholder={language === "ar" ? "الموقع / الرابط" : "Location / Link"}
+                    placeholder={language === "ar" ? "اسم القاعة، العنوان، المدينة..." : "Venue name, street address, city..."}
+                    className="w-full pl-11 pr-4 rtl:pl-4 rtl:pr-11 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none text-[16px] font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Link (Meeting / Web Link) */}
+              <div className="flex flex-col">
+                <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
+                  {labels.link}
+                </label>
+                <div className="relative flex items-center">
+                  <LinkIcon className="w-4 h-4 text-[#5BC0DE] absolute left-4 rtl:left-auto rtl:right-4 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={editingEvent.link || ""}
+                    onChange={(e) => updateEventField(editingEvent._id, "link", e.target.value)}
+                    placeholder={language === "ar" ? "https://zoom.us/...، رابط ميتينج أو ويب" : "https://zoom.us/..., meeting or web link"}
                     className={`w-full pl-11 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none text-[16px] font-medium ${
-                      (editingEvent.location || "").startsWith("http://") || (editingEvent.location || "").startsWith("https://")
-                        ? "pr-11 rtl:pr-4 rtl:pl-11"
-                        : "pr-4 rtl:pl-4 rtl:pr-11"
+                      editingEvent.link ? "pr-11 rtl:pr-4 rtl:pl-11" : "pr-4 rtl:pl-4 rtl:pr-11"
                     }`}
                   />
-                  {((editingEvent.location || "").startsWith("http://") || (editingEvent.location || "").startsWith("https://")) && (
+                  {editingEvent.link && (
                     <button
                       type="button"
-                      onClick={() => window.open(editingEvent.location!, "_blank", "noopener,noreferrer")}
+                      onClick={() => {
+                        const fullUrl = /^https?:\/\//i.test(editingEvent.link!) ? editingEvent.link! : `https://${editingEvent.link!}`;
+                        window.open(fullUrl, "_blank", "noopener,noreferrer");
+                      }}
                       className="absolute right-3 rtl:right-auto rtl:left-3 p-1.5 rounded-xl text-[#5BC0DE] hover:bg-[#5BC0DE]/15 active:scale-95 transition-all"
                       title={language === "ar" ? "فتح الرابط" : "Open Link"}
                     >
@@ -521,12 +538,14 @@ export function EventConfirmationModal({
                           </span>
                           {ev.location && (
                             <span className="flex items-center gap-1.5 max-w-[140px] truncate" title={ev.location}>
-                              {ev.location.startsWith("http://") || ev.location.startsWith("https://") ? (
-                                <LinkIcon className="h-3.5 w-3.5 opacity-70 text-[#5BC0DE] shrink-0" />
-                              ) : (
-                                <MapPin className="h-3.5 w-3.5 opacity-70 shrink-0" />
-                              )}
+                              <MapPin className="h-3.5 w-3.5 opacity-70 shrink-0" />
                               <span className="truncate">{ev.location}</span>
+                            </span>
+                          )}
+                          {ev.link && (
+                            <span className="flex items-center gap-1.5 max-w-[140px] truncate text-[#5BC0DE]" title={ev.link}>
+                              <LinkIcon className="h-3.5 w-3.5 opacity-70 shrink-0" />
+                              <span className="truncate">{ev.link}</span>
                             </span>
                           )}
                           {isEventPast(ev.date, ev.start_time || ev.time) && (

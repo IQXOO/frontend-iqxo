@@ -301,6 +301,7 @@ function renderEventHTML(event: IQXOEvent): string {
       <div class="event-meta">
         <span>📍 ${escapeHTML(event.date || "")}${event.time ? " at " + escapeHTML(event.time) : ""}</span>
         ${event.location ? `<span dir="auto">📌 ${escapeHTML(event.location)}</span>` : ""}
+        ${event.link ? `<span dir="auto">🔗 <a href="${escapeHTML(event.link)}" target="_blank" style="color:#2563eb;text-decoration:underline;">${escapeHTML(event.link)}</a></span>` : ""}
         ${event.phone ? `<span>📞 ${escapeHTML(event.phone)}</span>` : ""}
       </div>
       ${event.notes ? `<div class="event-notes" dir="auto"><strong>Notes:</strong> ${escapeHTML(event.notes)}</div>` : ""}

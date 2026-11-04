@@ -792,6 +792,7 @@ function rowToEvent(row: Record<string, any>): IQXOEvent {
     reminders: row.reminders ?? undefined,
     phone: (row.phone as string) ?? undefined,
     location: (row.location as string) ?? undefined,
+    link: (row.link as string) ?? undefined,
     email: (row.email as string) ?? undefined,
     source: (row.source as string) ?? "manual",
     image_url: (row.image_url as string) ?? undefined,
@@ -1057,7 +1058,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase
         .from("events")
         .select(
-          "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at"
+          "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,link,email,source,image_url,pdf_url,is_done,created_at,updated_at"
         )
         .eq("user_id", uid)
         .or(`date.gte.${todayStr},recurrence_rule.not.is.null`)
@@ -1095,7 +1096,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase
         .from("events")
         .select(
-          "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at"
+          "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,link,email,source,image_url,pdf_url,is_done,created_at,updated_at"
         )
         .eq("user_id", uid)
         .lt("date", todayStr)
@@ -1150,7 +1151,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         supabase
           .from("events")
           .select(
-            "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at"
+            "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,link,email,source,image_url,pdf_url,is_done,created_at,updated_at"
           )
           .eq("user_id", uid)
           .or(`date.gte.${toLocalDateStr()},recurrence_rule.not.is.null`)
@@ -1694,6 +1695,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           reminders: data.reminders ?? null,
           phone: data.phone ?? null,
           location: data.location ?? null,
+          link: data.link ?? null,
           email: data.email ?? null,
           source: data.source,
           image_url: data.image_url ?? null,
@@ -1721,7 +1723,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           startDate: data.date + "T" + (data.start_time || "00:00:00"),
           endDate: data.date + "T" + (data.end_time || "23:59:59"),
           notes: data.notes || "",
-          location: data.location || ""
+          location: data.location || "",
+          link: data.link || "",
+          url: data.link || ""
         }));
       }
     },
@@ -1749,6 +1753,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ...(data.reminders !== undefined && { reminders: data.reminders }),
           ...(data.phone !== undefined && { phone: data.phone }),
           ...(data.location !== undefined && { location: data.location }),
+          ...(data.link !== undefined && { link: data.link }),
           ...(data.email !== undefined && { email: data.email }),
           ...(data.image_url !== undefined && { image_url: data.image_url }),
           ...(data.pdf_url !== undefined && { pdf_url: data.pdf_url }),
@@ -1775,7 +1780,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           startDate: (data.date ?? existingEvent.date) + "T" + (data.start_time ?? existingEvent.start_time ?? "00:00:00"),
           endDate: (data.date ?? existingEvent.date) + "T" + (data.end_time ?? existingEvent.end_time ?? "23:59:59"),
           notes: data.notes ?? existingEvent.notes ?? "",
-          location: data.location ?? existingEvent.location ?? ""
+          location: data.location ?? existingEvent.location ?? "",
+          link: data.link ?? existingEvent.link ?? "",
+          url: data.link ?? existingEvent.link ?? ""
         }));
       }
       updateEventInState(id, rowToEvent(row));

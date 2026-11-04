@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Stethoscope, FileText, Wrench, Zap, Clock, MapPin, ArrowDown, Calendar } from "lucide-react"
+import { X, Stethoscope, FileText, Wrench, Zap, Clock, MapPin, ArrowDown, Calendar, Link as LinkIcon } from "lucide-react"
 import { useApp } from "@/lib/store"
 import { toLocalDateStr, parseLocalDate } from "@/lib/store"
 import { isTomorrow, format } from "@/lib/date-utils"
@@ -59,6 +59,10 @@ function getPrepTips(event: IQXOEvent, language: string): string[] {
     if (language === "ar") tips.push(`التنقل إلى: ${event.location}`)
     else if (language === "fr") tips.push(`Trajet vers : ${event.location}`)
     else tips.push(`Travel to: ${event.location}`)
+  } else if (event.link) {
+    if (language === "ar") tips.push(`اجتماع عبر الإنترنت (رابط متاح)`)
+    else if (language === "fr") tips.push(`Réunion en ligne (lien disponible)`)
+    else tips.push(`Online meeting (link available)`)
   }
   if (event.notes) tips.push(event.notes.slice(0, 60) + (event.notes.length > 60 ? "…" : ""))
   if (tips.length === 0) {
@@ -426,11 +430,17 @@ function ChainEventCard({ event, language, isRTL }: { event: IQXOEvent; language
         </div>
       </div>
 
-      {/* Location */}
+      {/* Location / Link */}
       {event.location && (
         <div className={`flex items-center gap-1.5 text-xs text-white/40 ${isRTL ? "flex-row-reverse" : ""}`}>
           <MapPin className="h-3 w-3 flex-shrink-0" />
           <span className="truncate">{event.location}</span>
+        </div>
+      )}
+      {!event.location && event.link && (
+        <div className={`flex items-center gap-1.5 text-xs text-blue-400 ${isRTL ? "flex-row-reverse" : ""}`}>
+          <LinkIcon className="h-3 w-3 flex-shrink-0" />
+          <span className="truncate">{event.link}</span>
         </div>
       )}
 

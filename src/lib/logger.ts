@@ -66,8 +66,14 @@ export function getFriendlyErrorMessage(
     return "The request took too long. Please try again.";
   }
 
-  if (error instanceof TypeError && /fetch/i.test(error.message)) {
-    return "We couldn't reach the server. Please check your internet connection and try again.";
+  if (error instanceof TypeError) {
+    const msg = (error.message || "").toLowerCase();
+    if (msg.includes("fetch") || msg.includes("network") || msg.includes("failed") || msg === "type error" || msg === "typeerror") {
+      return "We couldn't reach the server. Please check your internet connection and try again.";
+    }
+    if (msg.includes("iso-8859-1") || msg.includes("header") || msg.includes("character")) {
+      return "Special characters in request could not be processed. Please try again.";
+    }
   }
 
   if (error instanceof Error) {
@@ -84,8 +90,11 @@ export function getFriendlyErrorMessage(
     if (message.includes("timeout")) {
       return "The request took too long. Please try again.";
     }
+    if (message === "type error" || message === "typeerror" || message.includes("type error")) {
+      return "Failed to process request. Please try again.";
+    }
     if (message.trim()) {
-      return message;
+      return error.message;
     }
   }
 

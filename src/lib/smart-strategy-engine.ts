@@ -228,6 +228,7 @@ export function searchEvents(events: IQXOEvent[], query: string): IQXOEvent[] {
     event.title.toLowerCase().includes(lowerQuery) ||
     event.notes.toLowerCase().includes(lowerQuery) ||
     event.location?.toLowerCase().includes(lowerQuery) ||
+    event.link?.toLowerCase().includes(lowerQuery) ||
     event.phone?.includes(query)
   )
 }

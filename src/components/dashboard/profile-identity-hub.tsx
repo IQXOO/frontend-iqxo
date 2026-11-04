@@ -1,16 +1,17 @@
 "use client"
 
-import { Suspense, useState, useEffect, useRef } from "react"
+import { Suspense, useState, useEffect, useRef, useMemo } from "react"
 import { motion } from "framer-motion"
 import { Sparkles, Clock, Archive, CalendarCheck, TrendingUp, Heart, Download, Shield, Camera, Crown } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useApp } from "@/lib/store"
+import { useApp, toLocalDateStr } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
 import { exportEventsToPDF } from "@/lib/export-pdf"
 import { SmartActionsCard } from "./smart-actions-card"
 import { lazyNamed } from "@/lib/lazy"
 import { compressAvatar } from "@/lib/compress-image"
+import { isDocumentEvent } from "@/lib/event-category"
 
 const BentoChart = lazyNamed(() => import("./bento-chart"), "BentoChart")
 
@@ -19,7 +20,7 @@ interface ProfileIdentityHubProps {
 }
 
 export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) {
-  const { user, events, language, planStatus, trialEndsAt, totalUsage: _totalUsage } = useApp()
+  const { user, events, language, planStatus, trialEndsAt, totalUsage: _totalUsage, fetchArchiveEvents } = useApp()
   const isRTL = language === "ar"
 
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] || 
@@ -162,17 +163,170 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
     }
   }
 
-  // Calculate life stats excluding virtual work shifts
-  const realEvents = events.filter(
-    (e) => e.source !== "work_schedule" && e.source !== "work_schedule_virtual"
-  )
-  const totalEvents = realEvents.length
-  const completedEvents = realEvents.filter((e) => new Date(e.date) < new Date()).length
-  const upcomingEvents = realEvents.filter((e) => new Date(e.date) >= new Date()).length
-  const organizationScore = Math.min(100, Math.round((completedEvents / Math.max(totalEvents, 1)) * 100))
+  // DB exact counts state with instant localStorage cache for seamless rendering on refresh
+  const [dbStats, setDbStats] = useState<{
+    totalEvents: number;
+    upcomingEvents: number;
+    archivedEvents: number;
+    documentsCount: number;
+    thisWeekEvents: number;
+    loaded: boolean;
+  }>(() => {
+    if (typeof window !== "undefined" && user?.id) {
+      try {
+        const cached = localStorage.getItem(`iqxo_profile_stats_${user.id}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed.totalEvents === "number") {
+            return { ...parsed, loaded: true };
+          }
+        }
+      } catch (e) {}
+    }
+    return {
+      totalEvents: 0,
+      upcomingEvents: 0,
+      archivedEvents: 0,
+      documentsCount: 0,
+      thisWeekEvents: 0,
+      loaded: false,
+    };
+  });
+
+  // Seed from cache immediately when user.id becomes available
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const cached = localStorage.getItem(`iqxo_profile_stats_${user.id}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed.totalEvents === "number") {
+          setDbStats((prev) => (prev.loaded ? prev : { ...parsed, loaded: true }));
+        }
+      }
+    } catch (e) {}
+  }, [user?.id]);
+
+  // Fetch real database counts directly from Supabase to ensure accurate, stable metrics
+  useEffect(() => {
+    let mounted = true;
+    async function loadRealDbStats() {
+      if (!user?.id) return;
+      try {
+        const todayStr = toLocalDateStr();
+        
+        const now = new Date();
+        const weekStart = new Date(now);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        const startStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, "0")}-${String(weekStart.getDate()).padStart(2, "0")}`;
+        
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        const endStr = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, "0")}-${String(weekEnd.getDate()).padStart(2, "0")}`;
+
+        const [totalRes, upcomingRes, archivedRes, docsRes, thisWeekRes, wsRes] = await Promise.all([
+          supabase
+            .from("events")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id),
+          supabase
+            .from("events")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .or(`date.gte.${todayStr},recurrence_rule.not.is.null`),
+          supabase
+            .from("events")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .lt("date", todayStr)
+            .is("recurrence_rule", null),
+          supabase
+            .from("events")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .or("image_url.not.is.null,pdf_url.not.is.null,source.eq.upload,source.eq.photo"),
+          supabase
+            .from("events")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .gte("date", startStr)
+            .lte("date", endStr),
+          supabase
+            .from("events")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .eq("source", "work_schedule"),
+        ]);
+
+        if (!mounted) return;
+
+        const wsCount = wsRes.count ?? 0;
+        const upcoming = Math.max(0, (upcomingRes.count ?? 0) - wsCount);
+        const archived = archivedRes.count ?? 0;
+        const total = Math.max(0, (totalRes.count ?? (upcoming + archived)) - wsCount);
+        const docs = docsRes.count ?? 0;
+        const thisWeek = thisWeekRes.count ?? 0;
+
+        const newStats = {
+          totalEvents: total,
+          upcomingEvents: upcoming,
+          archivedEvents: archived,
+          documentsCount: docs,
+          thisWeekEvents: thisWeek,
+          loaded: true,
+        };
+
+        setDbStats(newStats);
+
+        // Cache real stats for instant, zero-delay rendering on future refreshes
+        try {
+          localStorage.setItem(`iqxo_profile_stats_${user.id}`, JSON.stringify(newStats));
+        } catch (e) {}
+      } catch (err) {
+        console.error("Failed to load real DB stats", err);
+      }
+    }
+
+    loadRealDbStats();
+
+    // In background, populate archive events into store so PDF export includes all history
+    if (fetchArchiveEvents) {
+      fetchArchiveEvents().catch(() => {});
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id, fetchArchiveEvents]);
+
+  // Real events in memory excluding virtual work shifts
+  const realEvents = useMemo(() => {
+    return events.filter(
+      (e) => e.source !== "work_schedule" && e.source !== "work_schedule_virtual"
+    );
+  }, [events]);
+
+  const inMemoryDocs = useMemo(() => {
+    return realEvents.filter((e) => isDocumentEvent(e)).length;
+  }, [realEvents]);
+
+  const inMemoryUpcoming = useMemo(() => {
+    return realEvents.filter((e) => new Date(e.date) >= new Date() || !!e.recurrence_rule).length;
+  }, [realEvents]);
+
+  const inMemoryArchived = useMemo(() => {
+    return realEvents.filter((e) => new Date(e.date) < new Date() && !e.recurrence_rule).length;
+  }, [realEvents]);
+
+  // True stats: from DB when loaded, falling back gracefully to memory
+  const totalEvents = dbStats.loaded ? dbStats.totalEvents : realEvents.length;
+  const upcomingEvents = dbStats.loaded ? dbStats.upcomingEvents : inMemoryUpcoming;
+  const archivedEvents = dbStats.loaded ? dbStats.archivedEvents : inMemoryArchived;
+  const documentsProcessed = dbStats.loaded ? Math.max(dbStats.documentsCount, inMemoryDocs) : inMemoryDocs;
+  const _organizationScore = totalEvents > 0 ? Math.min(100, Math.round((archivedEvents / totalEvents) * 100)) : 0;
 
   // Calculate hours saved (estimate: 5 mins per event)
-  const hoursSaved = Math.round((totalEvents * 5) / 60)
+  const hoursSaved = Math.round((totalEvents * 5) / 60);
 
   // Get dynamic title based on engagement
   const getTitle = () => {
@@ -187,7 +341,7 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
     {
       icon: Archive,
       label: language === "ar" ? "وثائق معالجة" : language === "fr" ? "Documents Traités" : "Documents Processed",
-      value: totalEvents,
+      value: documentsProcessed,
       color: "from-blue-500/20 to-blue-500/5",
       iconColor: "text-blue-400",
     },
@@ -201,7 +355,7 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
     {
       icon: Clock,
       label: language === "ar" ? "ذكريات محفوظة" : language === "fr" ? "Souvenirs Archivés" : "Archived Memories",
-      value: completedEvents,
+      value: archivedEvents,
       color: "from-amber-500/20 to-amber-500/5",
       iconColor: "text-amber-400",
     },
@@ -405,23 +559,25 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
             </div>
           </div>
 
-          {/* Progress Bar */}
+          {/* Organization Score Progress Bar - Hidden per user request */}
+          {/*
           <div className="relative z-10 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">
                 {language === "ar" ? "معدل التنظيم" : language === "fr" ? "Score d'organisation" : "Organization Score"}
               </span>
-              <span className="font-semibold text-blue-400">{organizationScore}%</span>
+              <span className="font-semibold text-blue-400">{_organizationScore}%</span>
             </div>
             <div className="h-1.5 rounded-full bg-secondary/50 overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
-                animate={{ width: `${organizationScore}%` }}
+                animate={{ width: `${_organizationScore}%` }}
                 transition={{ duration: 1.2, delay: 0.4, ease: "easeOut" }}
                 className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
               />
             </div>
           </div>
+          */}
         </div>
       </motion.div>
 
@@ -467,7 +623,11 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
           </div>
         </div>
         <Suspense fallback={<div className="h-48 rounded-2xl border border-border bg-secondary/20 animate-pulse" />}>
-          <BentoChart />
+          <BentoChart
+            totalTasks={totalEvents}
+            thisWeekCount={dbStats.loaded ? dbStats.thisWeekEvents : undefined}
+            documentsCount={documentsProcessed}
+          />
         </Suspense>
       </motion.div>
 
