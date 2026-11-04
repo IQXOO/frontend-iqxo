@@ -69,27 +69,82 @@ const DEFAULT_WORK_DAY = {
 
 const DAY_NAME_TO_DOW: Record<string, number> = {
   sunday: 0,
+  sun: 0,
   dimanche: 0,
+  dim: 0,
   الأحد: 0,
+  احد: 0,
   monday: 1,
+  mon: 1,
   lundi: 1,
+  lun: 1,
   الاثنين: 1,
+  اثنين: 1,
   tuesday: 2,
+  tue: 2,
   mardi: 2,
+  mar: 2,
   الثلاثاء: 2,
+  ثلاثاء: 2,
   wednesday: 3,
+  wed: 3,
   mercredi: 3,
+  mer: 3,
   الأربعاء: 3,
+  اربعاء: 3,
   thursday: 4,
+  thu: 4,
   jeudi: 4,
+  jeu: 4,
   الخميس: 4,
+  خميس: 4,
   friday: 5,
+  fri: 5,
   vendredi: 5,
+  ven: 5,
   الجمعة: 5,
+  جمعة: 5,
   saturday: 6,
+  sat: 6,
   samedi: 6,
+  sam: 6,
   السبت: 6,
+  سبت: 6,
 };
+
+function parseDayOfWeek(dayName?: string, dateStr?: string): number {
+  if (dayName) {
+    const clean = dayName.toLowerCase().trim();
+    if (DAY_NAME_TO_DOW[clean] !== undefined) {
+      return DAY_NAME_TO_DOW[clean];
+    }
+    // Substring match e.g. "THU 11/12" contains "thu"
+    for (const [key, dow] of Object.entries(DAY_NAME_TO_DOW)) {
+      if (clean.includes(key)) {
+        return dow;
+      }
+    }
+  }
+  if (dateStr) {
+    try {
+      const s = dateStr.trim();
+      const mIso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (mIso) {
+        return new Date(parseInt(mIso[1], 10), parseInt(mIso[2], 10) - 1, parseInt(mIso[3], 10), 12, 0, 0).getDay();
+      }
+      const mUs = s.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{4}))?$/);
+      if (mUs) {
+        const year = mUs[3] ? parseInt(mUs[3], 10) : new Date().getFullYear();
+        return new Date(year, parseInt(mUs[1], 10) - 1, parseInt(mUs[2], 10), 12, 0, 0).getDay();
+      }
+      const d = new Date(s.includes("T") ? s : `${s}T12:00:00`);
+      if (!isNaN(d.getTime())) {
+        return d.getDay();
+      }
+    } catch {}
+  }
+  return -1;
+}
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
@@ -652,21 +707,10 @@ export function WorkScheduleView() {
     if (shifts.length > 0) {
       const newRows: WorkDay[] = shifts
         .map((s) => {
-          let dow = -1;
-          if (s.day_name) {
-            const mapped = DAY_NAME_TO_DOW[s.day_name.toLowerCase()];
-            if (mapped !== undefined) dow = mapped;
-          }
-          if (dow === -1) {
-            try {
-              dow = new Date(s.date + "T12:00:00").getDay();
-            } catch {
-              dow = 0;
-            }
-          }
+          const dow = parseDayOfWeek(s.day_name, s.date);
           return {
             id: generateId(),
-            day_of_week: dow,
+            day_of_week: dow >= 0 ? dow : 0,
             start_time: s.start || "",
             end_time: s.end || "",
             is_active: true,
@@ -674,17 +718,38 @@ export function WorkScheduleView() {
             schedule_label: activeLabel,
           };
         })
+        .filter((r) => r.day_of_week >= 0 && r.start_time && r.end_time)
         .sort((a, b) => a.day_of_week - b.day_of_week);
 
-      // Replace rows for this label
-      setAllRows((prev) => [
-        ...prev.filter((r) => r.schedule_label !== activeLabel),
-        ...newRows,
-      ]);
+      if (newRows.length > 0) {
+        // Replace rows for this label
+        setAllRows((prev) => [
+          ...prev.filter((r) => r.schedule_label !== activeLabel),
+          ...newRows,
+        ]);
+        toast({
+          title: language === "ar" ? "تم استخراج الجدول بنجاح" : "Schedule extracted",
+          description: language === "ar"
+            ? `تم العثور على ${newRows.length} فترات عمل لـ "${result.person_name_found || searchName}"`
+            : `Found ${newRows.length} shift(s) for "${result.person_name_found || searchName}"`,
+        });
+      } else {
+        toast({
+          title: language === "ar" ? "لم يتم التعرف على أوقات الوردية" : "No shift times recognized",
+          description: language === "ar"
+            ? `يرجى التحقق من وضوح الصورة وتحديد الأوقات يدوياً.`
+            : `Could not recognize shift times. Please check image clarity or add manually.`,
+          variant: "destructive",
+        });
+      }
     } else {
-      setAllRows((prev) =>
-        prev.filter((r) => r.schedule_label !== activeLabel),
-      );
+      toast({
+        title: language === "ar" ? "لم يتم العثور على ورديات" : "No shifts found",
+        description: language === "ar"
+          ? `لم يتم العثور على ورديات عمل مسجلة لـ "${result.person_name_found || searchName}" في هذا الجدول.`
+          : `No work shifts found for "${result.person_name_found || searchName}" in this schedule.`,
+        variant: "destructive",
+      });
     }
     setShowEditor(true);
   };
