@@ -1014,11 +1014,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
     };
-    window.addEventListener("nativeEventCreated", handleNativeEventCreated);
+    // ── Handle incoming OAuth tokens in hash (e.g., from deep link in native app) ──
+    const handleHashAuth = async () => {
+      if (typeof window === "undefined") return;
+      const hash = window.location.hash.replace(/^#/, "");
+      if (!hash) return;
+      const params = new URLSearchParams(hash);
+      const accessToken = params.get("access_token");
+      const refreshToken = params.get("refresh_token");
+      if (accessToken && refreshToken) {
+        try {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (!error && data?.session) {
+            sessionRef.current = data.session;
+            setSession(data.session);
+            setUser(data.session.user ?? null);
+            const cleanUrl = window.location.pathname + (window.location.search || "");
+            window.history.replaceState(null, "", cleanUrl);
+          }
+        } catch (e) {
+          devWarn("Auth", "Failed to setSession from hash params", e);
+        }
+      }
+    };
+    handleHashAuth();
+    window.addEventListener("hashchange", handleHashAuth);
 
     return () => {
       listener.subscription.unsubscribe();
       window.removeEventListener("nativeEventCreated", handleNativeEventCreated);
+      window.removeEventListener("hashchange", handleHashAuth);
     };
   }, []);
 

@@ -32,21 +32,25 @@ export function buildOAuthRedirectUrl(): string {
   return buildAppUrl("/home");
 }
 
-export function getDeepLinkUrl(hash: string): string {
+export function getDeepLinkUrl(hashOrQuery: string): string {
   if (typeof window === "undefined") return "";
 
   const ua = navigator.userAgent || "";
   const isAndroid = /Android/i.test(ua);
   
-  // Clean hash to avoid double `#`
-  const cleanHash = hash ? (hash.startsWith("#") ? hash.substring(1) : hash) : "";
+  let clean = (hashOrQuery || "").trim();
+  const isQuery = clean.startsWith("?");
+  if (clean.startsWith("#") || clean.startsWith("?")) {
+    clean = clean.substring(1);
+  }
+  const prefix = isQuery ? "?" : "#";
   
   if (isAndroid) {
     // Android Chrome requires intent:// to launch reliably and handle fallbacks to Google Play gracefully
-    return `intent://auth#${cleanHash}#Intent;scheme=iqxo;package=com.iqxo.app;end;`;
+    return `intent://auth${prefix}${clean}#Intent;scheme=iqxo;package=com.iqxo.app;end;`;
   } else {
     // iOS and other platforms work best with the simple scheme iqxo:// 
-    return `iqxo://auth#${cleanHash}`;
+    return `iqxo://auth${prefix}${clean}`;
   }
 }
 
