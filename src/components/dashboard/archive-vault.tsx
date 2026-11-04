@@ -62,10 +62,17 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
   const isRTL = language === "ar";
   const [openMonths, setOpenMonths] = useState<Record<string, boolean>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [eventToDelete, setEventToDelete] = useState<IQXOEvent | null>(null);;
+  const [eventToDelete, setEventToDelete] = useState<IQXOEvent | null>(null);
+  const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
 
   useEffect(() => {
-    fetchArchiveEvents();
+    let mounted = true;
+    fetchArchiveEvents().finally(() => {
+      if (mounted) setHasFetchedOnce(true);
+    });
+    return () => {
+      mounted = false;
+    };
   }, [fetchArchiveEvents]);
 
   // Get past events (using LOCAL today, exclude virtual schedule events)
@@ -123,11 +130,12 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
     setOpenMonths((prev) => ({ ...prev, [key]: !currentState }));
   };
 
-  // عرض skeleton لما يكون في loading أولية
-  if (archiveLoading && pastEvents.length === 0) {
-    return <ArchiveSkeleton count={5} />;
+  // Only show skeleton if we have no past events loaded yet AND fetch hasn't completed or is active
+  if (pastEvents.length === 0 && (!hasFetchedOnce || archiveLoading)) {
+    return <ArchiveSkeleton count={4} />;
   }
 
+  // Only show empty state AFTER initial fetch completes and there are truly 0 past events
   if (pastEvents.length === 0) {
     return (
       <div className="px-5 py-12 flex flex-col items-center gap-4">
@@ -150,11 +158,6 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
                 : "Past events will appear here"}
           </p>
         </div>
-        {archiveLoading && (
-          <div className="py-4 flex justify-center">
-            <div className="h-6 w-6 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-          </div>
-        )}
       </div>
     );
   }
@@ -187,11 +190,8 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
         const displayedDots = group.events.slice(0, 5);
 
         return (
-          <motion.div
+          <div
             key={group.key}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: groupIdx * 0.06, duration: 0.25 }}
             className="glass rounded-2xl border border-border/40 overflow-hidden shadow-lg transition-all duration-200 hover:border-primary/30"
           >
             {/* Category Header Bar (Matching screenshot design + IQXO app style) */}
@@ -207,6 +207,7 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
               >
                 <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-all shrink-0">
                   <motion.div
+                    initial={false}
                     animate={{ rotate: isOpen ? 90 : isRTL ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
                   >
@@ -249,22 +250,19 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
               {isOpen && (
                 <motion.div
                   key="content"
-                  initial={{ height: 0, opacity: 0 }}
+                  initial={false}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
                   className="overflow-hidden"
                 >
                   <div className="p-3 space-y-2 border-t border-border/30 bg-background/30">
-                    {group.events.map((event, idx) => {
+                    {group.events.map((event) => {
                       const eventDate = parseLocalDate(event.date);
                       return (
-                        <motion.div
+                        <div
                           key={event.id}
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.03 }}
-                          className={`glass rounded-xl p-3 flex items-center gap-3 justify-between transition-all duration-200 hover:bg-secondary/60 border border-border/30 ${
+                          className={`glass rounded-xl p-3 flex items-center gap-3 justify-between transition-all duration-150 hover:bg-secondary/60 border border-border/30 ${
                             isRTL ? "flex-row-reverse text-right" : "text-left"
                           }`}
                         >
@@ -360,14 +358,14 @@ export function ArchiveVault({ onEventClick }: ArchiveVaultProps) {
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-                        </motion.div>
+                        </div>
                       );
                     })}
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
+          </div>
         );
       })}
 

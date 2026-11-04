@@ -92,7 +92,8 @@ export default function Page() {
       (e) =>
         e.title.toLowerCase().includes(q) ||
         e.notes?.toLowerCase().includes(q) ||
-        e.location?.toLowerCase().includes(q),
+        e.location?.toLowerCase().includes(q) ||
+        e.link?.toLowerCase().includes(q),
     );
   }, [events, searchQuery]);
 
@@ -165,6 +166,7 @@ export default function Page() {
               start_time: data.start_time || undefined,
               end_time: data.end_time || undefined,
               location: data.location || undefined,
+              link: data.link || undefined,
               phone: data.phone || undefined,
               notes: data.notes || undefined,
               color: data.color || undefined,

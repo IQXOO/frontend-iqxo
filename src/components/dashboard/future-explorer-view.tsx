@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Compass, TrendingUp, ChevronRight, Clock, MapPin, Calendar } from "lucide-react"
+import { Compass, TrendingUp, ChevronRight, Clock, MapPin, Calendar, Link as LinkIcon } from "lucide-react"
 import { useApp } from "../../lib/store"
 import { toEndOfMonthStr, parseLocalDate, format } from "../../lib/store"
 import { supabase } from "../../lib/supabase"
@@ -31,6 +31,7 @@ function rowToEvent(row: Record<string, string | boolean | null | undefined>): I
     time: (row.time as string) ?? "",
     phone: (row.phone as string) ?? undefined,
     location: (row.location as string) ?? undefined,
+    link: (row.link as string) ?? undefined,
     email: (row.email as string) ?? undefined,
     source: (row.source as string) ?? "manual",
     image_url: (row.image_url as string) ?? undefined,
@@ -62,7 +63,7 @@ export function FutureExplorerView({ onEventClick }: FutureExplorerViewProps) {
         const { data, error } = await supabase
           .from("events")
           .select(
-            "id,user_id,title,notes,date,time,phone,location,email,source,image_url,pdf_url,is_done,created_at,updated_at"
+            "id,user_id,title,notes,date,time,phone,location,link,email,source,image_url,pdf_url,is_done,created_at,updated_at"
           )
           .eq("user_id", user.id)
           .gt("date", startStr) // بعد آخر يوم في الشهر الحالي (من بداية الشهر القادم)
@@ -257,6 +258,12 @@ export function FutureExplorerView({ onEventClick }: FutureExplorerViewProps) {
                                 <span className={`flex items-center gap-1 truncate max-w-[140px] ${isRTL ? "flex-row-reverse" : ""}`}>
                                   <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
                                   <span className="truncate">{event.location}</span>
+                                </span>
+                              )}
+                              {event.link && (
+                                <span className={`flex items-center gap-1 truncate max-w-[140px] ${isRTL ? "flex-row-reverse" : ""}`}>
+                                  <LinkIcon className="w-3 h-3 text-muted-foreground shrink-0" />
+                                  <span className="truncate">{event.link}</span>
                                 </span>
                               )}
                             </div>

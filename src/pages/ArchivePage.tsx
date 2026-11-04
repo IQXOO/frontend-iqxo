@@ -1,17 +1,13 @@
-import React, { Suspense } from "react";
-import { lazyNamed } from "../lib/lazy";
+import React from "react";
+import { ArchiveVault } from "../components/dashboard/archive-vault";
 import { useEventEditor } from "../lib/event-editor-context";
-
-const ArchiveVault = lazyNamed(() => import("../components/dashboard/archive-vault"), "ArchiveVault");
 
 export default function ArchivePage() {
   const { openEventDetail } = useEventEditor();
 
   return (
-    <Suspense fallback={<div className="p-6">Loading…</div>}>
-      <div className="px-4">
-        <ArchiveVault onEventClick={openEventDetail} />
-      </div>
-    </Suspense>
+    <div className="min-h-screen">
+      <ArchiveVault onEventClick={openEventDetail} />
+    </div>
   );
 }

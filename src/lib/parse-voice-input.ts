@@ -10,6 +10,7 @@ export interface ParsedEvent {
   start_time?: string
   end_time?: string
   location?: string
+  link?: string
   phone?: string
   notes?: string
   color?: string
@@ -22,6 +23,7 @@ export function parseVoiceInput(text: string): ParsedEvent {
   let date: string | undefined
   let time: string | undefined
   let location: string | undefined
+  let link: string | undefined
   let phone: string | undefined
   let cleanedText = text
 
@@ -161,6 +163,14 @@ export function parseVoiceInput(text: string): ParsedEvent {
     .replace(/\s+/g, " ")
     .trim()
   
+  // ---- URL / Meeting link extraction ----
+  const urlMatch = text.match(/(https?:\/\/[^\s]+)|(www\.[^\s]+)|((?:zoom\.us|meet\.google\.com|teams\.microsoft\.com)\/[^\s]+)/i)
+  if (urlMatch) {
+    link = urlMatch[0].trim()
+    if (!/^https?:\/\//i.test(link)) link = `https://${link}`
+    cleanedText = cleanedText.replace(urlMatch[0], "")
+  }
+
   // Capitalize first letter
   const title = cleanedText.charAt(0).toUpperCase() + cleanedText.slice(1)
   
@@ -169,6 +179,7 @@ export function parseVoiceInput(text: string): ParsedEvent {
     date,
     time,
     location,
+    link,
     phone,
   }
 }

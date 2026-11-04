@@ -1,58 +1,71 @@
 "use client"
 
+import { useMemo } from "react"
 import { useApp } from "@/lib/store"
+import { categorizeEvent } from "@/lib/event-category"
 
-export function BentoChart() {
+export interface BentoChartProps {
+  totalTasks?: number;
+  thisWeekCount?: number;
+  documentsCount?: number;
+}
+
+export function BentoChart({ totalTasks, thisWeekCount, documentsCount }: BentoChartProps = {}) {
   const { events, language } = useApp()
 
   // Real events excluding virtual and work schedule shifts
-  const realEvents = events.filter(
-    (e) => e.source !== "work_schedule" && e.source !== "work_schedule_virtual"
-  )
+  const realEvents = useMemo(() => {
+    return events.filter(
+      (e) => e.source !== "work_schedule" && e.source !== "work_schedule_virtual"
+    )
+  }, [events])
 
-  // Calculate statistics for the current week
-  const now = new Date()
-  const weekStart = new Date(now)
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+  // Calculate statistics for the current week (Sunday to Saturday)
+  const thisWeekEvents = useMemo(() => {
+    const now = new Date()
+    const weekStart = new Date(now)
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+    weekStart.setHours(0, 0, 0, 0)
 
-  const weekEnd = new Date(weekStart)
-  weekEnd.setDate(weekEnd.getDate() + 7)
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekEnd.getDate() + 7)
 
-  const thisWeekEvents = realEvents.filter((e) => {
-    const eventDate = new Date(e.date)
-    return eventDate >= weekStart && eventDate <= weekEnd
-  })
+    return realEvents.filter((e) => {
+      const eventDate = new Date(e.date)
+      return eventDate >= weekStart && eventDate < weekEnd
+    })
+  }, [realEvents])
 
-  // Categories
-  const categories = {
-    documents: realEvents.filter((e) =>
-      e.title.toLowerCase().includes("insurance") ||
-      e.title.toLowerCase().includes("passport") ||
-      e.title.toLowerCase().includes("visa") ||
-      e.title.toLowerCase().includes("document") ||
-      e.title.toLowerCase().includes("contract")
-    ).length,
-    health: realEvents.filter((e) =>
-      e.title.toLowerCase().includes("doctor") ||
-      e.title.toLowerCase().includes("medical") ||
-      e.title.toLowerCase().includes("health") ||
-      e.title.toLowerCase().includes("appointment")
-    ).length,
-    personal: realEvents.filter((e) =>
-      e.title.toLowerCase().includes("meeting") ||
-      e.title.toLowerCase().includes("event") ||
-      e.title.toLowerCase().includes("party")
-    ).length,
-    other: thisWeekEvents.length -
-      realEvents.filter((e) =>
-        e.title.toLowerCase().includes("insurance") ||
-        e.title.toLowerCase().includes("passport") ||
-        e.title.toLowerCase().includes("doctor") ||
-        e.title.toLowerCase().includes("meeting")
-      ).length,
-  }
+  // Categorize events reliably with full Arabic, French, and English support
+  const categories = useMemo(() => {
+    let docs = 0
+    let health = 0
+    let personal = 0
+    let other = 0
+
+    for (const e of realEvents) {
+      const cat = categorizeEvent(e)
+      if (cat === "documents") docs++
+      else if (cat === "health") health++
+      else if (cat === "personal") personal++
+      else other++
+    }
+
+    const finalDocs = Math.max(docs, documentsCount ?? 0)
+    const effectiveTotal = Math.max(totalTasks ?? realEvents.length, finalDocs + health + personal + other)
+    const finalOther = Math.max(0, effectiveTotal - (finalDocs + health + personal))
+
+    return {
+      documents: finalDocs,
+      health,
+      personal,
+      other: finalOther,
+    }
+  }, [realEvents, documentsCount, totalTasks])
 
   const maxValue = Math.max(...Object.values(categories), 1)
+  const finalTotalTasks = totalTasks ?? realEvents.length
+  const finalThisWeekCount = thisWeekCount ?? thisWeekEvents.length
 
   const chartItems = [
     {
@@ -84,11 +97,11 @@ export function BentoChart() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-foreground mb-4">
+        <h3 className="text-sm font-semibold text-foreground mb-1">
           {language === "ar" ? "تقدم التنظيم" : language === "fr" ? "Progrès d'organisation" : "Organization Progress"}
         </h3>
         <p className="text-xs text-muted-foreground mb-4">
-          {language === "ar" ? "المهام حسب الفئة هذا الأسبوع" : language === "fr" ? "Tâches par catégorie cette semaine" : "Tasks by category this week"}
+          {language === "ar" ? "توزيع المهام حسب الفئة" : language === "fr" ? "Répartition des tâches par catégorie" : "Tasks by category"}
         </p>
       </div>
 
@@ -124,13 +137,13 @@ export function BentoChart() {
             <p className="text-xs text-muted-foreground mb-1">
               {language === "ar" ? "إجمالي المهام" : language === "fr" ? "Total des tâches" : "Total Tasks"}
             </p>
-            <p className="text-2xl font-bold text-foreground">{realEvents.length}</p>
+            <p className="text-2xl font-bold text-foreground">{finalTotalTasks}</p>
           </div>
           <div className="p-3 rounded-lg bg-secondary/30 backdrop-blur-sm border border-border/50">
             <p className="text-xs text-muted-foreground mb-1">
               {language === "ar" ? "هذا الأسبوع" : language === "fr" ? "Cette semaine" : "This Week"}
             </p>
-            <p className="text-2xl font-bold text-foreground">{thisWeekEvents.length}</p>
+            <p className="text-2xl font-bold text-foreground">{finalThisWeekCount}</p>
           </div>
         </div>
       </div>

@@ -133,6 +133,7 @@ export function EventFormModal({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [location, setLocation] = useState("");
+  const [link, setLink] = useState("");
   const [notes, setNotes] = useState("");
 
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
@@ -193,7 +194,14 @@ export function EventFormModal({
       setReminders(editEvent.reminders || []);
       setPhone(editEvent.phone || "");
       setEmail(editEvent.email || "");
-      setLocation(editEvent.location || "");
+      let editLoc = editEvent.location || "";
+      let editLnk = editEvent.link || "";
+      if (!editLnk && editLoc && /^(https?:\/\/|www\.|zoom\.us|meet\.google\.com|teams\.microsoft\.com)/i.test(editLoc)) {
+        editLnk = editLoc;
+        editLoc = "";
+      }
+      setLocation(editLoc);
+      setLink(editLnk);
       setNotes(editEvent.notes || "");
       setImagePreview(
         editEvent.image_url &&
@@ -227,7 +235,14 @@ export function EventFormModal({
       setRecurrence(prefillData.recurrence_rule || "");
       setReminders(prefillData.reminders || []);
       setPhone(prefillData.phone || "");
-      setLocation(prefillData.location || "");
+      let pLoc = prefillData.location || "";
+      let pLnk = (prefillData as any).link || "";
+      if (!pLnk && pLoc && /^(https?:\/\/|www\.|zoom\.us|meet\.google\.com|teams\.microsoft\.com)/i.test(pLoc)) {
+        pLnk = pLoc;
+        pLoc = "";
+      }
+      setLocation(pLoc);
+      setLink(pLnk);
       setNotes(prefillData.notes || "");
       setImagePreview(
         prefillImageUrl &&
@@ -255,6 +270,7 @@ export function EventFormModal({
       setPhone("");
       setEmail("");
       setLocation("");
+      setLink("");
       setNotes("");
       setImagePreview(null);
       setImageFile(null);
@@ -273,7 +289,14 @@ export function EventFormModal({
       if (voiceData.color) setColor(voiceData.color);
       if (voiceData.recurrence_rule) setRecurrence(voiceData.recurrence_rule);
       if (voiceData.reminders) setReminders(voiceData.reminders);
-      setLocation(voiceData.location || "");
+      let vLoc = voiceData.location || "";
+      let vLnk = (voiceData as any).link || "";
+      if (!vLnk && vLoc && /^(https?:\/\/|www\.|zoom\.us|meet\.google\.com|teams\.microsoft\.com)/i.test(vLoc)) {
+        vLnk = vLoc;
+        vLoc = "";
+      }
+      setLocation(vLoc);
+      setLink(vLnk);
       setPhone(voiceData.phone || "");
     }
   }, [voiceData]);
@@ -471,6 +494,21 @@ export function EventFormModal({
         finalPdfUrl = existingPdfUrl;
       }
 
+      let cleanLocation = location.trim() || undefined;
+      let cleanLink = link.trim() || undefined;
+
+      // Smart check: If user typed a web/meeting URL in the location input by accident
+      if (cleanLocation && /^(https?:\/\/|www\.|zoom\.us|meet\.google\.com|teams\.microsoft\.com|bit\.ly)/i.test(cleanLocation)) {
+        if (!cleanLink) {
+          cleanLink = cleanLocation;
+        }
+        cleanLocation = undefined;
+      }
+
+      if (cleanLink && !/^https?:\/\//i.test(cleanLink)) {
+        cleanLink = `https://${cleanLink}`;
+      }
+
       const payload = {
         title: title.trim(),
         date,
@@ -482,7 +520,8 @@ export function EventFormModal({
         reminders,
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
-        location: location.trim() || undefined,
+        location: cleanLocation,
+        link: cleanLink,
         notes: notes.trim(),
         image_url: finalImageUrl,
         pdf_url: finalPdfUrl,
@@ -544,8 +583,10 @@ export function EventFormModal({
     dateLabel: language === "ar" ? "التاريخ" : language === "fr" ? "Date" : "DATE",
     startLabel: language === "ar" ? "البدء" : language === "fr" ? "Début" : "START",
     endLabel: language === "ar" ? "الانتهاء" : language === "fr" ? "Fin" : "END",
-    location: language === "ar" ? "الموقع" : language === "fr" ? "Lieu" : "LOCATION",
-    locationPlaceholder: language === "ar" ? "الموقع / الرابط" : language === "fr" ? "Lieu / Lien" : "Location / Link",
+    location: language === "ar" ? "الموقع (العنوان الفعلي)" : language === "fr" ? "Lieu (Adresse physique)" : "LOCATION (Physical Venue)",
+    locationPlaceholder: language === "ar" ? "اسم القاعة، العنوان، المستشفى، المدينة..." : language === "fr" ? "Nom de la salle, adresse, ville..." : "Venue name, street address, city...",
+    meetingLink: language === "ar" ? "رابط الاجتماع / الويب" : language === "fr" ? "Lien de réunion / Web" : "MEETING / WEB LINK",
+    linkPlaceholder: language === "ar" ? "https://zoom.us/..., Google Meet, Teams, رابط الموقع..." : language === "fr" ? "https://zoom.us/..., lien Meet, Teams..." : "https://zoom.us/..., Google Meet, Teams, website...",
     schedule: language === "ar" ? "الجدول" : language === "fr" ? "Planning" : "SCHEDULE",
     repeatNever: language === "ar" ? "التكرار: بدون تكرار" : "Repeat: Never",
     repeatDaily: language === "ar" ? "التكرار: يومياً" : "Repeat: Daily",
@@ -750,38 +791,55 @@ export function EventFormModal({
             )}
           </div>
 
-          {/* ── 3. LOCATION / LINK ── */}
-          <div className="flex flex-col">
-            <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
-              {labels.location}
-            </label>
-            <div className="relative flex items-center">
-              {location.startsWith("http://") || location.startsWith("https://") ? (
-                <LinkIcon className="w-4 h-4 text-[#5BC0DE] absolute left-4 rtl:left-auto rtl:right-4 pointer-events-none" />
-              ) : (
+          {/* ── 3. LOCATION & LINK (SEPARATED) ── */}
+          <div className="flex flex-col gap-4">
+            {/* Location (Physical Venue) */}
+            <div className="flex flex-col">
+              <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
+                {labels.location}
+              </label>
+              <div className="relative flex items-center">
                 <MapPin className="w-4 h-4 text-[#5BC0DE] absolute left-4 rtl:left-auto rtl:right-4 pointer-events-none" />
-              )}
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder={labels.locationPlaceholder}
-                className={`w-full pl-11 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium ${
-                  location.startsWith("http://") || location.startsWith("https://")
-                    ? "pr-11 rtl:pr-4 rtl:pl-11"
-                    : "pr-4 rtl:pl-4 rtl:pr-11"
-                }`}
-              />
-              {(location.startsWith("http://") || location.startsWith("https://")) && (
-                <button
-                  type="button"
-                  onClick={() => window.open(location, "_blank", "noopener,noreferrer")}
-                  className="absolute right-3 rtl:right-auto rtl:left-3 p-1.5 rounded-xl text-[#5BC0DE] hover:bg-[#5BC0DE]/15 active:scale-95 transition-all"
-                  title={language === "ar" ? "فتح الرابط" : "Open Link"}
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </button>
-              )}
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder={labels.locationPlaceholder}
+                  className="w-full pl-11 pr-4 rtl:pl-4 rtl:pr-11 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium"
+                />
+              </div>
+            </div>
+
+            {/* Virtual Meeting / Web Link */}
+            <div className="flex flex-col">
+              <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
+                {labels.meetingLink}
+              </label>
+              <div className="relative flex items-center">
+                <LinkIcon className="w-4 h-4 text-[#5BC0DE] absolute left-4 rtl:left-auto rtl:right-4 pointer-events-none" />
+                <input
+                  type="text"
+                  value={link}
+                  onChange={(e) => setLink(e.target.value)}
+                  placeholder={labels.linkPlaceholder}
+                  className={`w-full pl-11 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium ${
+                    link ? "pr-11 rtl:pr-4 rtl:pl-11" : "pr-4 rtl:pl-4 rtl:pr-11"
+                  }`}
+                />
+                {link && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const fullUrl = /^https?:\/\//i.test(link) ? link : `https://${link}`;
+                      window.open(fullUrl, "_blank", "noopener,noreferrer");
+                    }}
+                    className="absolute right-3 rtl:right-auto rtl:left-3 p-1.5 rounded-xl text-[#5BC0DE] hover:bg-[#5BC0DE]/15 active:scale-95 transition-all"
+                    title={language === "ar" ? "فتح الرابط" : "Open Link"}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

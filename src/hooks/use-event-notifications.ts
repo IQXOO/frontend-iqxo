@@ -142,6 +142,7 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
           startDate: `${e.date}T${e.start_time || e.time || "09:00"}:00`,
           endDate: e.end_time ? `${e.date}T${e.end_time}:00` : new Date(new Date(`${e.date}T${e.start_time || e.time || "09:00"}:00`).getTime() + 60*60*1000).toISOString(),
           location: e.location,
+          link: e.link,
           notes: e.notes,
           recurrenceRule: e.recurrence_rule
         })),

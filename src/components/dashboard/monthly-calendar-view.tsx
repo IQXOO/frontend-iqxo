@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ChevronLeft, ChevronRight, Clock, MapPin, AlertTriangle } from "lucide-react"
+import { ChevronLeft, ChevronRight, Clock, MapPin, Link as LinkIcon } from "lucide-react"
 import { useApp } from "../../lib/store"
 import { supabase } from "../../lib/supabase"
 import type { IQXOEvent } from "../../lib/types"
@@ -53,26 +53,6 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
     return todays.sort((a, b) => timeToMinutes(a.start_time || a.time) - timeToMinutes(b.start_time || b.time))
   }, [events, selectedDateStr])
 
-  // Check conflicts
-  const conflicts = useMemo(() => {
-    const overlapping = new Set<string>()
-    for (let i = 0; i < dailyEvents.length; i++) {
-      for (let j = i + 1; j < dailyEvents.length; j++) {
-        const e1 = dailyEvents[i]
-        const e2 = dailyEvents[j]
-        const s1 = timeToMinutes(e1.start_time || e1.time)
-        const e1End = timeToMinutes(e1.end_time || e1.time) || s1 + 60 // Assume 1hr if no end
-        const s2 = timeToMinutes(e2.start_time || e2.time)
-        const e2End = timeToMinutes(e2.end_time || e2.time) || s2 + 60
-        
-        if (s1 < e2End && s2 < e1End) {
-          overlapping.add(e1.id)
-          overlapping.add(e2.id)
-        }
-      }
-    }
-    return overlapping
-  }, [dailyEvents])
   const allDayEvents = useMemo(() => {
     return dailyEvents.filter(e => {
       const timeStr = e.start_time || e.time;
@@ -224,7 +204,6 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
                 <div className="pl-4 pr-4 space-y-2 mt-1">
                   <AnimatePresence>
                     {allDayEvents.map((event) => {
-                      const hasConflict = conflicts.has(event.id);
                       return (
                         <motion.div
                           key={event.id}
@@ -232,9 +211,7 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.95 }}
                           onClick={() => onEventClick(event)}
-                          className={`relative p-3.5 rounded-xl border cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
-                            hasConflict ? "border-red-500/40 bg-red-500/5 shadow-[0_0_15px_rgba(239,68,68,0.1)]" : "border-border/40 bg-card shadow-sm hover:shadow-md"
-                          }`}
+                          className="relative p-3.5 rounded-xl border cursor-pointer transition-all duration-200 hover:scale-[1.02] border-border/40 bg-card shadow-sm hover:shadow-md"
                         >
                           <div 
                             className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-background z-10 shadow-sm"
@@ -247,20 +224,23 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
                           />
                           <div className="flex justify-between items-start gap-2">
                             <div className="flex-1 min-w-0">
-                              <h4 className={`font-semibold text-sm flex items-center gap-2 truncate ${hasConflict ? 'text-red-500' : 'text-foreground'}`}>
+                              <h4 className="font-semibold text-sm flex items-center gap-2 truncate text-foreground">
                                 {event.title}
-                                {hasConflict && (
-                                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 animate-pulse" />
-                                )}
                               </h4>
-                              {event.location && (
-                                <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                                  <div className="flex items-center gap-1 truncate max-w-[120px]">
+                              <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                                {event.location && (
+                                  <div className="flex items-center gap-1 truncate max-w-[140px]">
                                     <MapPin className="w-3 h-3 shrink-0" />
                                     <span className="truncate">{event.location}</span>
                                   </div>
-                                </div>
-                              )}
+                                )}
+                                {event.link && (
+                                  <div className="flex items-center gap-1 truncate max-w-[140px] text-blue-500">
+                                    <LinkIcon className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">{event.link}</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </motion.div>
@@ -305,7 +285,6 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
                     <div className="pl-4 pr-4 space-y-2 mt-1">
                       <AnimatePresence>
                         {events.map((event) => {
-                          const hasConflict = conflicts.has(event.id);
                           return (
                             <motion.div
                               key={event.id}
@@ -313,9 +292,7 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.95 }}
                               onClick={() => onEventClick(event)}
-                              className={`relative p-3.5 rounded-xl border cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
-                                hasConflict ? "border-red-500/40 bg-red-500/5 shadow-[0_0_15px_rgba(239,68,68,0.1)]" : "border-border/40 bg-card shadow-sm hover:shadow-md"
-                              }`}
+                              className="relative p-3.5 rounded-xl border cursor-pointer transition-all duration-200 hover:scale-[1.02] border-border/40 bg-card shadow-sm hover:shadow-md"
                             >
                               {/* Event Timeline Dot */}
                               <div 
@@ -330,15 +307,12 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
 
                               <div className="flex justify-between items-start gap-2">
                                 <div className="flex-1 min-w-0">
-                                  <h4 className={`font-semibold text-sm flex items-center gap-2 truncate ${hasConflict ? 'text-red-500' : 'text-foreground'}`}>
+                                  <h4 className="font-semibold text-sm flex items-center gap-2 truncate text-foreground">
                                     {event.title}
-                                    {hasConflict && (
-                                      <AlertTriangle className="w-3.5 h-3.5 shrink-0 animate-pulse" />
-                                    )}
                                   </h4>
                                   <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-muted-foreground">
                                     {(event.start_time || event.time) && (
-                                      <div className={`flex items-center gap-1 ${hasConflict ? 'text-red-500/80' : ''}`}>
+                                      <div className="flex items-center gap-1">
                                         <Clock className="w-3 h-3" />
                                         <span>
                                           {event.start_time || event.time} {event.end_time ? `- ${event.end_time}` : ""}
@@ -346,9 +320,15 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
                                       </div>
                                     )}
                                     {event.location && (
-                                      <div className="flex items-center gap-1 truncate max-w-[120px]">
+                                      <div className="flex items-center gap-1 truncate max-w-[140px]">
                                         <MapPin className="w-3 h-3 shrink-0" />
                                         <span className="truncate">{event.location}</span>
+                                      </div>
+                                    )}
+                                    {event.link && (
+                                      <div className="flex items-center gap-1 truncate max-w-[140px] text-blue-500">
+                                        <LinkIcon className="w-3 h-3 shrink-0" />
+                                        <span className="truncate">{event.link}</span>
                                       </div>
                                     )}
                                   </div>

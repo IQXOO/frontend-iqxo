@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Zap, MapPin, Phone, Clock, ChevronRight } from "lucide-react"
+import { Zap, MapPin, Phone, Clock, ChevronRight, Link as LinkIcon } from "lucide-react"
 import { useApp } from "../../lib/store"
 import { toLocalDateStr, parseLocalDate } from "../../lib/store"
 import { isEventOnDate } from "../../lib/recurrence"
@@ -109,6 +109,12 @@ export function TomorrowView({ onEventClick }: TomorrowViewProps) {
                     <span className={`flex items-center gap-1 truncate max-w-[130px] ${isRTL ? "flex-row-reverse" : ""}`}>
                       <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                       <span className="truncate">{event.location}</span>
+                    </span>
+                  )}
+                  {event.link && (
+                    <span className={`flex items-center gap-1 truncate max-w-[130px] text-blue-500 ${isRTL ? "flex-row-reverse" : ""}`}>
+                      <LinkIcon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{event.link}</span>
                     </span>
                   )}
                   {event.phone && (

@@ -28,6 +28,7 @@ import {
 } from "../../lib/logger";
 import { useToast } from "../../hooks/use-toast";
 import { WorkScheduleSkeleton } from "./skeleton";
+import { compressImage } from "../../lib/compress-image";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface WorkDay {
@@ -702,21 +703,45 @@ export function WorkScheduleView() {
             import.meta.env.VITE_BACKEND_API ||
             "http://localhost:4040";
           const formData = new FormData();
-          formData.append("image", file);
+
+          // 1. Client-side image pre-compression (crucial for mobile/iPhone cameras)
+          let fileToUpload: File | Blob = file;
+          if (file.type.startsWith("image/")) {
+            try {
+              const compressedBlob = await compressImage(file, 2.0, 2048, 2048, 0.9, "image/jpeg");
+              const safeName = (file.name || "schedule").replace(/\.[^/.]+$/, "") + ".jpg";
+              fileToUpload = new File([compressedBlob], safeName, { type: "image/jpeg" });
+            } catch (compressErr) {
+              devLog("WorkSchedule", "Image pre-compression fallback to original", compressErr);
+            }
+          }
+          formData.append("image", fileToUpload);
+          formData.append("userName", searchName);
+          formData.append("userEmail", user?.email || "");
+          formData.append("userId", user?.id || "");
+
           const headers: Record<string, string> = {};
           const { data } = await supabase.auth.getSession();
           const token = data?.session?.access_token;
           if (token) headers["Authorization"] = `Bearer ${token}`;
+
+          // WebKit/Safari header safety: Encode URI so non-ISO-8859-1 characters (Arabic, accents) never throw TypeError
+          if (searchName) {
+            headers["X-User-Name"] = encodeURIComponent(searchName);
+          }
+          if (user?.email) {
+            headers["X-User-Email"] = encodeURIComponent(user.email);
+          }
+          if (user?.id) {
+            headers["x-user-id"] = user.id;
+          }
+
           const r = await fetch(`${backendUrl}/analyze-schedule`, {
             method: "POST",
-            headers: {
-              ...headers,
-              "X-User-Name": searchName,
-              "X-User-Email": user?.email || "",
-              "x-user-id": user?.id || "",
-            },
+            headers,
             body: formData,
           });
+
           if (r.ok) {
             const result: AIScheduleResult = await r.json();
             console.log("message", result);
@@ -729,34 +754,23 @@ export function WorkScheduleView() {
             setUploadState("review");
             return;
           }
+
+          const errBody = await r.json().catch(() => ({}));
           if (r.status === 404) {
-            const body = await r.json().catch(() => ({}));
             throw new Error(
-              body.error || `"${searchName}" was not found in this schedule`,
+              errBody.error || `"${searchName}" was not found in this schedule`,
             );
           }
-          throw new Error("Server error");
+          throw new Error(errBody.error || "Server error while analyzing schedule");
         },
         {
           method: "POST",
           context: { searchName, userId: user?.id || "" },
-          timeoutMs: 60000,
-          onError: (message) => {
-            const friendly = getFriendlyErrorMessage(
-              message,
-              "Failed to analyze file",
-            );
-            setUploadError(friendly);
-            toast({
-              title: "Couldn't analyze schedule",
-              description: friendly,
-              variant: "destructive",
-            });
-          },
+          timeoutMs: 90000,
         },
       );
     } catch (e) {
-      const message = getFriendlyErrorMessage(e, "Failed to analyze file");
+      const message = getFriendlyErrorMessage(e, "Failed to analyze schedule file");
       setUploadError(message);
       toast({
         title: "Couldn't analyze schedule",

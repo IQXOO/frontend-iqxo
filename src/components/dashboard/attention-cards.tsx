@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Phone, MapPin } from "lucide-react"
+import { Bell, Phone, MapPin, Link as LinkIcon } from "lucide-react"
 import { useApp } from "@/lib/store"
 import type { IQXOEvent } from "@/lib/types"
 import { format, isToday, isTomorrow } from "@/lib/date-utils"
@@ -94,7 +94,7 @@ function UrgentEventCard({
         </p>
       </div>
 
-      {(event.phone || event.location) && (
+      {(event.phone || event.location || event.link) && (
         <div className="flex items-center gap-2 mt-auto w-full min-w-0">
           {event.phone && (
             <span className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
@@ -106,6 +106,12 @@ function UrgentEventCard({
             <span className="flex-1 flex items-center gap-1 text-[10px] text-muted-foreground min-w-0">
               <MapPin className="h-3 w-3 shrink-0" />
               <span className="truncate">{event.location}</span>
+            </span>
+          )}
+          {!event.location && event.link && (
+            <span className="flex-1 flex items-center gap-1 text-[10px] text-muted-foreground min-w-0">
+              <LinkIcon className="h-3 w-3 shrink-0 text-blue-400" />
+              <span className="truncate">{event.link}</span>
             </span>
           )}
         </div>

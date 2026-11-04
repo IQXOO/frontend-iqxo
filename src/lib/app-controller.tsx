@@ -122,6 +122,7 @@ export default function AppController() {
             start_time: ev.start_time || ev.time,
             end_time: ev.end_time || ev.time,
             location: ev.location,
+            link: ev.link || null,
             notes: ev.notes,
             calendar_id: ev.calendar_id,
             source: "calendar_sync"

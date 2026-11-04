@@ -211,7 +211,7 @@ export function EventDetailModal({
       shareText = `🌟 *تفاصيل الحدث من IQXO* 🌟
 
 📝 *العنوان:* ${event.title}
-📅 *التاريخ:* ${dateStr}${event.time ? `\n⏰ *الوقت:* ${event.time}` : ""}${event.location ? `\n📍 *الموقع:* ${event.location}` : ""}${event.phone ? `\n📞 *الهاتف:* ${event.phone}` : ""}${event.email ? `\n✉️ *البريد الإلكتروني:* ${event.email}` : ""}${event.notes ? `\n\n💬 *ملاحظات إضافية:*\n${event.notes}` : ""}
+📅 *التاريخ:* ${dateStr}${event.time ? `\n⏰ *الوقت:* ${event.time}` : ""}${event.location ? `\n📍 *الموقع:* ${event.location}` : ""}${event.link ? `\n🔗 *الرابط:* ${event.link}` : ""}${event.phone ? `\n📞 *الهاتف:* ${event.phone}` : ""}${event.email ? `\n✉️ *البريد الإلكتروني:* ${event.email}` : ""}${event.notes ? `\n\n💬 *ملاحظات إضافية:*\n${event.notes}` : ""}
 
 ---
 🔗 تنظيم ومتابعة مهامك عبر منصة IQXO:
@@ -220,7 +220,7 @@ ${origin}`;
       shareText = `🌟 *Event Details from IQXO* 🌟
 
 📝 *Title:* ${event.title}
-📅 *Date:* ${dateStr}${event.time ? `\n⏰ *Time:* ${event.time}` : ""}${event.location ? `\n📍 *Location:* ${event.location}` : ""}${event.phone ? `\n📞 *Phone:* ${event.phone}` : ""}${event.email ? `\n✉️ *Email:* ${event.email}` : ""}${event.notes ? `\n\n💬 *Notes:*\n${event.notes}` : ""}
+📅 *Date:* ${dateStr}${event.time ? `\n⏰ *Time:* ${event.time}` : ""}${event.location ? `\n📍 *Location:* ${event.location}` : ""}${event.link ? `\n🔗 *Link:* ${event.link}` : ""}${event.phone ? `\n📞 *Phone:* ${event.phone}` : ""}${event.email ? `\n✉️ *Email:* ${event.email}` : ""}${event.notes ? `\n\n💬 *Notes:*\n${event.notes}` : ""}
 
 ---
 🔗 Organize and track your events on IQXO:
@@ -466,34 +466,59 @@ ${origin}`;
                 </InfoCard>
               )}
 
-              {/* Location */}
+              {/* Physical Location — opens in Google Maps */}
               {event.location && (() => {
-                const urlMatch = event.location.match(/(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9-]+\.(com|us|net|org|io|co|me|ai|ly|gl)(\/[^\s]*)?)/i);
-                let extractedUrl = urlMatch ? urlMatch[0] : null;
-                const isOnlyUrl = extractedUrl && extractedUrl === event.location.trim();
-                
-                if (extractedUrl && !/^https?:\/\//i.test(extractedUrl)) {
-                  extractedUrl = "https://" + extractedUrl;
+                const isLegacyUrl = /^(https?:\/\/|www\.|zoom\.us|meet\.google\.com)/i.test(event.location.trim());
+                if (isLegacyUrl && !event.link) {
+                  // Fallback for legacy events that stored link in location
+                  const fullUrl = /^https?:\/\//i.test(event.location.trim()) ? event.location.trim() : `https://${event.location.trim()}`;
+                  return (
+                    <InfoCard
+                      iconEmoji="🔗"
+                      iconBg="bg-blue-500/10"
+                      label={language === "ar" ? "رابط" : language === "fr" ? "LIEN" : "LINK"}
+                      href={fullUrl}
+                    >
+                      <span className="break-all">{event.location}</span>
+                    </InfoCard>
+                  );
                 }
-                
-                const href = extractedUrl 
-                  ? extractedUrl 
-                  : `https://maps.google.com/?q=${encodeURIComponent(event.location)}`;
-                  
+
                 return (
                   <InfoCard
-                    iconEmoji={extractedUrl ? "🔗" : "📍"}
-                    iconBg={extractedUrl ? "bg-blue-500/10" : "bg-purple-500/10"}
+                    iconEmoji="📍"
+                    iconBg="bg-purple-500/10"
                     label={
                       language === "ar"
-                        ? (extractedUrl ? "رابط" : "الموقع")
+                        ? "الموقع"
                         : language === "fr"
-                          ? (extractedUrl ? "LIEN" : "LIEU")
-                          : (extractedUrl ? "LINK" : "LOCATION")
+                          ? "LIEU"
+                          : "LOCATION"
                     }
-                    href={href}
+                    href={`https://maps.google.com/?q=${encodeURIComponent(event.location)}`}
                   >
-                    <span className="break-all">{event.location}</span>
+                    <span className="break-words">{event.location}</span>
+                  </InfoCard>
+                );
+              })()}
+
+              {/* Virtual Meeting / Web Link — opens externally */}
+              {event.link && (() => {
+                const fullUrl = /^https?:\/\//i.test(event.link.trim()) ? event.link.trim() : `https://${event.link.trim()}`;
+                return (
+                  <InfoCard
+                    iconEmoji="🔗"
+                    iconBg="bg-blue-500/10"
+                    label={
+                      language === "ar"
+                        ? "رابط الاجتماع / الويب"
+                        : language === "fr"
+                          ? "LIEN DE RÉUNION"
+                          : "MEETING / WEB LINK"
+                    }
+                    href={fullUrl}
+                  >
+                    <span className="break-all text-blue-500 hover:underline">{event.link}</span>
                   </InfoCard>
                 );
               })()}
