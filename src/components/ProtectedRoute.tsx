@@ -16,6 +16,15 @@ export default function ProtectedRoute({ children }: { children?: React.ReactNod
   // If still loading auth, render dark branded spinner instead of null (prevents blank white screen)
   if (authLoading) return <RouteFallback />;
 
+  // Safety net: if incoming URL has tokens being exchanged, keep showing spinner instead of redirecting to /login
+  if (typeof window !== "undefined") {
+    const hash = window.location.hash;
+    const search = window.location.search;
+    if (hash.includes("access_token") || search.includes("code=")) {
+      return <RouteFallback />;
+    }
+  }
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }

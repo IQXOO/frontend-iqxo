@@ -894,29 +894,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ── Bootstrap auth session ──────────────────────────────────────────────────
   useEffect(() => {
-    supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        sessionRef.current = data.session; // seed the ref before any effect runs
+    const initAuth = async () => {
+      try {
+        // If incoming tokens are in the URL hash (e.g. redirected from deep link / OAuth), exchange them first
+        if (typeof window !== "undefined") {
+          const hash = window.location.hash.replace(/^#/, "");
+          if (hash) {
+            const params = new URLSearchParams(hash);
+            const accessToken = params.get("access_token");
+            const refreshToken = params.get("refresh_token");
+            if (accessToken && refreshToken) {
+              const { data: hashData, error: hashErr } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              });
+              if (!hashErr && hashData?.session) {
+                sessionRef.current = hashData.session;
+                setSession(hashData.session);
+                setUser(hashData.session.user ?? null);
+                const onboard = !!hashData.session.user?.user_metadata?.onboarding_done;
+                const calOnboard = !!hashData.session.user?.user_metadata?.calendar_onboarding_done;
+                setOnboardingDoneState(onboard);
+                setCalendarOnboardingDoneState(calOnboard);
+                const cleanUrl = window.location.pathname + (window.location.search || "");
+                window.history.replaceState(null, "", cleanUrl);
+                return;
+              }
+            }
+          }
+        }
+
+        const { data } = await supabase.auth.getSession();
+        sessionRef.current = data.session;
         setSession(data.session);
         setUser(data.session?.user ?? null);
-        // bootstrap onboarding flag from session user metadata
         const onboard = !!data.session?.user?.user_metadata?.onboarding_done;
         const calOnboard = !!data.session?.user?.user_metadata?.calendar_onboarding_done;
         setOnboardingDoneState(onboard);
         setCalendarOnboardingDoneState(calOnboard);
-      })
-      .catch((error) => {
+      } catch (error) {
         devError("Auth", "Failed to restore session", error);
         toast({
           title: "Session issue",
           description: "We couldn't restore your session. Please log in again.",
           variant: "destructive",
         });
-      })
-      .finally(() => {
+      } finally {
         setAuthLoading(false);
-      });
+      }
+    };
+
+    initAuth();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, sess) => {
@@ -1305,12 +1333,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
 
           if (!data) {
-            setPlanStatusState("none");
-            setTrialEndsAt(null);
-            localStorage.setItem(`iqxo_plan_${userId}`, "none");
-            localStorage.removeItem(`iqxo_trial_end_${userId}`);
+            // Brand-new user: auto-initialize their 14-day free trial immediately
+            const now = new Date();
+            const trialEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+            try {
+              await supabase.from("user_plans").upsert(
+                {
+                  user_id: userId,
+                  plan_status: "free_trial",
+                  trial_started_at: now.toISOString(),
+                  trial_ends_at: trialEnd.toISOString(),
+                  updated_at: now.toISOString(),
+                },
+                { onConflict: "user_id" },
+              );
+              devLog("Billing", "Auto-initialized 14-day free trial for new user", { userId });
+            } catch (err) {
+              devWarn("Billing", "Failed to upsert initial free trial row", err);
+            }
+
+            setPlanStatusState("free_trial");
+            setTrialEndsAt(trialEnd);
+            localStorage.setItem(`iqxo_plan_${userId}`, "free_trial");
+            localStorage.setItem(`iqxo_trial_end_${userId}`, trialEnd.toISOString());
             setPlanResolved(true);
-            return "none";
+            return "free_trial";
           }
 
           const normalizedPlanStatus = normalizeBillingPlanStatus(

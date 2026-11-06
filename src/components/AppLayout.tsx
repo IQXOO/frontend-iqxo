@@ -45,7 +45,9 @@ function AppLayoutContent() {
       const justSignedIn = sessionStorage.getItem("iqxo_just_signed_in") === "1";
       if (justSignedIn) {
         sessionStorage.removeItem("iqxo_just_signed_in");
-        setPaywallOpen(true);
+        if (normalizedPlan === "expired" || normalizedPlan === "none") {
+          setPaywallOpen(true);
+        }
       }
     }
   }, [user, planResolved, normalizedPlan]);

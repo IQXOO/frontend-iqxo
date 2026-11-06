@@ -11,7 +11,7 @@ import { navigateToPath } from "../lib/navigation";
 type Mode = "signin" | "signup";
 
 export default function LoginPage() {
-  const { signIn, signUp, language, user } = useApp();
+  const { signIn, signUp, language, user, onboardingDone } = useApp();
   const { toast } = useToast();
   const isRTL = language === "ar";
   const [mode, setMode] = useState<Mode>("signup"); // default to signup to match template
@@ -143,9 +143,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      navigateToPath("/home", { replace: true });
+      if (!onboardingDone) {
+        navigateToPath("/onboarding", { replace: true });
+      } else {
+        navigateToPath("/home", { replace: true });
+      }
     }
-  }, [user]);
+  }, [user, onboardingDone]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

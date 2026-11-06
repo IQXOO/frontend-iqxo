@@ -218,10 +218,13 @@ function _AppShell() {
 }
 
 function RootRedirect() {
-  const { user, authLoading } = useApp();
+  const { user, authLoading, onboardingDone } = useApp();
   // If still loading auth, render RouteFallback (dark spinner) instead of null to prevent white screen
   if (authLoading) return <RouteFallback />;
   if (user) {
+    if (!onboardingDone) {
+      return <Navigate to="/onboarding" replace />;
+    }
     return <Navigate to="/home" replace />;
   }
   const isDismissed = typeof window !== "undefined" && localStorage.getItem("iqxo_intro_dismissed") === "1";
@@ -249,7 +252,21 @@ function App() {
     if (!isNative && hasIqxoApp && hasTokens) {
       const payload = code ? `?code=${code}` : hash;
       launchAppWithFallback(payload, window.location.href);
-      return null;
+      return (
+        <div className="min-h-screen bg-[#0C0C0E] text-[#E8E8E8] flex flex-col items-center justify-center p-6 text-center font-sans">
+          <div className="h-10 w-10 rounded-full border-2 border-white/10 border-t-[#5BC0DE] animate-spin mb-4" />
+          <h2 className="text-lg font-medium text-white mb-2">Opening IQXO App...</h2>
+          <p className="text-xs text-[#A0A0A8] max-w-xs mb-6">
+            If the app does not open automatically, tap the button below.
+          </p>
+          <button
+            onClick={() => launchAppWithFallback(payload, window.location.href)}
+            className="px-6 py-2.5 bg-[#5BC0DE]/10 hover:bg-[#5BC0DE]/20 border border-[#5BC0DE]/30 text-[#5BC0DE] font-medium rounded-full text-sm transition-all cursor-pointer"
+          >
+            Open IQXO App
+          </button>
+        </div>
+      );
     }
   }
 
