@@ -200,9 +200,23 @@ export function FutureExplorerView({ onEventClick }: FutureExplorerViewProps) {
                   ))}
                 </div>
 
-                {/* Pill count badge */}
                 <span className="rounded-full bg-primary/15 border border-primary/20 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-                  {group.events.length} {language === "ar" ? "عنصر" : language === "fr" ? "éléments" : "items"}
+                  {group.events.length}{" "}
+                  {language === "ar"
+                    ? group.events.length === 1
+                      ? "عنصر"
+                      : group.events.length === 2
+                      ? "عنصران"
+                      : group.events.length <= 10
+                      ? "عناصر"
+                      : "عنصر"
+                    : language === "fr"
+                    ? group.events.length > 1
+                      ? "éléments"
+                      : "élément"
+                    : group.events.length > 1
+                    ? "items"
+                    : "item"}
                 </span>
               </div>
             </button>

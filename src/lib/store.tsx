@@ -129,7 +129,7 @@ interface AppContextValue {
   toggleTheme: () => void;
   setLanguage: (lang: Language) => void;
   toggleLanguage: () => void;
-  t: (key: string) => string;
+  t: (key: string, fr?: string, ar?: string) => string;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -2023,7 +2023,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const t = useCallback(
-    (key: string) => translations[language]?.[key] || key,
+    (key: string, fr?: string, ar?: string) => {
+      if (language === "fr" && fr) return fr;
+      if (language === "ar" && ar) return ar;
+      return translations[language]?.[key] || key;
+    },
     [language],
   );
 
