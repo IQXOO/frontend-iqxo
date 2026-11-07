@@ -73,7 +73,7 @@ function UrgentEventCard({
     ? t("today")
     : isTomorrow(eventDate)
       ? t("tomorrow")
-      : format(eventDate, "EEE, MMM d")
+      : format(eventDate, "EEE, MMM d", language)
 
   return (
     <button

@@ -281,7 +281,7 @@ export function TomorrowChainModal({ open, onClose }: TomorrowChainModalProps) {
                   />
                 </h2>
                 <p className="text-xs text-white/40 mt-0.5">
-                  {format(new Date(Date.now() + 86400000), "EEEE, MMMM d")}
+                  {format(new Date(Date.now() + 86400000), "EEEE, MMMM d", language)}
                 </p>
               </div>
               <button

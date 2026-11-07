@@ -134,13 +134,13 @@ function EventGridCard({
     ? t("today")
     : isTomorrow(eventDate)
       ? t("tomorrow")
-      : format(eventDate, "MMM d")
+      : format(eventDate, "MMM d", language)
 
   const dayName = isToday(eventDate)
     ? ""
     : isTomorrow(eventDate)
       ? ""
-      : format(eventDate, "EEE")
+      : format(eventDate, "EEE", language)
 
   // The first card in a group of 3+ spans full width as a "feature" card
   if (isFeature) {
@@ -151,10 +151,10 @@ function EventGridCard({
       >
         <div className="h-14 w-14 rounded-2xl bg-secondary/60 flex flex-col items-center justify-center shrink-0">
           <span className={`text-[10px] font-bold uppercase leading-none ${config.iconColor}`}>
-            {format(eventDate, "MMM")}
+            {format(eventDate, "MMM", language)}
           </span>
           <span className="text-xl font-bold text-foreground leading-none mt-0.5">
-            {format(eventDate, "d")}
+            {format(eventDate, "d", language)}
           </span>
           {dayName && (
             <span className="text-[9px] font-medium text-muted-foreground leading-none mt-0.5">
@@ -213,10 +213,10 @@ function EventGridCard({
           <div className={`flex items-center justify-between mb-1.5 shrink-0 ${isRTL ? "flex-row-reverse" : ""}`}>
             <div className="h-8 w-8 rounded-lg bg-secondary/60 flex flex-col items-center justify-center shrink-0">
               <span className={`text-[7px] font-bold uppercase leading-none ${config.iconColor}`}>
-                {format(eventDate, "MMM")}
+                {format(eventDate, "MMM", language)}
               </span>
               <span className="text-xs font-bold text-foreground leading-none mt-px">
-                {format(eventDate, "d")}
+                {format(eventDate, "d", language)}
               </span>
             </div>
             <div className={`flex items-center gap-1.5 ${isRTL ? "flex-row-reverse" : ""}`}>

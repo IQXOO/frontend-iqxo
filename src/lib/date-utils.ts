@@ -30,29 +30,30 @@ export function differenceInHours(d1: Date, d2: Date): number {
   return Math.floor(diffMs / (1000 * 60 * 60));
 }
 
-export function format(date: Date, pattern: string): string {
+export function format(date: Date, pattern: string, locale: string = "en"): string {
+  const loc = locale === "fr" ? "fr-FR" : locale === "ar" ? "ar-EG" : "en-US";
   if (pattern === "MMM d") {
-    const m = date.toLocaleDateString("en-US", { month: "short" });
+    const m = date.toLocaleDateString(loc, { month: "short" });
     const d = date.getDate();
     return `${m} ${d}`;
   }
   if (pattern === "EEE") {
-    return date.toLocaleDateString("en-US", { weekday: "short" });
+    return date.toLocaleDateString(loc, { weekday: "short" });
   }
   if (pattern === "MMM") {
-    return date.toLocaleDateString("en-US", { month: "short" });
+    return date.toLocaleDateString(loc, { month: "short" });
   }
   if (pattern === "d") {
     return String(date.getDate());
   }
   if (pattern === "EEE, MMM d") {
-    const weekday = date.toLocaleDateString("en-US", { weekday: "short" });
-    const month = date.toLocaleDateString("en-US", { month: "short" });
+    const weekday = date.toLocaleDateString(loc, { weekday: "short" });
+    const month = date.toLocaleDateString(loc, { month: "short" });
     const d = date.getDate();
     return `${weekday}, ${month} ${d}`;
   }
   if (pattern === "EEEE, MMMM d, yyyy") {
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString(loc, {
       weekday: "long",
       month: "long",
       day: "numeric",
@@ -60,7 +61,7 @@ export function format(date: Date, pattern: string): string {
     });
   }
   if (pattern === "EEEE, MMMM d") {
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString(loc, {
       weekday: "long",
       month: "long",
       day: "numeric",
@@ -68,5 +69,5 @@ export function format(date: Date, pattern: string): string {
   }
   
   // fallback / default
-  return date.toLocaleDateString("en-US");
+  return date.toLocaleDateString(loc);
 }

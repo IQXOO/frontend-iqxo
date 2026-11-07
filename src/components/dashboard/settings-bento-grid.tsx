@@ -33,8 +33,18 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
   const sections = [
     {
       id: "preferences",
-      title: language === "ar" ? "التفضيلات" : "Preferences",
-      subtitle: language === "ar" ? "خصص تجربتك" : "Make it yours",
+      title:
+        language === "ar"
+          ? "التفضيلات"
+          : language === "fr"
+            ? "Préférences"
+            : "Preferences",
+      subtitle:
+        language === "ar"
+          ? "خصص تجربتك"
+          : language === "fr"
+            ? "Personnalisez votre expérience"
+            : "Make it yours",
       icon: Palette,
       color: "from-blue-500/15 to-blue-500/5",
       iconBg: "bg-blue-500/10",
@@ -42,15 +52,24 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
       items: [
         {
           icon: theme === "dark" ? Moon : Sun,
-          label: language === "ar" ? "المظهر" : "Appearance",
+          label:
+            language === "ar"
+              ? "المظهر"
+              : language === "fr"
+                ? "Apparence"
+                : "Appearance",
           description:
             theme === "dark"
               ? language === "ar"
                 ? "الوضع الداكن"
-                : "Dark mode"
+                : language === "fr"
+                  ? "Mode sombre"
+                  : "Dark mode"
               : language === "ar"
                 ? "الوضع الفاتح"
-                : "Light mode",
+                : language === "fr"
+                  ? "Mode clair"
+                  : "Light mode",
           action: (
             <motion.button
               onClick={toggleTheme}
@@ -68,12 +87,17 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
         },
         {
           icon: Globe,
-          label: language === "ar" ? "اللغة" : "Language",
+          label:
+            language === "ar"
+              ? "اللغة"
+              : language === "fr"
+                ? "Langue"
+                : "Language",
           description:
             language === "ar"
               ? "العربية"
               : language === "fr"
-                ? "Francais"
+                ? "Français"
                 : "English",
           action: (
             <motion.button
@@ -90,9 +114,18 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
     },
     {
       id: "billing",
-      title: language === "ar" ? "الفواتير" : "Billing",
+      title:
+        language === "ar"
+          ? "الفواتير"
+          : language === "fr"
+            ? "Abonnement"
+            : "Billing",
       subtitle:
-        language === "ar" ? "استثمر في راحة بالك" : "Invest in your peace of mind",
+        language === "ar"
+          ? "استثمر في راحة بالك"
+          : language === "fr"
+            ? "Investissez dans votre sérénité"
+            : "Invest in your peace of mind",
       icon: CreditCard,
       color: "from-emerald-500/15 to-emerald-500/5",
       iconBg: "bg-emerald-500/10",
@@ -104,26 +137,38 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
             !planResolved
               ? language === "ar"
                 ? "جارٍ التحقق"
-                : "Checking plan"
+                : language === "fr"
+                  ? "Vérification"
+                  : "Checking plan"
               : planStatus === "pro"
                 ? language === "ar"
                   ? "الخطة الحالية"
-                  : "Current Plan"
+                  : language === "fr"
+                    ? "Formule actuelle"
+                    : "Current Plan"
                 : language === "ar"
                   ? "الخطة الحالية"
-                  : "Current Plan",
+                  : language === "fr"
+                    ? "Formule actuelle"
+                    : "Current Plan",
           description:
             !planResolved
               ? language === "ar"
                 ? "جارٍ التحقق من خطتك..."
-                : "Checking your plan..."
+                : language === "fr"
+                  ? "Vérification de votre formule..."
+                  : "Checking your plan..."
               : planStatus === "pro"
                 ? language === "ar"
                   ? "Pro - وصول كامل"
-                  : "Pro - Full access"
+                  : language === "fr"
+                    ? "Pro - Accès complet"
+                    : "Pro - Full access"
                 : language === "ar"
                   ? "مجاني - ميزات محدودة"
-                  : "Free - Limited features",
+                  : language === "fr"
+                    ? "Gratuit - Fonctionnalités limitées"
+                    : "Free - Limited features",
           action: (
             <motion.button
               onClick={() => {
@@ -141,10 +186,14 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
               {planResolved && planStatus === "pro"
                 ? language === "ar"
                   ? "نشطة"
-                  : "Active"
+                  : language === "fr"
+                    ? "Actif"
+                    : "Active"
                 : language === "ar"
                   ? "ترقية"
-                  : "Upgrade"}
+                  : language === "fr"
+                    ? "Passer à Pro"
+                    : "Upgrade"}
               <ChevronRight className="w-3 h-3" strokeWidth={2} />
             </motion.button>
           ),
@@ -157,12 +206,20 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
     <div className={`px-5 py-6 space-y-5 ${isRTL ? "dir-rtl text-right" : ""}`}>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground tracking-tight">
-          {language === "ar" ? "الإعدادات" : "Settings"}
+          {language === "ar"
+            ? "الإعدادات"
+            : language === "fr"
+              ? "Paramètres"
+              : "Settings"}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {language === "ar" ? (
             <>
               اجعل <BrandLogo as="span" className="text-sm font-medium align-baseline" /> ملكك
+            </>
+          ) : language === "fr" ? (
+            <>
+              Personnalisez votre expérience <BrandLogo as="span" className="text-sm font-medium align-baseline" />
             </>
           ) : (
             <>
@@ -215,7 +272,7 @@ export function SettingsBentoGrid({ onOpenBilling }: SettingsBentoGridProps) {
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-6 text-center">
         <p className="text-[11px] text-muted-foreground/60">
-          <BrandLogo as="span" className="text-[11px] font-medium tracking-[-0.01em] opacity-60" /> v1.0.0 • {language === "ar" ? "صنع بحب" : "Made with care"}
+          <BrandLogo as="span" className="text-[11px] font-medium tracking-[-0.01em] opacity-60" /> v1.0.0 • {language === "ar" ? "صنع بحب" : language === "fr" ? "Conçu avec soin" : "Made with care"}
         </p>
       </motion.div>
     </div>

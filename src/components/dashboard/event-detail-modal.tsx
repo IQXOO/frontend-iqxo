@@ -177,7 +177,7 @@ export function EventDetailModal({
 
   const _priority = computeEventPriority(event);
   const localDate = getEventDisplayDate(event);
-  const dateStr = format(localDate, "EEEE, MMMM d, yyyy");
+  const dateStr = format(localDate, "EEEE, MMMM d, yyyy", language);
   const isEventToday = isToday(localDate);
   const isEventTomorrow = isTomorrow(localDate);
   const hasImage = !!event.image_url && !imgError;

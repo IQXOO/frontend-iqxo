@@ -223,17 +223,31 @@ export default function LoginPage() {
             setUnconfirmedEmail(email.trim());
             setError(t.emailNotConfirmed);
             toast({
-              title: language === "ar" ? "البريد غير مؤكد" : "Email not confirmed",
+              title:
+                language === "ar"
+                  ? "البريد غير مؤكد"
+                  : language === "fr"
+                    ? "E-mail non confirmé"
+                    : "Email not confirmed",
               description: t.emailNotConfirmed,
               variant: "destructive",
             });
           } else {
             const message = err.toLowerCase().includes("invalid login")
-              ? (language === "ar" ? "البريد الإلكتروني أو كلمة المرور غير صحيحة." : "Incorrect email or password. Please try again.")
+              ? language === "ar"
+                ? "البريد الإلكتروني أو كلمة المرور غير صحيحة."
+                : language === "fr"
+                  ? "E-mail ou mot de passe incorrect. Veuillez réessayer."
+                  : "Incorrect email or password. Please try again."
               : getFriendlyErrorMessage(err, err);
             setError(message);
             toast({
-              title: "Couldn't sign in",
+              title:
+                language === "ar"
+                  ? "تعذر تسجيل الدخول"
+                  : language === "fr"
+                    ? "Impossible de se connecter"
+                    : "Couldn't sign in",
               description: message,
               variant: "destructive",
             });
@@ -248,14 +262,24 @@ export default function LoginPage() {
             setError(t.emailAlreadyRegistered);
             setMode("signin");
             toast({
-              title: language === "ar" ? "حساب مسجل بالفعل" : "Already Registered",
+              title:
+                language === "ar"
+                  ? "حساب مسجل بالفعل"
+                  : language === "fr"
+                    ? "Compte déjà existant"
+                    : "Already Registered",
               description: t.emailAlreadyRegistered,
             });
           } else {
             const message = getFriendlyErrorMessage(res.error, res.error);
             setError(message);
             toast({
-              title: "Couldn't create account",
+              title:
+                language === "ar"
+                  ? "تعذر إنشاء الحساب"
+                  : language === "fr"
+                    ? "Impossible de créer le compte"
+                    : "Couldn't create account",
               description: message,
               variant: "destructive",
             });
@@ -271,7 +295,12 @@ export default function LoginPage() {
           setUnconfirmedEmail(email.trim());
           toast({
             title: t.checkEmail,
-            description: language === "ar" ? "تحقق من صندوق الوارد والرسائل غير المرغوب فيها (Spam)." : "Check your inbox and spam folder.",
+            description:
+              language === "ar"
+                ? "تحقق من صندوق الوارد والرسائل غير المرغوب فيها (Spam)."
+                : language === "fr"
+                  ? "Vérifiez votre boîte de réception et vos courriers indésirables (Spam)."
+                  : "Check your inbox and spam folder.",
           });
         }
       }
@@ -280,7 +309,18 @@ export default function LoginPage() {
       const message = getFriendlyErrorMessage(error, "Authentication failed");
       setError(message);
       toast({
-        title: mode === "signin" ? "Couldn't sign in" : "Couldn't create account",
+        title:
+          mode === "signin"
+            ? language === "ar"
+              ? "تعذر تسجيل الدخول"
+              : language === "fr"
+                ? "Impossible de se connecter"
+                : "Couldn't sign in"
+            : language === "ar"
+              ? "تعذر إنشاء الحساب"
+              : language === "fr"
+                ? "Impossible de créer le compte"
+                : "Couldn't create account",
         description: message,
         variant: "destructive",
       });
@@ -303,7 +343,12 @@ export default function LoginPage() {
       });
       if (resendErr) {
         toast({
-          title: language === "ar" ? "تعذر إعادة الإرسال" : "Couldn't resend email",
+          title:
+            language === "ar"
+              ? "تعذر إعادة الإرسال"
+              : language === "fr"
+                ? "Échec du renvoi"
+                : "Couldn't resend email",
           description: resendErr.message,
           variant: "destructive",
         });
@@ -314,7 +359,12 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       toast({
-        title: language === "ar" ? "تعذر إعادة الإرسال" : "Couldn't resend email",
+        title:
+          language === "ar"
+            ? "تعذر إعادة الإرسال"
+            : language === "fr"
+              ? "Échec du renvoi"
+              : "Couldn't resend email",
         description: err.message,
         variant: "destructive",
       });
