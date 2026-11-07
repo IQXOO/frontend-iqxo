@@ -68,7 +68,6 @@ export function ProfileIdentityHub({ onUpgradeClick }: ProfileIdentityHubProps) 
         }
       } catch (err) {
         console.error("Failed to load profile row", err)
-        setLoadError("Could not load profile")
       }
     }
 

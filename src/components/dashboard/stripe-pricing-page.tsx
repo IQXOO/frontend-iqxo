@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Crown,
@@ -17,6 +17,7 @@ import { supabase } from "../../lib/supabase";
 import {
   devError,
   devLog,
+  devWarn,
   getFriendlyErrorMessage,
 } from "../../lib/logger";
 import { useToast } from "../../hooks/use-toast";

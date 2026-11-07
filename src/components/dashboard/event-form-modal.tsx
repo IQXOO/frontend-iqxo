@@ -496,14 +496,14 @@ export function EventFormModal({
       if (imageFile) {
         finalImageUrl = await uploadToStorage(imageFile, user.id, "event-images");
       } else if (isHttpUrl(imagePreview)) {
-        finalImageUrl = imagePreview;
+        finalImageUrl = imagePreview || undefined;
       }
 
       let finalPdfUrl: string | undefined = undefined;
       if (pdfFile) {
         finalPdfUrl = await uploadToStorage(pdfFile, user.id, "event-pdfs");
       } else if (isHttpUrl(existingPdfUrl)) {
-        finalPdfUrl = existingPdfUrl;
+        finalPdfUrl = existingPdfUrl || undefined;
       }
 
       let cleanLocation = location.trim() || undefined;
