@@ -335,12 +335,15 @@ export default function LoginPage() {
     setGoogleLoading(true);
     setError(null);
     try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("iqxo_linking_provider");
+      }
       devLog("Auth", "Google OAuth initiated");
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           // In the native app  → redirectTo = iqxo://auth  (deep link back to app)
-          // In the web browser → redirectTo = https://site.com/home (normal flow)
+          // In the web browser → redirectTo = https://site.com/ (normal flow)
           redirectTo: buildOAuthRedirectUrl(),
         },
       });
@@ -371,6 +374,9 @@ export default function LoginPage() {
     setAppleLoading(true);
     setError(null);
     try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("iqxo_linking_provider");
+      }
       devLog("Auth", "Apple OAuth initiated");
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "apple",

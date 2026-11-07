@@ -961,52 +961,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const calOnboard = !!sess?.user?.user_metadata?.calendar_onboarding_done;
         setCalendarOnboardingDoneState(calOnboard);
 
-        // Safely capture OAuth tokens if present during a sign-in or link identity event
+        // Safely capture OAuth tokens ONLY if the user explicitly initiated a calendar linking flow
         const linkingProvider = typeof window !== 'undefined' ? localStorage.getItem('iqxo_linking_provider') : null;
 
-        // Extract tokens either from Supabase session OR directly from window.location.hash
-        let providerToken = sess?.provider_token;
-        let providerRefreshToken = sess?.provider_refresh_token;
-        let providerExpiresIn = sess?.expires_in;
+        // If linkingProvider is NOT set, this is standard user authentication (login/signup)
+        // NEVER save login tokens into calendar_integrations, as they lack calendar scopes!
+        if (linkingProvider && (linkingProvider === 'google' || linkingProvider === 'azure')) {
+          let providerToken = sess?.provider_token;
+          let providerRefreshToken = sess?.provider_refresh_token;
+          let providerExpiresIn = sess?.expires_in;
 
-        if (typeof window !== 'undefined' && (!providerToken || !providerRefreshToken)) {
-          try {
-            const hash = window.location.hash.replace(/^#/, '');
-            if (hash) {
-              const params = new URLSearchParams(hash);
-              if (!providerToken && params.get('provider_token')) {
-                providerToken = params.get('provider_token')!;
+          if (typeof window !== 'undefined' && (!providerToken || !providerRefreshToken)) {
+            try {
+              const hash = window.location.hash.replace(/^#/, '');
+              if (hash) {
+                const params = new URLSearchParams(hash);
+                if (!providerToken && params.get('provider_token')) {
+                  providerToken = params.get('provider_token')!;
+                }
+                if (!providerRefreshToken && params.get('provider_refresh_token')) {
+                  providerRefreshToken = params.get('provider_refresh_token')!;
+                }
+                if (!providerExpiresIn && params.get('expires_in')) {
+                  providerExpiresIn = parseInt(params.get('expires_in')!, 10);
+                }
               }
-              if (!providerRefreshToken && params.get('provider_refresh_token')) {
-                providerRefreshToken = params.get('provider_refresh_token')!;
-              }
-              if (!providerExpiresIn && params.get('expires_in')) {
-                providerExpiresIn = parseInt(params.get('expires_in')!, 10);
-              }
-            }
-          } catch (e) {}
-        }
-
-        if (providerToken && sess?.user) {
-          // Identify which provider this token belongs to
-          let provider = linkingProvider || sess.user.app_metadata?.provider || 'unknown';
-          
-          if (provider === 'email' || provider === 'unknown') {
-            const identities = sess.user.identities || [];
-            const oauthIdentity = identities.find((id: any) => id.provider === 'google' || id.provider === 'azure');
-            if (oauthIdentity) {
-              provider = oauthIdentity.provider;
-            }
+            } catch (e) {}
           }
 
-          // Check if this is a calendar integration linking intent
-          const isCalendarLink = linkingProvider === provider || 
-            (typeof window !== 'undefined' && (window.location.pathname.includes('/connect-calendars') || window.location.pathname.includes('/onboarding')));
-
-          if ((provider === 'google' || provider === 'azure') && isCalendarLink) {
+          if (providerToken && sess?.user) {
             const payload: any = {
               user_id: sess.user.id,
-              provider: provider,
+              provider: linkingProvider,
               access_token: providerToken,
               sync_state: 'active'
             };
@@ -1026,10 +1012,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               if (upsertErr) {
                 console.error("[Auth] Failed to save calendar integration:", upsertErr);
               } else {
-                console.log(`[Auth] Saved ${provider} calendar integration tokens securely.`);
+                console.log(`[Auth] Saved ${linkingProvider} calendar integration tokens securely.`);
                 if (typeof window !== 'undefined') {
                   localStorage.removeItem('iqxo_linking_provider');
-                  window.dispatchEvent(new CustomEvent('calendarIntegrationSaved', { detail: { provider } }));
+                  window.dispatchEvent(new CustomEvent('calendarIntegrationSaved', { detail: { provider: linkingProvider } }));
                 }
               }
             });
