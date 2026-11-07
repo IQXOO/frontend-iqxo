@@ -40,6 +40,7 @@ export function BentoChart({ totalTasks, thisWeekCount, documentsCount }: BentoC
   const categories = useMemo(() => {
     let docs = 0
     let health = 0
+    let work = 0
     let personal = 0
     let other = 0
 
@@ -47,17 +48,19 @@ export function BentoChart({ totalTasks, thisWeekCount, documentsCount }: BentoC
       const cat = categorizeEvent(e)
       if (cat === "documents") docs++
       else if (cat === "health") health++
+      else if (cat === "work") work++
       else if (cat === "personal") personal++
       else other++
     }
 
     const finalDocs = Math.max(docs, documentsCount ?? 0)
-    const effectiveTotal = Math.max(totalTasks ?? realEvents.length, finalDocs + health + personal + other)
-    const finalOther = Math.max(0, effectiveTotal - (finalDocs + health + personal))
+    const effectiveTotal = Math.max(totalTasks ?? realEvents.length, finalDocs + health + work + personal + other)
+    const finalOther = Math.max(0, effectiveTotal - (finalDocs + health + work + personal))
 
     return {
       documents: finalDocs,
       health,
+      work,
       personal,
       other: finalOther,
     }
@@ -77,8 +80,14 @@ export function BentoChart({ totalTasks, thisWeekCount, documentsCount }: BentoC
     {
       label: language === "ar" ? "الصحة" : language === "fr" ? "Santé" : "Health",
       value: categories.health,
-      color: "from-red-500/40 to-red-600/20",
+      color: "from-emerald-500/40 to-emerald-600/20",
       icon: "🏥",
+    },
+    {
+      label: language === "ar" ? "العمل" : language === "fr" ? "Travail" : "Work",
+      value: categories.work,
+      color: "from-cyan-500/40 to-cyan-600/20",
+      icon: "💼",
     },
     {
       label: language === "ar" ? "شخصي" : language === "fr" ? "Personnel" : "Personal",
@@ -89,7 +98,7 @@ export function BentoChart({ totalTasks, thisWeekCount, documentsCount }: BentoC
     {
       label: language === "ar" ? "أخرى" : language === "fr" ? "Autre" : "Other",
       value: categories.other,
-      color: "from-emerald-500/40 to-emerald-600/20",
+      color: "from-amber-500/40 to-amber-600/20",
       icon: "📌",
     },
   ]

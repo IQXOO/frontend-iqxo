@@ -33,49 +33,13 @@ import { ImageLightbox } from "./image-lightbox";
 import type { IQXOEvent } from "@/lib/types";
 import { format, isToday, isTomorrow } from "@/lib/date-utils";
 import { getNextOccurrence, getEventDisplayDate, computeEventPriority } from "@/lib/recurrence";
+import { getEventCategoryDetails } from "@/lib/event-category";
 
 interface EventDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   event: IQXOEvent | null;
   onEdit: (event: IQXOEvent) => void;
-}
-
-/* ── helpers ── */
-function getCategoryFromEvent(event: IQXOEvent, language: string = "en"): {
-  label: string;
-  emoji: string;
-  color: string;
-  bg: string;
-  border: string;
-} {
-  const src = event.source ?? "";
-  if (src.includes("work") || src.includes("schedule")) {
-    return {
-      label: language === "ar" ? "عمل" : language === "fr" ? "Travail" : "Work",
-      emoji: "💼",
-      color: "text-cyan-400",
-      bg: "bg-cyan-500/10",
-      border: "border-cyan-500/20",
-    };
-  }
-  const priority = computeEventPriority(event);
-  if (priority === "urgent") {
-    return {
-      label: language === "ar" ? "عاجل" : language === "fr" ? "Urgent" : "Urgent",
-      emoji: "🔴",
-      color: "text-red-400",
-      bg: "bg-red-500/10",
-      border: "border-red-500/20",
-    };
-  }
-  return {
-    label: language === "ar" ? "شخصي" : language === "fr" ? "Personnel" : "Personal",
-    emoji: "✨",
-    color: "text-purple-400",
-    bg: "bg-purple-500/10",
-    border: "border-purple-500/20",
-  };
 }
 
 interface InfoCardProps {
@@ -182,7 +146,7 @@ export function EventDetailModal({
   const isEventTomorrow = isTomorrow(localDate);
   const hasImage = !!event.image_url && !imgError;
   const isVirtual = event.source === "work_schedule_virtual";
-  const category = getCategoryFromEvent(event, language);
+  const category = getEventCategoryDetails(event, language);
 
   const handleComplete = async () => {
     try {
