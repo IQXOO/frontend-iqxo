@@ -406,6 +406,8 @@ export function EventFormModal({
         setUploadError(
           language === "ar"
             ? "يجب أن يكون حجم الملف أقل من 10 ميجابايت."
+            : language === "fr"
+            ? "Le fichier PDF doit faire moins de 10 Mo."
             : "PDF must be under 10 MB."
         );
         e.target.value = "";
@@ -419,6 +421,8 @@ export function EventFormModal({
       setUploadError(
         language === "ar"
           ? "يرجى اختيار صورة أو ملف PDF."
+          : language === "fr"
+          ? "Veuillez sélectionner une image ou un fichier PDF."
           : "Please select an image or PDF file."
       );
     }
@@ -430,10 +434,12 @@ export function EventFormModal({
   const handleSave = async () => {
     if (!title.trim() && !date) {
       toast({
-        title: language === "ar" ? "بيانات ناقصة" : "Validation Error",
+        title: language === "ar" ? "بيانات ناقصة" : language === "fr" ? "Informations manquantes" : "Validation Error",
         description:
           language === "ar"
             ? "يرجى إدخال عنوان وتاريخ الحدث."
+            : language === "fr"
+            ? "Le titre et la date sont requis."
             : "Title and Date are required.",
         variant: "destructive",
       });
@@ -441,10 +447,12 @@ export function EventFormModal({
     }
     if (!title.trim()) {
       toast({
-        title: language === "ar" ? "العنوان مطلوب" : "Validation Error",
+        title: language === "ar" ? "العنوان مطلوب" : language === "fr" ? "Titre requis" : "Validation Error",
         description:
           language === "ar"
             ? "يرجى إدخال عنوان للحدث."
+            : language === "fr"
+            ? "Veuillez saisir un titre pour l'événement."
             : "Please enter an event title.",
         variant: "destructive",
       });
@@ -452,10 +460,12 @@ export function EventFormModal({
     }
     if (!date) {
       toast({
-        title: language === "ar" ? "التاريخ مطلوب" : "Validation Error",
+        title: language === "ar" ? "التاريخ مطلوب" : language === "fr" ? "Date requise" : "Validation Error",
         description:
           language === "ar"
             ? "يرجى اختيار تاريخ للحدث."
+            : language === "fr"
+            ? "Veuillez sélectionner une date."
             : "Please select a date.",
         variant: "destructive",
       });
@@ -463,10 +473,12 @@ export function EventFormModal({
     }
     if (!user) {
       toast({
-        title: language === "ar" ? "خطأ في تسجيل الدخول" : "Auth Error",
+        title: language === "ar" ? "خطأ في تسجيل الدخول" : language === "fr" ? "Erreur de connexion" : "Auth Error",
         description:
           language === "ar"
             ? "يجب تسجيل الدخول لحفظ الحدث."
+            : language === "fr"
+            ? "Vous devez être connecté pour enregistrer."
             : "You must be logged in.",
         variant: "destructive",
       });
@@ -555,11 +567,13 @@ export function EventFormModal({
         err,
         language === "ar"
           ? "تعذر حفظ الحدث. يرجى المحاولة مرة أخرى."
+          : language === "fr"
+          ? "Échec de l'enregistrement. Veuillez réessayer."
           : "Failed to save. Please try again."
       );
       setUploadError(message);
       toast({
-        title: language === "ar" ? "تعذر حفظ الحدث" : "Couldn't save event",
+        title: language === "ar" ? "تعذر حفظ الحدث" : language === "fr" ? "Impossible d'enregistrer" : "Couldn't save event",
         description: message,
         variant: "destructive",
       });
@@ -588,17 +602,17 @@ export function EventFormModal({
     meetingLink: language === "ar" ? "رابط الاجتماع / الويب" : language === "fr" ? "Lien de réunion / Web" : "MEETING / WEB LINK",
     linkPlaceholder: language === "ar" ? "https://zoom.us/..., Google Meet, Teams, رابط الموقع..." : language === "fr" ? "https://zoom.us/..., lien Meet, Teams..." : "https://zoom.us/..., Google Meet, Teams, website...",
     schedule: language === "ar" ? "الجدول" : language === "fr" ? "Planning" : "SCHEDULE",
-    repeatNever: language === "ar" ? "التكرار: بدون تكرار" : "Repeat: Never",
-    repeatDaily: language === "ar" ? "التكرار: يومياً" : "Repeat: Daily",
-    repeatWeekly: language === "ar" ? "التكرار: أسبوعياً" : "Repeat: Weekly",
-    repeatMonthly: language === "ar" ? "التكرار: شهرياً" : "Repeat: Monthly",
-    reminderNone: language === "ar" ? "التذكير: بدون تذكير" : "Reminder: None",
-    reminderAtTime: language === "ar" ? "التذكير: في وقت الحدث" : "Reminder: At time",
-    reminder10m: language === "ar" ? "التذكير: قبل 10 دقائق" : "Reminder: 10m before",
-    reminder15m: language === "ar" ? "التذكير: قبل 15 دقيقة" : "Reminder: 15m before",
-    reminder30m: language === "ar" ? "التذكير: قبل 30 دقيقة" : "Reminder: 30m before",
-    reminder1h: language === "ar" ? "التذكير: قبل ساعة" : "Reminder: 1h before",
-    reminder1d: language === "ar" ? "التذكير: قبل يوم" : "Reminder: 1d before",
+    repeatNever: language === "ar" ? "التكرار: بدون تكرار" : language === "fr" ? "Répétition : Jamais" : "Repeat: Never",
+    repeatDaily: language === "ar" ? "التكرار: يومياً" : language === "fr" ? "Répétition : Tous les jours" : "Repeat: Daily",
+    repeatWeekly: language === "ar" ? "التكرار: أسبوعياً" : language === "fr" ? "Répétition : Toutes les semaines" : "Repeat: Weekly",
+    repeatMonthly: language === "ar" ? "التكرار: شهرياً" : language === "fr" ? "Répétition : Tous les mois" : "Repeat: Monthly",
+    reminderNone: language === "ar" ? "التذكير: بدون تذكير" : language === "fr" ? "Rappel : Aucun" : "Reminder: None",
+    reminderAtTime: language === "ar" ? "التذكير: في وقت الحدث" : language === "fr" ? "Rappel : À l'heure" : "Reminder: At time",
+    reminder10m: language === "ar" ? "التذكير: قبل 10 دقائق" : language === "fr" ? "Rappel : 10 min avant" : "Reminder: 10m before",
+    reminder15m: language === "ar" ? "التذكير: قبل 15 دقيقة" : language === "fr" ? "Rappel : 15 min avant" : "Reminder: 15m before",
+    reminder30m: language === "ar" ? "التذكير: قبل 30 دقيقة" : language === "fr" ? "Rappel : 30 min avant" : "Reminder: 30m before",
+    reminder1h: language === "ar" ? "التذكير: قبل ساعة" : language === "fr" ? "Rappel : 1 h avant" : "Reminder: 1h before",
+    reminder1d: language === "ar" ? "التذكير: قبل يوم" : language === "fr" ? "Rappel : 1 jour avant" : "Reminder: 1d before",
     contactInfo: language === "ar" ? "معلومات التواصل (اختياري)" : language === "fr" ? "Contact (optionnel)" : "CONTACT INFO (optional)",
     phonePlaceholder: language === "ar" ? "الهاتف" : language === "fr" ? "Téléphone" : "Phone",
     emailPlaceholder: language === "ar" ? "البريد الإلكتروني" : language === "fr" ? "E-mail" : "Email",
@@ -834,7 +848,7 @@ export function EventFormModal({
                       window.open(fullUrl, "_blank", "noopener,noreferrer");
                     }}
                     className="absolute right-3 rtl:right-auto rtl:left-3 p-1.5 rounded-xl text-[#5BC0DE] hover:bg-[#5BC0DE]/15 active:scale-95 transition-all"
-                    title={language === "ar" ? "فتح الرابط" : "Open Link"}
+                    title={language === "ar" ? "فتح الرابط" : language === "fr" ? "Ouvrir le lien" : "Open Link"}
                   >
                     <ExternalLink className="w-4 h-4" />
                   </button>
@@ -945,7 +959,19 @@ export function EventFormModal({
                       : "text-muted-foreground/60 hover:text-foreground hover:bg-secondary/60"
                   }`}
                   aria-label="Attach file"
-                  title={imagePreview || hasPdf ? "Attachment added" : "Attach image or PDF"}
+                  title={
+                    imagePreview || hasPdf
+                      ? language === "ar"
+                        ? "تمت إضافة المرفق"
+                        : language === "fr"
+                        ? "Pièce jointe ajoutée"
+                        : "Attachment added"
+                      : language === "ar"
+                      ? "إرفاق صورة أو PDF"
+                      : language === "fr"
+                      ? "Joindre une image ou un PDF"
+                      : "Attach image or PDF"
+                  }
                 >
                   <Paperclip className="w-4 h-4" />
                 </button>

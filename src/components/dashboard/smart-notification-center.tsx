@@ -38,15 +38,26 @@ export function SmartNotificationCenter() {
         generatedNotifications.push({
           id: `${event.id}-passport`,
           title:
-            language === "ar" ? "انتبه: جواز سفرك قريب الانتهاء" : "Heads up: Your passport expires soon",
+            language === "ar"
+              ? "انتبه: جواز سفرك قريب الانتهاء"
+              : language === "fr"
+                ? "Attention : votre passeport expire bientôt"
+                : "Heads up: Your passport expires soon",
           message:
             language === "ar"
               ? `جواز سفرك ينتهي خلال 7 أيام. هل نبدأ معاً؟`
-              : `Your passport expires in 7 days. Should we start the renewal process together?`,
+              : language === "fr"
+                ? `Votre passeport expire dans 7 jours. Commencer le renouvellement ?`
+                : `Your passport expires in 7 days. Should we start the renewal process together?`,
           type: "warning",
           icon: AlertCircle,
           timestamp: new Date(),
-          actionLabel: language === "ar" ? "ابدأ الآن" : "Start Now",
+          actionLabel:
+            language === "ar"
+              ? "ابدأ الآن"
+              : language === "fr"
+                ? "Commencer"
+                : "Start Now",
         })
       }
 
@@ -54,11 +65,17 @@ export function SmartNotificationCenter() {
         generatedNotifications.push({
           id: `${event.id}-reminder`,
           title:
-            language === "ar" ? "تذكير: " + event.title : `Reminder: ${event.title}`,
+            language === "ar"
+              ? "تذكير: " + event.title
+              : language === "fr"
+                ? `Rappel : ${event.title}`
+                : `Reminder: ${event.title}`,
           message:
             language === "ar"
               ? `هذا الحدث غداً. هل أنت مستعد؟`
-              : `This is happening tomorrow. Are you ready?`,
+              : language === "fr"
+                ? `Cet événement a lieu demain. Êtes-vous prêt ?`
+                : `This is happening tomorrow. Are you ready?`,
           type: "info",
           icon: Calendar,
           timestamp: new Date(),
@@ -75,11 +92,15 @@ export function SmartNotificationCenter() {
         title:
           language === "ar"
             ? `رائع! أكملت ${completedToday} مهام`
-            : `Amazing! You completed ${completedToday} tasks today`,
+            : language === "fr"
+              ? `Bravo ! Vous avez terminé ${completedToday} tâches aujourd'hui`
+              : `Amazing! You completed ${completedToday} tasks today`,
         message:
           language === "ar"
             ? "أنت على الطريق الصحيح!"
-            : "You're on fire!",
+            : language === "fr"
+              ? "Vous êtes sur la bonne voie !"
+              : "You're on fire!",
         type: "success",
         icon: CheckCircle,
         timestamp: new Date(),
@@ -120,7 +141,11 @@ export function SmartNotificationCenter() {
       <div className="flex items-center gap-2 mb-6">
         <Bell className="w-5 h-5 text-blue-400" />
         <h1 className="text-2xl font-bold text-foreground">
-          {language === "ar" ? "مركز الإخطارات" : "Notification Center"}
+          {language === "ar"
+            ? "مركز الإخطارات"
+            : language === "fr"
+              ? "Centre de notifications"
+              : "Notification Center"}
         </h1>
       </div>
 
@@ -134,7 +159,9 @@ export function SmartNotificationCenter() {
           <p className="text-sm text-muted-foreground">
             {language === "ar"
               ? "أنت جميع الاطلاع. لا توجد إخطارات الآن."
-              : "You're all caught up. No notifications right now."}
+              : language === "fr"
+                ? "Vous êtes à jour. Aucune notification pour le moment."
+                : "You're all caught up. No notifications right now."}
           </p>
         </motion.div>
       ) : (
@@ -206,7 +233,9 @@ export function SmartNotificationCenter() {
         <p className="text-xs text-muted-foreground text-center">
           {language === "ar"
             ? "إدارة تفضيلات الإخطارات في الإعدادات"
-            : "Manage notification preferences in Settings"}
+            : language === "fr"
+              ? "Gérer les préférences de notification dans Paramètres"
+              : "Manage notification preferences in Settings"}
         </p>
       </div>
     </div>
