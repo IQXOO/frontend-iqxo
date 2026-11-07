@@ -89,7 +89,17 @@ export default function AppController() {
   // If not authenticated and not on a public path, redirect appropriately
   useEffect(() => {
     if (authLoading) return;
-    const publicPaths = new Set(["/terms", "/privacy", "/reset-password", "/index.html", "/login", "/welcome", "/connect-calendars", "/pricing"]);
+
+    // Safety net: if URL still has incoming auth tokens being exchanged, do not redirect to /login
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      if (hash.includes("access_token") || search.includes("code=")) {
+        return;
+      }
+    }
+
+    const publicPaths = new Set(["/terms", "/privacy", "/reset-password", "/index.html", "/login", "/welcome", "/connect-calendars", "/pricing", "/onboarding"]);
     if (!user && !publicPaths.has(path)) {
       const isDismissed = typeof window !== "undefined" && localStorage.getItem("iqxo_intro_dismissed") === "1";
       if (!isDismissed) {

@@ -66,162 +66,16 @@ function RouteFallback() {
   );
 }
 
-function _AppShell() {
-  const {
-    user,
-    authLoading,
-    planStatus,
-    planResolved,
-    trialEndsAt,
-    onboardingDone,
-    setOnboardingDone,
-  } = useApp();
-  const [introDismissed, setIntroDismissed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("iqxo_intro_dismissed") === "1";
-  });
 
-  // Track the previous user id so we only trigger on actual login/signup transitions
-  const prevUserIdRef = useRef<string | null | undefined>(undefined);
-  const [pathname, setPathname] = useState(() =>
-    typeof window !== "undefined" ? window.location.pathname : "/",
-  );
-
-  const _canShowBillingPopup = shouldShowBillingPopup(planResolved, planStatus);
-  const shouldAutoOpenPricing = shouldAutoOpenBillingRoute(
-    planResolved,
-    planStatus,
-    trialEndsAt,
-  );
-
-  useEffect(() => {
-    const handlePathChange = () => {
-      setPathname(window.location.pathname);
-    };
-
-    window.addEventListener("popstate", handlePathChange);
-    return () => window.removeEventListener("popstate", handlePathChange);
-  }, []);
-
-  // ── Sync user ID to Native App for RevenueCat ──────────────────────────────────
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const win = window as unknown as { isNativeApp?: boolean; ReactNativeWebView?: { postMessage: (msg: string) => void } };
-    const isNative = win.isNativeApp || (typeof navigator !== 'undefined' && navigator.userAgent.includes("IQXONativeApp"));
-    if (!isNative || !win.ReactNativeWebView) return;
-
-    if (user?.id) {
-      win.ReactNativeWebView.postMessage(JSON.stringify({
-        type: "set_user_id",
-        userId: user.id,
-      }));
-    } else if (user === null) {
-      win.ReactNativeWebView.postMessage(JSON.stringify({
-        type: "logout",
-      }));
-    }
-  }, [user]);
-
-  // ── Trigger 1: Show pricing right after login or signup ──────────────────────
-  useEffect(() => {
-    const prevUserId = prevUserIdRef.current;
-
-    // undefined = first render (app just loaded with an existing session) — don't show
-    // null → string = user just logged in / signed up — DO show
-    if (
-      prevUserId === null &&
-      user &&
-      shouldAutoOpenPricing &&
-      pathname !== "/pricing"
-    ) {
-      // Small delay so the app fully loads first
-      const t = setTimeout(() => navigateToPath("/pricing"), 400);
-      return () => clearTimeout(t);
-    }
-
-    prevUserIdRef.current = user?.id ?? null;
-  }, [user, shouldAutoOpenPricing, pathname]);
-
-  // ── Trigger 2: Show pricing when plan is "none" or "expired" ─────────────────
-  // This handles: brand-new user whose plan wasn't set yet, and trial that just expired
-  useEffect(() => {
-    if (!user) return;
-    if (!planResolved) return;
-    if (!shouldAutoOpenPricing) return;
-    if (pathname === "/pricing") return;
-    const t = setTimeout(() => navigateToPath("/pricing"), 400);
-    return () => clearTimeout(t);
-  }, [user, planResolved, shouldAutoOpenPricing, pathname]);
-
-  // ── Trigger 3: Poll every 60s to detect trial expiry while app is open ────────
-  useEffect(() => {
-    if (
-      !user ||
-      !shouldAutoOpenPricing ||
-      planStatus !== "free_trial" ||
-      !trialEndsAt ||
-      pathname === "/pricing"
-    )
-      return;
-
-    const check = () => {
-      if (trialEndsAt < new Date()) {
-        navigateToPath("/pricing");
-      }
-    };
-
-    check(); // immediate check
-    const interval = setInterval(check, 60_000);
-    return () => clearInterval(interval);
-  }, [user, planStatus, trialEndsAt, shouldAutoOpenPricing, pathname]);
-
-  // Keep reset-password and pricing public pages but we'll route via React Router
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  // Show onboarding (language picker) once before the auth form
-  if (!onboardingDone && !introDismissed) {
-    return (
-      <Suspense fallback={<RouteFallback />}>
-        <OnboardingPage
-          onDone={async () => {
-            setIntroDismissed(true);
-            if (typeof window !== "undefined") {
-              localStorage.setItem("iqxo_intro_dismissed", "1");
-            }
-            await setOnboardingDone(true);
-          }}
-        />
-      </Suspense>
-    );
-  }
-
-  // ── Auth routing ──────────────────────────────────────────────────────────────
-  // ── Auth routing (central guard) ──────────────────────────────────────────────
-  // Public routes that do not require authentication
-  const _publicPaths = new Set<string>([
-    "/pricing",
-    "/terms",
-    "/privacy",
-    "/reset-password",
-    "/index.html",
-  ]);
-
-  // We'll render the routing via React Router in App()
-  return null;
-}
 
 function RootRedirect() {
-  const { user, authLoading } = useApp();
+  const { user, authLoading, onboardingDone } = useApp();
   // If still loading auth, render RouteFallback (dark spinner) instead of null to prevent white screen
   if (authLoading) return <RouteFallback />;
   if (user) {
+    if (!onboardingDone) {
+      return <Navigate to="/onboarding" replace />;
+    }
     return <Navigate to="/home" replace />;
   }
   const isDismissed = typeof window !== "undefined" && localStorage.getItem("iqxo_intro_dismissed") === "1";
@@ -249,7 +103,21 @@ function App() {
     if (!isNative && hasIqxoApp && hasTokens) {
       const payload = code ? `?code=${code}` : hash;
       launchAppWithFallback(payload, window.location.href);
-      return null;
+      return (
+        <div className="min-h-screen bg-[#0C0C0E] text-[#E8E8E8] flex flex-col items-center justify-center p-6 text-center font-sans">
+          <div className="h-10 w-10 rounded-full border-2 border-white/10 border-t-[#5BC0DE] animate-spin mb-4" />
+          <h2 className="text-lg font-medium text-white mb-2">Opening IQXO App...</h2>
+          <p className="text-xs text-[#A0A0A8] max-w-xs mb-6">
+            If the app does not open automatically, tap the button below.
+          </p>
+          <button
+            onClick={() => launchAppWithFallback(payload, window.location.href)}
+            className="px-6 py-2.5 bg-[#5BC0DE]/10 hover:bg-[#5BC0DE]/20 border border-[#5BC0DE]/30 text-[#5BC0DE] font-medium rounded-full text-sm transition-all cursor-pointer"
+          >
+            Open IQXO App
+          </button>
+        </div>
+      );
     }
   }
 
