@@ -19,7 +19,8 @@ function getDeviceName(): string {
 
 export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }) {
   const navigate = useNavigate();
-  const { user, setCalendarOnboardingDone } = useApp();
+  const { user, setCalendarOnboardingDone, language } = useApp();
+  const isRTL = language === "ar";
   const [syncLocal, setSyncLocal] = useState(user?.user_metadata?.sync_local_calendar !== false);
   const [loading, setLoading] = useState(false);
   const [integrations, setIntegrations] = useState<any[]>([]);
@@ -78,8 +79,13 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
         localStorage.removeItem('iqxo_linking_provider');
         await loadIntegrations();
         toast({
-          title: "Calendar Connected!",
-          description: `Successfully linked your ${linkingProvider} calendar.`,
+          title: language === "ar" ? "تم ربط التقويم!" : language === "fr" ? "Calendrier connecté !" : "Calendar Connected!",
+          description:
+            language === "ar"
+              ? `تم ربط تقويم ${linkingProvider} بنجاح.`
+              : language === "fr"
+              ? `Votre calendrier ${linkingProvider} a été associé avec succès.`
+              : `Successfully linked your ${linkingProvider} calendar.`,
         });
       }
     };
@@ -88,8 +94,13 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
     const handleIntegrationSaved = (e: any) => {
       const provider = e.detail?.provider;
       toast({
-        title: "Calendar Connected!",
-        description: `Successfully linked your ${provider} calendar.`,
+        title: language === "ar" ? "تم ربط التقويم!" : language === "fr" ? "Calendrier connecté !" : "Calendar Connected!",
+        description:
+          language === "ar"
+            ? `تم ربط تقويم ${provider} بنجاح.`
+            : language === "fr"
+            ? `Votre calendrier ${provider} a été associé avec succès.`
+            : `Successfully linked your ${provider} calendar.`,
       });
       loadIntegrations();
     };
@@ -209,7 +220,15 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
       }
     }
     
-    toast({ title: "Disconnected", description: `Your ${providerTitle} calendar has been disconnected.` });
+    toast({
+      title: language === "ar" ? "تم الفصل" : language === "fr" ? "Déconnecté" : "Disconnected",
+      description:
+        language === "ar"
+          ? `تم فصل تقويم ${providerTitle}.`
+          : language === "fr"
+          ? `Votre calendrier ${providerTitle} a été déconnecté.`
+          : `Your ${providerTitle} calendar has been disconnected.`,
+    });
   };
 
   const googleInt = integrations.find(i => i.provider === 'google');
@@ -243,26 +262,48 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
           <Calendar className="w-6 h-6 text-primary" />
         </div>
 
-        <h1 className="text-2xl font-bold mb-2">Connect your calendars</h1>
+        <h1 className="text-2xl font-bold mb-2">
+          {language === "ar"
+            ? "ربط التقويمات"
+            : language === "fr"
+            ? "Associez vos calendriers"
+            : "Connect your calendars"}
+        </h1>
         <p className="text-muted-foreground text-center mb-8">
-          All of your calendars together in one place
+          {language === "ar"
+            ? "كل تقويماتك معاً في مكان واحد"
+            : language === "fr"
+            ? "Tous vos calendriers réunis au même endroit"
+            : "All of your calendars together in one place"}
         </p>
 
         <div className="w-full space-y-6">
           {/* Local Calendar Section */}
           <section>
-            <h2 className="text-sm text-muted-foreground mb-3 px-1">Local Calendar</h2>
-            <div className="flex items-center justify-between bg-card p-4 rounded-2xl border">
-              <div className="flex items-center gap-3">
+            <h2 className="text-sm text-muted-foreground mb-3 px-1">
+              {language === "ar"
+                ? "التقويم المحلي"
+                : language === "fr"
+                ? "Calendrier local"
+                : "Local Calendar"}
+            </h2>
+            <div className={`flex items-center justify-between bg-card p-4 rounded-2xl border ${isRTL ? "flex-row-reverse" : ""}`}>
+              <div className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse text-right" : ""}`}>
                 <div className="w-10 h-10 rounded-xl bg-muted flex flex-col items-center justify-center overflow-hidden border border-border/50">
                   <span className="text-[9px] text-destructive font-semibold uppercase leading-none mt-1">
-                    Tue
+                    {new Date().toLocaleDateString(language === "ar" ? "ar-EG" : language === "fr" ? "fr-FR" : "en-US", { weekday: "short" })}
                   </span>
                   <span className="text-lg font-bold leading-none mb-1">
-                    22
+                    {new Date().getDate()}
                   </span>
                 </div>
-                <span className="font-medium text-card-foreground">Calendars from {getDeviceName()}</span>
+                <span className="font-medium text-card-foreground">
+                  {language === "ar"
+                    ? `تقويمات من ${getDeviceName()}`
+                    : language === "fr"
+                    ? `Calendriers de ${getDeviceName()}`
+                    : `Calendars from ${getDeviceName()}`}
+                </span>
               </div>
               <Switch 
                 checked={syncLocal} 
@@ -283,7 +324,13 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
 
           {/* Cloud Calendars Section */}
           <section>
-            <h2 className="text-sm text-muted-foreground mb-3 px-1">Add more</h2>
+            <h2 className="text-sm text-muted-foreground mb-3 px-1">
+              {language === "ar"
+                ? "إضافة المزيد"
+                : language === "fr"
+                ? "Ajouter"
+                : "Add more"}
+            </h2>
             <div className="bg-card rounded-2xl border overflow-hidden flex flex-col divide-y">
               {/* Google */}
               <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors text-left">
@@ -385,7 +432,9 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
               onClick={handleNext}
               disabled={loading}
             >
-              {loading ? "Saving..." : "Next"}
+              {loading
+                ? (language === "ar" ? "جاري الحفظ..." : language === "fr" ? "Enregistrement..." : "Saving...")
+                : (language === "ar" ? "التالي" : language === "fr" ? "Suivant" : "Next")}
             </Button>
           </div>
         </div>

@@ -728,26 +728,50 @@ export function WorkScheduleView() {
           ...newRows,
         ]);
         toast({
-          title: language === "ar" ? "تم استخراج الجدول بنجاح" : "Schedule extracted",
-          description: language === "ar"
-            ? `تم العثور على ${newRows.length} فترات عمل لـ "${result.person_name_found || searchName}"`
-            : `Found ${newRows.length} shift(s) for "${result.person_name_found || searchName}"`,
+          title:
+            language === "ar"
+              ? "تم استخراج الجدول بنجاح"
+              : language === "fr"
+                ? "Planning extrait avec succès"
+                : "Schedule extracted",
+          description:
+            language === "ar"
+              ? `تم العثور على ${newRows.length} فترات عمل لـ "${result.person_name_found || searchName}"`
+              : language === "fr"
+                ? `${newRows.length} créneau(x) trouvé(s) pour "${result.person_name_found || searchName}"`
+                : `Found ${newRows.length} shift(s) for "${result.person_name_found || searchName}"`,
         });
       } else {
         toast({
-          title: language === "ar" ? "لم يتم التعرف على أوقات الوردية" : "No shift times recognized",
-          description: language === "ar"
-            ? `يرجى التحقق من وضوح الصورة وتحديد الأوقات يدوياً.`
-            : `Could not recognize shift times. Please check image clarity or add manually.`,
+          title:
+            language === "ar"
+              ? "لم يتم التعرف على أوقات الوردية"
+              : language === "fr"
+                ? "Horaires de shift non reconnus"
+                : "No shift times recognized",
+          description:
+            language === "ar"
+              ? `يرجى التحقق من وضوح الصورة وتحديد الأوقات يدوياً.`
+              : language === "fr"
+                ? "Impossible de reconnaître les horaires. Veuillez vérifier la netteté de l'image ou les ajouter manuellement."
+                : `Could not recognize shift times. Please check image clarity or add manually.`,
           variant: "destructive",
         });
       }
     } else {
       toast({
-        title: language === "ar" ? "لم يتم العثور على ورديات" : "No shifts found",
-        description: language === "ar"
-          ? `لم يتم العثور على ورديات عمل مسجلة لـ "${result.person_name_found || searchName}" في هذا الجدول.`
-          : `No work shifts found for "${result.person_name_found || searchName}" in this schedule.`,
+        title:
+          language === "ar"
+            ? "لم يتم العثور على ورديات"
+            : language === "fr"
+              ? "Aucun créneau trouvé"
+              : "No shifts found",
+        description:
+          language === "ar"
+            ? `لم يتم العثور على ورديات عمل مسجلة لـ "${result.person_name_found || searchName}" في هذا الجدول.`
+            : language === "fr"
+              ? `Aucun shift trouvé pour "${result.person_name_found || searchName}" dans ce planning.`
+              : `No work shifts found for "${result.person_name_found || searchName}" in this schedule.`,
         variant: "destructive",
       });
     }
@@ -919,14 +943,20 @@ export function WorkScheduleView() {
                   {scheduleNameOverride.trim()
                     ? language === "ar"
                       ? `سيبحث عن: "${scheduleNameOverride.trim()}"`
-                      : `Will search for: "${scheduleNameOverride.trim()}"`
+                      : language === "fr"
+                        ? `Recherche de : "${scheduleNameOverride.trim()}"`
+                        : `Will search for: "${scheduleNameOverride.trim()}"`
                     : displayName
                       ? language === "ar"
                         ? `سيستخدم: "${displayName}"`
-                        : `Using account name: "${displayName}"`
+                        : language === "fr"
+                          ? `Nom du compte : "${displayName}"`
+                          : `Using account name: "${displayName}"`
                       : language === "ar"
                         ? "أدخل اسمك أعلاه"
-                        : "Enter your name above"}
+                        : language === "fr"
+                          ? "Entrez votre nom ci-dessus"
+                          : "Enter your name above"}
                 </p>
                 <button
                   onClick={() => {
@@ -968,7 +998,9 @@ export function WorkScheduleView() {
                 <p className="text-[11px] text-muted-foreground truncate">
                   {language === "ar"
                     ? `يبحث عن "${searchName}"`
-                    : `Searching for "${searchName}"`}
+                    : language === "fr"
+                      ? `Recherche de "${searchName}"`
+                      : `Searching for "${searchName}"`}
                 </p>
               </div>
             </motion.div>
@@ -1462,7 +1494,9 @@ export function WorkScheduleView() {
                       <p className="text-xs text-muted-foreground text-center py-2">
                         {language === "ar"
                           ? "لا توجد أيام — اختر يوماً أعلاه"
-                          : "No days — tap a day above"}
+                          : language === "fr"
+                            ? "Aucun jour — appuyez sur un jour ci-dessus"
+                            : "No days — tap a day above"}
                       </p>
                     ) : (
                       <div className="space-y-4">
@@ -1560,7 +1594,9 @@ export function WorkScheduleView() {
                                             globalLocation ||
                                             (language === "ar"
                                               ? "الموقع..."
-                                              : "Location...")
+                                              : language === "fr"
+                                                ? "Lieu..."
+                                                : "Location...")
                                           }
                                           className="flex-1 bg-transparent text-xs text-muted-foreground placeholder:text-muted-foreground/30 outline-none border-b border-border/50 pb-1 focus:border-primary/50 transition-colors"
                                         />

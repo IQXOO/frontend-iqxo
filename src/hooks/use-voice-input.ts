@@ -397,10 +397,18 @@ export function useVoiceInput(): UseVoiceInputReturn {
                 // Show a non-destructive warning toast once
                 if (!speechRecognitionFailed) {
                   toast({
-                    title: language === "ar" ? "معاينة النص غير متاحة" : "Text preview unavailable",
-                    description: language === "ar" 
-                      ? "نحن نسجل صوتك الآن، وسيتم تحويله إلى نص فور التوقف." 
-                      : "We are recording your voice, text will be processed when you stop.",
+                    title:
+                      language === "ar"
+                        ? "معاينة النص غير متاحة"
+                        : language === "fr"
+                          ? "Aperçu du texte indisponible"
+                          : "Text preview unavailable",
+                    description:
+                      language === "ar"
+                        ? "نحن نسجل صوتك الآن، وسيتم تحويله إلى نص فور التوقف."
+                        : language === "fr"
+                          ? "Votre voix est en cours d'enregistrement, le texte sera traité dès l'arrêt."
+                          : "We are recording your voice, text will be processed when you stop.",
                   });
                 }
                 setSpeechRecognitionFailed(true);
@@ -413,10 +421,18 @@ export function useVoiceInput(): UseVoiceInputReturn {
               devWarn('Voice', 'Speech recognition critical error, fallback to recording-only', { error: event.error });
               if (!speechRecognitionFailed) {
                 toast({
-                  title: language === "ar" ? "معاينة النص غير متاحة" : "Text preview unavailable",
-                  description: language === "ar" 
-                    ? "نحن نسجل صوتك الآن، وسيتم تحويله إلى نص فور التوقف." 
-                    : "We are recording your voice, text will be processed when you stop.",
+                  title:
+                    language === "ar"
+                      ? "معاينة النص غير متاحة"
+                      : language === "fr"
+                        ? "Aperçu du texte indisponible"
+                        : "Text preview unavailable",
+                  description:
+                    language === "ar"
+                      ? "نحن نسجل صوتك الآن، وسيتم تحويله إلى نص فور التوقف."
+                      : language === "fr"
+                        ? "Votre voix est en cours d'enregistrement, le texte sera traité dès l'arrêt."
+                        : "We are recording your voice, text will be processed when you stop.",
                 });
               }
             }

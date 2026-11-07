@@ -62,7 +62,7 @@ export function TodayHomeScreen({ onEventClick, onFabClick: _onFabClick }: Today
   )
 
   const isRTL = language === "ar"
-  const today = format(new Date(), "EEEE, MMMM d")
+  const today = format(new Date(), "EEEE, MMMM d", language)
 
   const emptyMessage =
     language === "ar"

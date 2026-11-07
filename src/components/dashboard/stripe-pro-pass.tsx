@@ -24,23 +24,63 @@ export function StripeProPass({ open = true, onClose }: StripeProPassProps) {
   const features = [
     {
       icon: InfinityIcon,
-      label: language === "ar" ? "حفظ غير محدود" : "Unlimited Saves",
-      description: language === "ar" ? "احفظ كل لحظة" : "Capture every moment",
+      label:
+        language === "ar"
+          ? "حفظ غير محدود"
+          : language === "fr"
+            ? "Enregistrements illimités"
+            : "Unlimited Saves",
+      description:
+        language === "ar"
+          ? "احفظ كل لحظة"
+          : language === "fr"
+            ? "Capturez chaque instant"
+            : "Capture every moment",
     },
     {
       icon: Zap,
-      label: language === "ar" ? "تحليلات ذكية" : "Smart Analytics",
-      description: language === "ar" ? "فهم أعمق لحياتك" : "Deeper insights into your life",
+      label:
+        language === "ar"
+          ? "تحليلات ذكية"
+          : language === "fr"
+            ? "Analyses intelligentes"
+            : "Smart Analytics",
+      description:
+        language === "ar"
+          ? "فهم أعمق لحياتك"
+          : language === "fr"
+            ? "Des aperçus plus approfondis"
+            : "Deeper insights into your life",
     },
     {
       icon: Shield,
-      label: language === "ar" ? "مزامنة متقدمة" : "Priority Sync",
-      description: language === "ar" ? "الأمان أولاً دائماً" : "Your data, always secure",
+      label:
+        language === "ar"
+          ? "مزامنة متقدمة"
+          : language === "fr"
+            ? "Synchronisation prioritaire"
+            : "Priority Sync",
+      description:
+        language === "ar"
+          ? "الأمان أولاً دائماً"
+          : language === "fr"
+            ? "Vos données, toujours sécurisées"
+            : "Your data, always secure",
     },
     {
       icon: Sparkles,
-      label: language === "ar" ? "ميزات حصرية" : "Exclusive Features",
-      description: language === "ar" ? "أول من يجرب الجديد" : "Be first to try new features",
+      label:
+        language === "ar"
+          ? "ميزات حصرية"
+          : language === "fr"
+            ? "Fonctionnalités exclusives"
+            : "Exclusive Features",
+      description:
+        language === "ar"
+          ? "أول من يجرب الجديد"
+          : language === "fr"
+            ? "Soyez le premier à découvrir"
+            : "Be first to try new features",
     },
   ]
 
@@ -51,9 +91,21 @@ export function StripeProPass({ open = true, onClose }: StripeProPassProps) {
       await new Promise((r) => setTimeout(r, 2000))
       // In production, this would redirect to Stripe
     } catch (error) {
-      const message = getFriendlyErrorMessage(error, "Could not start checkout. Please try again.")
+      const message = getFriendlyErrorMessage(
+        error,
+        language === "ar"
+          ? "تعذر بدء عملية الدفع. يرجى المحاولة مرة أخرى."
+          : language === "fr"
+            ? "Impossible de démarrer le paiement. Veuillez réessayer."
+            : "Could not start checkout. Please try again."
+      )
       toast({
-        title: "Checkout failed",
+        title:
+          language === "ar"
+            ? "فشل الدفع"
+            : language === "fr"
+              ? "Échec du paiement"
+              : "Checkout failed",
         description: message,
         variant: "destructive",
       })
@@ -128,12 +180,18 @@ export function StripeProPass({ open = true, onClose }: StripeProPassProps) {
                 <Crown className="w-8 h-8 text-amber-400" strokeWidth={1.5} />
               </motion.div>
               <h2 className="text-2xl font-bold text-white tracking-tight">
-                {language === "ar" ? "بطاقة Pro" : "The Pro Pass"}
+                {language === "ar"
+                  ? "بطاقة Pro"
+                  : language === "fr"
+                    ? "Le Pass Pro"
+                    : "The Pro Pass"}
               </h2>
               <p className="text-white/50 mt-2 text-sm">
                 {language === "ar"
                   ? "استثمر في راحة بالك"
-                  : "Invest in your peace of mind"}
+                  : language === "fr"
+                    ? "Investissez dans votre sérénité"
+                    : "Invest in your peace of mind"}
               </p>
             </div>
 
@@ -156,7 +214,7 @@ export function StripeProPass({ open = true, onClose }: StripeProPassProps) {
                   <div className="inline-flex items-baseline gap-1">
                     <span className="text-4xl font-bold text-white">€4.99</span>
                     <span className="text-white/40 text-sm">
-                      /{language === "ar" ? "شهر" : "month"}
+                      /{language === "ar" ? "شهر" : language === "fr" ? "mois" : "month"}
                     </span>
                   </div>
                 </div>
@@ -189,7 +247,11 @@ export function StripeProPass({ open = true, onClose }: StripeProPassProps) {
               <div className="flex items-center gap-2 mb-3">
                 <CreditCard className="w-4 h-4 text-white/40" strokeWidth={1.5} />
                 <span className="text-sm text-white/60">
-                  {language === "ar" ? "تفاصيل الدفع" : "Payment Details"}
+                  {language === "ar"
+                    ? "تفاصيل الدفع"
+                    : language === "fr"
+                      ? "Détails du paiement"
+                      : "Payment Details"}
                 </span>
               </div>
 
@@ -233,7 +295,13 @@ export function StripeProPass({ open = true, onClose }: StripeProPassProps) {
               {/* Secure badge */}
               <div className="flex items-center justify-center gap-2 text-white/30 text-xs">
                 <Lock className="w-3 h-3" strokeWidth={1.5} />
-                <span>{language === "ar" ? "مشفر ومحمي بواسطة Stripe" : "Encrypted & secured by Stripe"}</span>
+                <span>
+                  {language === "ar"
+                    ? "مشفر ومحمي بواسطة Stripe"
+                    : language === "fr"
+                      ? "Chiffré et sécurisé par Stripe"
+                      : "Encrypted & secured by Stripe"}
+                </span>
               </div>
             </div>
 
@@ -252,12 +320,24 @@ export function StripeProPass({ open = true, onClose }: StripeProPassProps) {
                     transition={{ duration: 1, repeat: Number.MAX_SAFE_INTEGER, ease: "linear" }}
                     className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
                   />
-                  <span>{language === "ar" ? "جاري المعالجة..." : "Processing..."}</span>
+                  <span>
+                    {language === "ar"
+                      ? "جاري المعالجة..."
+                      : language === "fr"
+                        ? "Traitement en cours..."
+                        : "Processing..."}
+                  </span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" strokeWidth={1.5} />
-                  <span>{language === "ar" ? "احصل على Pro الآن" : "Get Pro Access"}</span>
+                  <span>
+                    {language === "ar"
+                      ? "احصل على Pro الآن"
+                      : language === "fr"
+                        ? "Obtenir l'accès Pro"
+                        : "Get Pro Access"}
+                  </span>
                 </>
               )}
             </motion.button>
@@ -266,7 +346,9 @@ export function StripeProPass({ open = true, onClose }: StripeProPassProps) {
             <p className="text-center text-[11px] text-white/30 pb-4">
               {language === "ar"
                 ? "7 أيام ضمان استرجاع المال • إلغاء في أي وقت"
-                : "7-day money-back guarantee • Cancel anytime"}
+                : language === "fr"
+                  ? "Garantie satisfait ou remboursé 7 jours • Annulation à tout moment"
+                  : "7-day money-back guarantee • Cancel anytime"}
             </p>
           </div>
         </motion.div>

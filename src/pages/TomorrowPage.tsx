@@ -8,7 +8,15 @@ export default function TomorrowPage() {
   const { openEventDetail } = useEventEditor();
 
   return (
-    <Suspense fallback={<div className="p-6">Loading…</div>}>
+    <Suspense
+      fallback={
+        <div className="px-5 py-6 space-y-3 animate-pulse">
+          <div className="h-6 w-32 rounded-lg bg-secondary/40" />
+          <div className="h-24 rounded-2xl bg-secondary/30" />
+          <div className="h-24 rounded-2xl bg-secondary/30" />
+        </div>
+      }
+    >
       <div className="px-4">
         <TomorrowView onEventClick={openEventDetail} />
       </div>

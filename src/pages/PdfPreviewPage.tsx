@@ -1,12 +1,12 @@
-"use client"
-
 import { useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
+import { useApp } from "../lib/store"
 
 export const PDF_PREVIEW_STORAGE_KEY = "iqxo_pdf_preview_html"
 
 export function PdfPreviewPage() {
   const navigate = useNavigate()
+  const { language } = useApp()
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   // Read HTML from sessionStorage
@@ -43,7 +43,13 @@ export function PdfPreviewPage() {
 
   const handleDownload = () => {
     if (!html) {
-      alert("No report data. Please go back and try again.")
+      alert(
+        language === "ar"
+          ? "لا توجد بيانات للتقرير. يرجى العودة والمحاولة مرة أخرى."
+          : language === "fr"
+          ? "Aucune donnée de rapport. Veuillez retourner en arrière et réessayer."
+          : "No report data. Please go back and try again."
+      )
       return
     }
 
@@ -71,12 +77,18 @@ export function PdfPreviewPage() {
   if (!html) {
     return (
       <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0d0d12", color: "white", gap: "16px" }}>
-        <p style={{ fontSize: "16px" }}>Could not load report. Please go back and try again.</p>
+        <p style={{ fontSize: "16px" }}>
+          {language === "ar"
+            ? "تعذر تحميل التقرير. يرجى العودة والمحاولة مرة أخرى."
+            : language === "fr"
+            ? "Impossible de charger le rapport. Veuillez retourner en arrière et réessayer."
+            : "Could not load report. Please go back and try again."}
+        </p>
         <button
           onClick={() => navigate(-1)}
           style={{ padding: "10px 20px", background: "#3b82f6", color: "white", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "bold", cursor: "pointer" }}
         >
-          Back
+          {language === "ar" ? "رجوع" : language === "fr" ? "Retour" : "Back"}
         </button>
       </div>
     )
@@ -90,13 +102,23 @@ export function PdfPreviewPage() {
           onClick={() => navigate(-1)}
           style={{ padding: "8px 14px", background: "#64748b", color: "white", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "bold", cursor: "pointer" }}
         >
-          Back
+          {language === "ar" ? "رجوع" : language === "fr" ? "Retour" : "Back"}
         </button>
         <button
           onClick={handleDownload}
           style={{ padding: "8px 14px", background: "#3b82f6", color: "white", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "bold", cursor: "pointer" }}
         >
-          {isNativeApp ? "Save PDF" : "Download PDF"}
+          {isNativeApp
+            ? language === "ar"
+              ? "حفظ كـ PDF"
+              : language === "fr"
+              ? "Enregistrer en PDF"
+              : "Save PDF"
+            : language === "ar"
+            ? "تحميل PDF"
+            : language === "fr"
+            ? "Télécharger le PDF"
+            : "Download PDF"}
         </button>
       </div>
 

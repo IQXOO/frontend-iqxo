@@ -29,24 +29,24 @@ export function PrescriptionAlert({
 
   const handleOrderRefill = () => {
     toast({
-      title: "Refill Requested",
-      description: "Your pharmacy will contact you soon.",
+      title: language === "fr" ? "Renouvellement demandé" : language === "ar" ? "تم طلب التجديد" : "Refill Requested",
+      description: language === "fr" ? "Votre pharmacie vous contactera bientôt." : language === "ar" ? "ستتواصل معك الصيدلية قريباً." : "Your pharmacy will contact you soon.",
     })
     onOpenChange(false)
   }
 
   const handleRemindLater = () => {
     toast({
-      title: "Reminder Set",
-      description: "We'll remind you in 7 days.",
+      title: language === "fr" ? "Rappel configuré" : language === "ar" ? "تم ضبط التذكير" : "Reminder Set",
+      description: language === "fr" ? "Nous vous rappellerons dans 7 jours." : language === "ar" ? "سنذكرك خلال 7 أيام." : "We'll remind you in 7 days.",
     })
     onOpenChange(false)
   }
 
   const handleAddCalendar = () => {
     toast({
-      title: "Added",
-      description: "Added to your calendar.",
+      title: language === "fr" ? "Ajouté" : language === "ar" ? "تمت الإضافة" : "Added",
+      description: language === "fr" ? "Ajouté à votre calendrier." : language === "ar" ? "تمت الإضافة إلى تقويمك." : "Added to your calendar.",
     })
     onOpenChange(false)
   }
@@ -100,7 +100,9 @@ export function PrescriptionAlert({
 
             <div className="p-4 rounded-2xl bg-red-500/10 border-2 border-red-500/30">
               <p className="text-xs text-muted-foreground font-semibold mb-1">{t("expirationDate")}</p>
-              <p className="text-lg font-bold text-red-400 line-through">{prescription.expirationDaysAgo} days ago</p>
+              <p className="text-lg font-bold text-red-400 line-through">
+                {prescription.expirationDaysAgo} {language === "fr" ? "jours passés" : language === "ar" ? "أيام مضت" : "days ago"}
+              </p>
             </div>
           </div>
 
