@@ -42,7 +42,7 @@ interface EventDetailModalProps {
 }
 
 /* ── helpers ── */
-function getCategoryFromEvent(event: IQXOEvent): {
+function getCategoryFromEvent(event: IQXOEvent, language: string = "en"): {
   label: string;
   emoji: string;
   color: string;
@@ -52,7 +52,7 @@ function getCategoryFromEvent(event: IQXOEvent): {
   const src = event.source ?? "";
   if (src.includes("work") || src.includes("schedule")) {
     return {
-      label: "Work",
+      label: language === "ar" ? "عمل" : language === "fr" ? "Travail" : "Work",
       emoji: "💼",
       color: "text-cyan-400",
       bg: "bg-cyan-500/10",
@@ -62,7 +62,7 @@ function getCategoryFromEvent(event: IQXOEvent): {
   const priority = computeEventPriority(event);
   if (priority === "urgent") {
     return {
-      label: "Urgent",
+      label: language === "ar" ? "عاجل" : language === "fr" ? "Urgent" : "Urgent",
       emoji: "🔴",
       color: "text-red-400",
       bg: "bg-red-500/10",
@@ -70,7 +70,7 @@ function getCategoryFromEvent(event: IQXOEvent): {
     };
   }
   return {
-    label: "Personal",
+    label: language === "ar" ? "شخصي" : language === "fr" ? "Personnel" : "Personal",
     emoji: "✨",
     color: "text-purple-400",
     bg: "bg-purple-500/10",
@@ -182,7 +182,7 @@ export function EventDetailModal({
   const isEventTomorrow = isTomorrow(localDate);
   const hasImage = !!event.image_url && !imgError;
   const isVirtual = event.source === "work_schedule_virtual";
-  const category = getCategoryFromEvent(event);
+  const category = getCategoryFromEvent(event, language);
 
   const handleComplete = async () => {
     try {
@@ -192,13 +192,20 @@ export function EventDetailModal({
         title: event.is_done
           ? language === "ar"
             ? "تم إلغاء الإتمام"
-            : "Marked as pending"
+            : language === "fr"
+              ? "Marqué comme en attente"
+              : "Marked as pending"
           : language === "ar"
             ? "تم الإتمام"
-            : "Event completed! ✓",
+            : language === "fr"
+              ? "Événement terminé ! ✓"
+              : "Event completed! ✓",
       });
     } catch {
-      toast({ title: "Error", variant: "destructive" });
+      toast({
+        title: language === "ar" ? "خطأ" : language === "fr" ? "Erreur" : "Error",
+        variant: "destructive",
+      });
     }
   };
 
@@ -215,6 +222,15 @@ export function EventDetailModal({
 
 ---
 🔗 تنظيم ومتابعة مهامك عبر منصة IQXO:
+${origin}`;
+    } else if (language === "fr") {
+      shareText = `🌟 *Détails de l'événement depuis IQXO* 🌟
+
+📝 *Titre :* ${event.title}
+📅 *Date :* ${dateStr}${event.time ? `\n⏰ *Heure :* ${event.time}` : ""}${event.location ? `\n📍 *Lieu :* ${event.location}` : ""}${event.link ? `\n🔗 *Lien :* ${event.link}` : ""}${event.phone ? `\n📞 *Téléphone :* ${event.phone}` : ""}${event.email ? `\n✉️ *E-mail :* ${event.email}` : ""}${event.notes ? `\n\n💬 *Remarques :*\n${event.notes}` : ""}
+
+---
+🔗 Organisez et suivez vos événements sur IQXO :
 ${origin}`;
     } else {
       shareText = `🌟 *Event Details from IQXO* 🌟
@@ -236,18 +252,30 @@ ${origin}`;
       } else {
         await navigator.clipboard.writeText(shareText);
         toast({
-          title: language === "ar" ? "تم نسخ التفاصيل" : "Details copied",
+          title:
+            language === "ar"
+              ? "تم نسخ التفاصيل"
+              : language === "fr"
+                ? "Détails copiés"
+                : "Details copied",
           description:
             language === "ar"
               ? "تم نسخ تفاصيل الحدث إلى الحافظة بنجاح."
-              : "Event details copied to clipboard successfully.",
+              : language === "fr"
+                ? "Détails de l'événement copiés dans le presse-papiers avec succès."
+                : "Event details copied to clipboard successfully.",
         });
       }
     } catch (err) {
       if (err instanceof Error && err.name !== "AbortError") {
         console.error("Failed to share:", err);
         toast({
-          title: language === "ar" ? "فشلت المشاركة" : "Share failed",
+          title:
+            language === "ar"
+              ? "فشلت المشاركة"
+              : language === "fr"
+                ? "Échec du partage"
+                : "Share failed",
           description: String(err),
           variant: "destructive",
         });
@@ -352,17 +380,21 @@ ${origin}`;
                   {isEventToday
                     ? language === "ar"
                       ? "اليوم"
-                      : "Today"
+                      : language === "fr"
+                        ? "Aujourd'hui"
+                        : "Today"
                     : language === "ar"
                       ? "غداً"
-                      : "Tomorrow"}
+                      : language === "fr"
+                        ? "Demain"
+                        : "Tomorrow"}
                 </span>
               )}
 
               {/* Completed badge */}
               {event.is_done && (
                 <span className="ml-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400 border border-green-500/20 dark:border-green-500/30">
-                  <CheckCircle2 className="w-3 h-3" /> Done
+                  <CheckCircle2 className="w-3 h-3" /> {language === "ar" ? "مكتمل" : language === "fr" ? "Terminé" : "Done"}
                 </span>
               )}
 
@@ -437,10 +469,10 @@ ${origin}`;
                 >
                   {(() => {
                     const rule = event.recurrence_rule;
-                    if (rule.includes("DAILY")) return language === "ar" ? "يومياً" : "Daily";
-                    if (rule.includes("WEEKLY")) return language === "ar" ? "أسبوعياً" : "Weekly";
-                    if (rule.includes("MONTHLY")) return language === "ar" ? "شهرياً" : "Monthly";
-                    if (rule.includes("YEARLY")) return language === "ar" ? "سنوياً" : "Yearly";
+                    if (rule.includes("DAILY")) return language === "ar" ? "يومياً" : language === "fr" ? "Tous les jours" : "Daily";
+                    if (rule.includes("WEEKLY")) return language === "ar" ? "أسبوعياً" : language === "fr" ? "Toutes les semaines" : "Weekly";
+                    if (rule.includes("MONTHLY")) return language === "ar" ? "شهرياً" : language === "fr" ? "Tous les mois" : "Monthly";
+                    if (rule.includes("YEARLY")) return language === "ar" ? "سنوياً" : language === "fr" ? "Tous les ans" : "Yearly";
                     return rule;
                   })()}
                 </InfoCard>
@@ -455,13 +487,14 @@ ${origin}`;
                 >
                   {(() => {
                     const mins = event.reminders![0].minutes_before;
-                    if (mins === 0) return language === "ar" ? "في وقت الحدث" : "At time of event";
-                    if (mins === 5) return language === "ar" ? "قبل 5 دقائق" : "5 minutes before";
-                    if (mins === 15) return language === "ar" ? "قبل 15 دقيقة" : "15 minutes before";
-                    if (mins === 30) return language === "ar" ? "قبل 30 دقيقة" : "30 minutes before";
-                    if (mins === 60) return language === "ar" ? "قبل 1 ساعة" : "1 hour before";
-                    if (mins === 1440) return language === "ar" ? "قبل يوم واحد" : "1 day before";
-                    return `${mins} min before`;
+                    if (mins === 0) return language === "ar" ? "في وقت الحدث" : language === "fr" ? "À l'heure de l'événement" : "At time of event";
+                    if (mins === 5) return language === "ar" ? "قبل 5 دقائق" : language === "fr" ? "5 minutes avant" : "5 minutes before";
+                    if (mins === 10) return language === "ar" ? "قبل 10 دقائق" : language === "fr" ? "10 minutes avant" : "10 minutes before";
+                    if (mins === 15) return language === "ar" ? "قبل 15 دقيقة" : language === "fr" ? "15 minutes avant" : "15 minutes before";
+                    if (mins === 30) return language === "ar" ? "قبل 30 دقيقة" : language === "fr" ? "30 minutes avant" : "30 minutes before";
+                    if (mins === 60) return language === "ar" ? "قبل 1 ساعة" : language === "fr" ? "1 heure avant" : "1 hour before";
+                    if (mins === 1440) return language === "ar" ? "قبل يوم واحد" : language === "fr" ? "1 jour avant" : "1 day before";
+                    return language === "fr" ? `${mins} min avant` : `${mins} min before`;
                   })()}
                 </InfoCard>
               )}
@@ -719,12 +752,19 @@ ${origin}`;
                   const errMessage =
                     err instanceof Error ? err.message : String(err);
                   toast({
-                    title: language === "ar" ? "فشل الحذف" : "Delete failed",
+                    title:
+                      language === "ar"
+                        ? "فشل الحذف"
+                        : language === "fr"
+                          ? "Échec de la suppression"
+                          : "Delete failed",
                     description:
                       errMessage ||
                       (language === "ar"
                         ? "حدث خطأ غير متوقع."
-                        : "An unexpected error occurred."),
+                        : language === "fr"
+                          ? "Une erreur inattendue est survenue."
+                          : "An unexpected error occurred."),
                     variant: "destructive",
                   });
                 }

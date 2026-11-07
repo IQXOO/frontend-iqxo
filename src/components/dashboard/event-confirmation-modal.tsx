@@ -153,7 +153,15 @@ export function EventConfirmationModal({
       }, 800)
     } catch (err) {
       console.error("Failed to save event:", err)
-      setToast({ type: "error", message: language === "ar" ? "فشل حفظ الأحداث. يرجى المحاولة مرة أخرى." : "Failed to save events. Please try again." })
+      setToast({
+        type: "error",
+        message:
+          language === "ar"
+            ? "فشل حفظ الأحداث. يرجى المحاولة مرة أخرى."
+            : language === "fr"
+              ? "Échec de l'enregistrement des événements. Veuillez réessayer."
+              : "Failed to save events. Please try again.",
+      })
     } finally {
       setIsSaving(false)
     }
@@ -313,7 +321,7 @@ export function EventConfirmationModal({
               {/* Date & Time (Unified Card) */}
               <div className="flex flex-col">
                 <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
-                  {language === "ar" ? "التاريخ والوقت" : "DATE & TIME"}
+                  {language === "ar" ? "التاريخ والوقت" : language === "fr" ? "Date & Heure" : "DATE & TIME"}
                 </label>
                 <div className="rounded-2xl border border-border/80 bg-secondary/30 p-3 flex flex-col gap-2.5">
                   {/* Date Row */}
@@ -398,7 +406,7 @@ export function EventConfirmationModal({
                     type="text"
                     value={editingEvent.location || ""}
                     onChange={(e) => updateEventField(editingEvent._id, "location", e.target.value)}
-                    placeholder={language === "ar" ? "اسم القاعة، العنوان، المدينة..." : "Venue name, street address, city..."}
+                    placeholder={language === "ar" ? "اسم القاعة، العنوان، المدينة..." : language === "fr" ? "Nom de la salle, adresse, ville..." : "Venue name, street address, city..."}
                     className="w-full pl-11 pr-4 rtl:pl-4 rtl:pr-11 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none text-[16px] font-medium"
                   />
                 </div>
@@ -415,7 +423,7 @@ export function EventConfirmationModal({
                     type="text"
                     value={editingEvent.link || ""}
                     onChange={(e) => updateEventField(editingEvent._id, "link", e.target.value)}
-                    placeholder={language === "ar" ? "https://zoom.us/...، رابط ميتينج أو ويب" : "https://zoom.us/..., meeting or web link"}
+                    placeholder={language === "ar" ? "https://zoom.us/...، رابط ميتينج أو ويب" : language === "fr" ? "https://zoom.us/..., lien Meet, Teams..." : "https://zoom.us/..., meeting or web link"}
                     className={`w-full pl-11 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none text-[16px] font-medium ${
                       editingEvent.link ? "pr-11 rtl:pr-4 rtl:pl-11" : "pr-4 rtl:pl-4 rtl:pr-11"
                     }`}
@@ -428,7 +436,7 @@ export function EventConfirmationModal({
                         window.open(fullUrl, "_blank", "noopener,noreferrer");
                       }}
                       className="absolute right-3 rtl:right-auto rtl:left-3 p-1.5 rounded-xl text-[#5BC0DE] hover:bg-[#5BC0DE]/15 active:scale-95 transition-all"
-                      title={language === "ar" ? "فتح الرابط" : "Open Link"}
+                      title={language === "ar" ? "فتح الرابط" : language === "fr" ? "Ouvrir le lien" : "Open Link"}
                     >
                       <ExternalLink className="w-4 h-4" />
                     </button>
@@ -439,28 +447,29 @@ export function EventConfirmationModal({
               {/* Schedule (Repeat & Reminder) */}
               <div className="flex flex-col">
                 <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
-                  {language === "ar" ? "الجدول" : "SCHEDULE"}
+                  {language === "ar" ? "الجدول" : language === "fr" ? "PLANNING" : "SCHEDULE"}
                 </label>
                 <div className="grid grid-cols-2 gap-2.5">
                   <select 
                     value={editingEvent.recurrence_rule || ""} 
                     onChange={(e) => updateEventField(editingEvent._id, "recurrence_rule", e.target.value)}
                     className="w-full px-3.5 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground text-[14px] font-medium outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 cursor-pointer">
-                    <option value="">{language === "ar" ? "بدون تكرار" : "Repeat: Never"}</option>
-                    <option value="FREQ=DAILY">{language === "ar" ? "يومياً" : "Repeat: Daily"}</option>
-                    <option value="FREQ=WEEKLY">{language === "ar" ? "أسبوعياً" : "Repeat: Weekly"}</option>
-                    <option value="FREQ=MONTHLY">{language === "ar" ? "شهرياً" : "Repeat: Monthly"}</option>
+                    <option value="">{language === "ar" ? "بدون تكرار" : language === "fr" ? "Répétition : Jamais" : "Repeat: Never"}</option>
+                    <option value="FREQ=DAILY">{language === "ar" ? "يومياً" : language === "fr" ? "Répétition : Tous les jours" : "Repeat: Daily"}</option>
+                    <option value="FREQ=WEEKLY">{language === "ar" ? "أسبوعياً" : language === "fr" ? "Répétition : Toutes les semaines" : "Repeat: Weekly"}</option>
+                    <option value="FREQ=MONTHLY">{language === "ar" ? "شهرياً" : language === "fr" ? "Répétition : Tous les mois" : "Repeat: Monthly"}</option>
                   </select>
                   <select 
                     value={editingEvent.reminders && editingEvent.reminders.length > 0 ? String(editingEvent.reminders[0].minutes_before) : ""} 
                     onChange={(e) => updateEventField(editingEvent._id, "reminders", e.target.value ? [{minutes_before: parseInt(e.target.value)}] : [])}
                     className="w-full px-3.5 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground text-[14px] font-medium outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 cursor-pointer">
-                    <option value="">{language === "ar" ? "بدون تذكير" : "Reminder: None"}</option>
-                    <option value="0">{language === "ar" ? "في وقت الحدث" : "Reminder: At time"}</option>
-                    <option value="10">{language === "ar" ? "قبل 10 دقائق" : "Reminder: 10m before"}</option>
-                    <option value="30">{language === "ar" ? "قبل 30 دقيقة" : "Reminder: 30m before"}</option>
-                    <option value="60">{language === "ar" ? "قبل ساعة" : "Reminder: 1h before"}</option>
-                    <option value="1440">{language === "ar" ? "قبل يوم" : "Reminder: 1d before"}</option>
+                    <option value="">{language === "ar" ? "بدون تذكير" : language === "fr" ? "Rappel : Aucun" : "Reminder: None"}</option>
+                    <option value="0">{language === "ar" ? "في وقت الحدث" : language === "fr" ? "Rappel : À l'heure" : "Reminder: At time"}</option>
+                    <option value="10">{language === "ar" ? "قبل 10 دقائق" : language === "fr" ? "Rappel : 10 min avant" : "Reminder: 10m before"}</option>
+                    <option value="15">{language === "ar" ? "قبل 15 دقيقة" : language === "fr" ? "Rappel : 15 min avant" : "Reminder: 15m before"}</option>
+                    <option value="30">{language === "ar" ? "قبل 30 دقيقة" : language === "fr" ? "Rappel : 30 min avant" : "Reminder: 30m before"}</option>
+                    <option value="60">{language === "ar" ? "قبل ساعة" : language === "fr" ? "Rappel : 1 h avant" : "Reminder: 1h before"}</option>
+                    <option value="1440">{language === "ar" ? "قبل يوم" : language === "fr" ? "Rappel : 1 jour avant" : "Reminder: 1d before"}</option>
                   </select>
                 </div>
               </div>
@@ -477,7 +486,7 @@ export function EventConfirmationModal({
                     value={editingEvent.phone || ""}
                     onChange={(e) => updateEventField(editingEvent._id, "phone", e.target.value)}
                     className="flex-1 bg-transparent border-none outline-none text-[16px] text-foreground placeholder:text-muted-foreground/40 font-medium"
-                    placeholder="e.g. +1 555 0123"
+                    placeholder={language === "ar" ? "مثال: 0123 555 1+..." : language === "fr" ? "ex. +33 6 12 34 56 78" : "e.g. +1 555 0123"}
                   />
                 </div>
               </div>
@@ -492,7 +501,7 @@ export function EventConfirmationModal({
                   onChange={(e) => updateEventField(editingEvent._id, "notes", e.target.value)}
                   rows={2}
                   className="w-full px-4 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium resize-none"
-                  placeholder={language === "ar" ? "أضف ملاحظة..." : "Add a note..."}
+                  placeholder={language === "ar" ? "أضف ملاحظة..." : language === "fr" ? "Ajouter une note..." : "Add a note..."}
                 />
               </div>
             </div>
