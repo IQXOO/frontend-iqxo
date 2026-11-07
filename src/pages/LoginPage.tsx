@@ -28,6 +28,8 @@ export default function LoginPage() {
   const [forgotError, setForgotError] = useState<string | null>(null);
   const [forgotSuccess, setForgotSuccess] = useState(false);
   const [signupNotice, setSignupNotice] = useState(false);
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
+  const [resendingConfirmation, setResendingConfirmation] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
 
@@ -66,6 +68,10 @@ export default function LoginPage() {
       termsLink: 'Terms of Service',
       privacyLink: 'Privacy Policy',
       checkEmail: "Account created! Check your email to confirm, then sign in.",
+      emailAlreadyRegistered: "This email is already registered. Please sign in or reset your password.",
+      resendConfirmation: "Resend confirmation email",
+      resendSuccess: "Confirmation email sent! Please check your inbox and spam folder.",
+      emailNotConfirmed: "Your email is not confirmed yet. Check your inbox or click below to resend the confirmation link.",
     },
     fr: {
       title: 'Créez votre espace de <em>calme</em>',
@@ -101,6 +107,10 @@ export default function LoginPage() {
       termsLink: 'Conditions d\'utilisation',
       privacyLink: 'Politique de Confidentialité',
       checkEmail: "Compte créé ! Vérifiez votre e-mail, puis connectez-vous.",
+      emailAlreadyRegistered: "Cet e-mail est déjà enregistré. Veuillez vous connecter.",
+      resendConfirmation: "Renvoyer l'e-mail de confirmation",
+      resendSuccess: "E-mail de confirmation renvoyé ! Vérifiez votre boîte de réception et vos spams.",
+      emailNotConfirmed: "Votre e-mail n'est pas encore confirmé. Vérifiez votre boîte de réception ou cliquez ci-dessous pour renvoyer le lien.",
     },
     ar: {
       title: 'أنشئ مساحتك <em>الهادئة</em>',
@@ -136,6 +146,10 @@ export default function LoginPage() {
       termsLink: 'شروط الخدمة',
       privacyLink: 'سياسة الخصوصية',
       checkEmail: 'تم إنشاء الحساب! تحقق من بريدك الإلكتروني، ثم سجّل الدخول.',
+      emailAlreadyRegistered: 'هذا البريد مسجل بالفعل، يرجى تسجيل الدخول أو استعادة كلمة المرور.',
+      resendConfirmation: 'إعادة إرسال رابط تأكيد الحساب',
+      resendSuccess: 'تمت إعادة إرسال رابط التأكيد! تفقد صندوق الوارد والرسائل غير المرغوب فيها.',
+      emailNotConfirmed: 'لم يتم تأكيد بريدك الإلكتروني بعد. تحقق من صندوق الوارد أو اضغط أدناه لإعادة إرسال الرابط.',
     }
   };
 
@@ -204,34 +218,60 @@ export default function LoginPage() {
       if (mode === "signin") {
         const { error: err } = await signIn(email, password);
         if (err) {
-          const message = err.toLowerCase().includes("invalid login")
-            ? "Incorrect email or password. Please try again."
-            : getFriendlyErrorMessage(err, err);
-          setError(message);
-          toast({
-            title: "Couldn't sign in",
-            description: message,
-            variant: "destructive",
-          });
+          const isNotConfirmed = err.toLowerCase().includes("not confirmed");
+          if (isNotConfirmed) {
+            setUnconfirmedEmail(email.trim());
+            setError(t.emailNotConfirmed);
+            toast({
+              title: language === "ar" ? "البريد غير مؤكد" : "Email not confirmed",
+              description: t.emailNotConfirmed,
+              variant: "destructive",
+            });
+          } else {
+            const message = err.toLowerCase().includes("invalid login")
+              ? (language === "ar" ? "البريد الإلكتروني أو كلمة المرور غير صحيحة." : "Incorrect email or password. Please try again.")
+              : getFriendlyErrorMessage(err, err);
+            setError(message);
+            toast({
+              title: "Couldn't sign in",
+              description: message,
+              variant: "destructive",
+            });
+          }
         } else {
           sessionStorage.setItem("iqxo_just_signed_in", "1");
         }
       } else {
-        const { error: err } = await signUp(email, password, fullName);
-        if (err) {
-          const message = getFriendlyErrorMessage(err, err);
-          setError(message);
-          toast({
-            title: "Couldn't create account",
-            description: message,
-            variant: "destructive",
-          });
+        const res = await signUp(email, password, fullName);
+        if (res.error) {
+          if (res.alreadyRegistered) {
+            setError(t.emailAlreadyRegistered);
+            setMode("signin");
+            toast({
+              title: language === "ar" ? "حساب مسجل بالفعل" : "Already Registered",
+              description: t.emailAlreadyRegistered,
+            });
+          } else {
+            const message = getFriendlyErrorMessage(res.error, res.error);
+            setError(message);
+            toast({
+              title: "Couldn't create account",
+              description: message,
+              variant: "destructive",
+            });
+          }
+        } else if (res.session) {
+          // If session is present, user was auto-confirmed (no email confirmation needed)
+          sessionStorage.setItem("iqxo_just_signed_in", "1");
+          navigateToPath("/");
         } else {
+          // Email confirmation link was sent by Supabase
           sessionStorage.setItem("iqxo_just_signed_in", "1");
           setSignupNotice(true);
+          setUnconfirmedEmail(email.trim());
           toast({
             title: t.checkEmail,
-            description: undefined,
+            description: language === "ar" ? "تحقق من صندوق الوارد والرسائل غير المرغوب فيها (Spam)." : "Check your inbox and spam folder.",
           });
         }
       }
@@ -249,6 +289,40 @@ export default function LoginPage() {
     }
   };
 
+  const handleResendConfirmation = async () => {
+    if (!unconfirmedEmail) return;
+    setResendingConfirmation(true);
+    try {
+      const redirectUrl = typeof window !== "undefined" ? window.location.origin + "/" : undefined;
+      const { error: resendErr } = await supabase.auth.resend({
+        type: "signup",
+        email: unconfirmedEmail,
+        options: {
+          emailRedirectTo: redirectUrl,
+        },
+      });
+      if (resendErr) {
+        toast({
+          title: language === "ar" ? "تعذر إعادة الإرسال" : "Couldn't resend email",
+          description: resendErr.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: t.resendSuccess,
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: language === "ar" ? "تعذر إعادة الإرسال" : "Couldn't resend email",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setResendingConfirmation(false);
+    }
+  };
+
   const validateForgotEmail = (): string | null => {
     if (!forgotEmail.trim()) return "Email is required.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail.trim())) {
@@ -261,12 +335,15 @@ export default function LoginPage() {
     setGoogleLoading(true);
     setError(null);
     try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("iqxo_linking_provider");
+      }
       devLog("Auth", "Google OAuth initiated");
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           // In the native app  → redirectTo = iqxo://auth  (deep link back to app)
-          // In the web browser → redirectTo = https://site.com/home (normal flow)
+          // In the web browser → redirectTo = https://site.com/ (normal flow)
           redirectTo: buildOAuthRedirectUrl(),
         },
       });
@@ -297,6 +374,9 @@ export default function LoginPage() {
     setAppleLoading(true);
     setError(null);
     try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("iqxo_linking_provider");
+      }
       devLog("Auth", "Apple OAuth initiated");
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "apple",
@@ -743,11 +823,35 @@ export default function LoginPage() {
               )}
 
               {error && (
-                <div className="notice-box notice-error">{error}</div>
+                <div className="notice-box notice-error">
+                  <div>{error}</div>
+                  {unconfirmedEmail && (
+                    <button
+                      type="button"
+                      onClick={handleResendConfirmation}
+                      disabled={resendingConfirmation}
+                      className="mt-2.5 inline-block py-1.5 px-3 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-xs font-semibold text-red-200 transition-colors cursor-pointer border border-red-500/30"
+                    >
+                      {resendingConfirmation ? "..." : t.resendConfirmation}
+                    </button>
+                  )}
+                </div>
               )}
 
               {signupNotice && (
-                <div className="notice-box notice-success">{t.checkEmail}</div>
+                <div className="notice-box notice-success">
+                  <div>{t.checkEmail}</div>
+                  {unconfirmedEmail && (
+                    <button
+                      type="button"
+                      onClick={handleResendConfirmation}
+                      disabled={resendingConfirmation}
+                      className="mt-2.5 inline-block py-1.5 px-3 bg-[#5BC0DE]/20 hover:bg-[#5BC0DE]/30 rounded-lg text-xs font-semibold text-[#7DD3F0] transition-colors cursor-pointer border border-[#5BC0DE]/30"
+                    >
+                      {resendingConfirmation ? "..." : t.resendConfirmation}
+                    </button>
+                  )}
+                </div>
               )}
 
               {/* Social Login */}

@@ -27,7 +27,18 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
   const loadIntegrations = async () => {
     if (!user) return;
     const { data } = await supabase.from('calendar_integrations').select('*').eq('user_id', user.id);
-    if (data) setIntegrations(data);
+    if (data) {
+      const valid: any[] = [];
+      for (const item of data) {
+        // Auto-clean any invalid google integration created without calendar scopes / refresh_token by the login bug
+        if (item.provider === 'google' && !item.refresh_token) {
+          supabase.from('calendar_integrations').delete().eq('id', item.id);
+        } else {
+          valid.push(item);
+        }
+      }
+      setIntegrations(valid);
+    }
   };
 
   useEffect(() => {
@@ -42,12 +53,15 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
     // Check if returning from OAuth redirect with tokens in hash
     const checkOAuthReturn = async () => {
       if (typeof window === "undefined" || !user) return;
+      // ONLY process if user explicitly initiated calendar linking
+      const linkingProvider = localStorage.getItem('iqxo_linking_provider');
+      if (!linkingProvider) return;
+
       const hash = window.location.hash.replace(/^#/, '');
       if (!hash) return;
       const params = new URLSearchParams(hash);
       const providerToken = params.get('provider_token');
       const providerRefreshToken = params.get('provider_refresh_token');
-      const linkingProvider = localStorage.getItem('iqxo_linking_provider') || 'google';
 
       if (providerToken) {
         const payload: any = {
@@ -183,11 +197,15 @@ export default function ConnectCalendarsPage({ onNext }: { onNext?: () => void }
       return;
     } 
     
-    // Also unlink identity so a fresh token is generated next time
-    if (user?.identities) {
+    // Also unlink identity only if it is a secondary linked provider (not the primary login identity)
+    if (user?.identities && user?.app_metadata?.provider !== providerName) {
       const identity = user.identities.find(ident => ident.provider === providerName);
       if (identity) {
-        await supabase.auth.unlinkIdentity(identity);
+        try {
+          await supabase.auth.unlinkIdentity(identity);
+        } catch (e) {
+          console.warn("[Auth] Failed to unlink secondary identity:", e);
+        }
       }
     }
     

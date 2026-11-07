@@ -11,7 +11,7 @@ function RouteFallback() {
 }
 
 export default function ProtectedRoute({ children }: { children?: React.ReactNode }) {
-  const { user, authLoading } = useApp();
+  const { user, authLoading, onboardingDone } = useApp();
 
   // If still loading auth, render dark branded spinner instead of null (prevents blank white screen)
   if (authLoading) return <RouteFallback />;
@@ -27,6 +27,10 @@ export default function ProtectedRoute({ children }: { children?: React.ReactNod
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!onboardingDone) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return children ? <>{children}</> : <Outlet />;

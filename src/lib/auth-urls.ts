@@ -27,9 +27,9 @@ export function buildAppUrl(pathname: string): string {
 export function buildOAuthRedirectUrl(): string {
   if (typeof window !== "undefined" && (window as Window & { isNativeApp?: unknown }).isNativeApp) {
     // Pass iqxo_app=1 so the website knows to redirect back to the native app
-    return buildAppUrl("/home?iqxo_app=1");
+    return buildAppUrl("/?iqxo_app=1");
   }
-  return buildAppUrl("/home");
+  return buildAppUrl("/");
 }
 
 export function getDeepLinkUrl(hashOrQuery: string): string {
