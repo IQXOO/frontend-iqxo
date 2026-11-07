@@ -1,4 +1,4 @@
-type Loggable = Record<string, unknown>;
+export type Loggable = unknown;
 
 const REDACTED = "[REDACTED]";
 const SENSITIVE_KEY = /^(authorization|token|access_token|refresh_token|password|secret|apiKey|apikey|jwt)$/i;
@@ -36,14 +36,22 @@ function redactValue(value: unknown, depth = 0): unknown {
     return value.map((item) => redactValue(item, depth + 1));
   }
 
-  const output: Loggable = {};
-  for (const [key, item] of Object.entries(value as Loggable)) {
+  const output: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
     output[key] = SENSITIVE_KEY.test(key) ? REDACTED : redactValue(item, depth + 1);
   }
   return output;
 }
 
-export function serializeError(error: unknown): Loggable {
+function redactObject(value: unknown): Record<string, unknown> {
+  const res = redactValue(value);
+  if (res && typeof res === "object" && !Array.isArray(res)) {
+    return res as Record<string, unknown>;
+  }
+  return { value: res };
+}
+
+export function serializeError(error: unknown): Record<string, unknown> {
   if (error instanceof Error) {
     return {
       name: error.name,
@@ -121,7 +129,7 @@ export function devWarn(scope: string, message: string, context?: Loggable): voi
 export function devError(scope: string, message: string, error?: unknown, context?: Loggable): void {
   console.error(`[${scope}] ${message}`, {
     ...serializeError(error),
-    ...(context ? redactValue(context) : {}),
+    ...(context ? redactObject(context) : {}),
   });
 }
 
@@ -134,7 +142,7 @@ export function logApiRequest(
     requestId,
     method: details.method,
     label: details.label,
-    ...(details.context ? redactValue(details.context) : {}),
+    ...(details.context ? redactObject(details.context) : {}),
   };
   if (isVerboseLoggingEnabled()) {
     console.groupCollapsed(`[${scope}] ${requestId} ${details.method} ${details.label} started`);
@@ -156,7 +164,7 @@ export function logApiResponse(
     label: details.label,
     status: details.status,
     elapsedMs: details.elapsedMs,
-    ...(details.context ? redactValue(details.context) : {}),
+    ...(details.context ? redactObject(details.context) : {}),
   };
   if (isVerboseLoggingEnabled()) {
     console.groupCollapsed(`[${scope}] ${requestId} ${details.method} ${details.label} completed`);
@@ -186,7 +194,7 @@ export function logApiFailure(
     status: details.status,
     elapsedMs: details.elapsedMs,
     ...serializeError(details.error),
-    ...(details.context ? redactValue(details.context) : {}),
+    ...(details.context ? redactObject(details.context) : {}),
   });
 }
 

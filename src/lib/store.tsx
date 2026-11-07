@@ -40,6 +40,7 @@ export interface IQXOEvent {
   reminders?: { minutes_before: number }[];
   phone?: string;
   location?: string;
+  link?: string;
   email?: string;
   source: string;
   image_url?: string;

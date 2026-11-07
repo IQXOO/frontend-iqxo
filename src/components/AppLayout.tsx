@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { DashboardHeader } from "../components/dashboard/header";
-import { BottomNav } from "../components/dashboard/bottom-nav";
+import { BottomNav, type NavTab } from "../components/dashboard/bottom-nav";
 import { useApp } from "../lib/store";
 import { navigateToPath } from "../lib/navigation";
 import { EventEditorProvider, useEventEditor } from "../lib/event-editor-context";
@@ -99,7 +99,7 @@ function AppLayoutContent() {
 
   // Map pathname to BottomNav active tab
   const path = location.pathname;
-  const active = path.startsWith("/archive")
+  const active: NavTab = path.startsWith("/archive")
     ? "history"
     : path.startsWith("/profile")
     ? "settings"
@@ -293,7 +293,7 @@ function AppLayoutContent() {
         <Outlet />
       </main>
 
-      <BottomNav active={active as string} />
+      <BottomNav active={active} />
 
       {/* Premium Paywall Bottom Sheet Overlay */}
       {shouldShowPaywall && paywallOpen && (

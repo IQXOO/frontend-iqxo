@@ -4,6 +4,7 @@ export type Priority = "urgent" | "upcoming" | "later" | "past";
 
 export interface IQXOEvent {
   id: string;
+  user_id?: string;
   title: string;
   notes: string;
   date: string;

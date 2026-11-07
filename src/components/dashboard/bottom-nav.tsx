@@ -708,10 +708,10 @@ function CalendarImportSheet({
 // BOTTOM NAV
 // ─────────────────────────────────────────────────────────────────────────────
 interface BottomNavProps {
-  active: NavTab;
-  onTabChange: (tab: NavTab) => void;
-  onUploadClick: (options?: { autoOpenPicker?: boolean; file?: File | null, files?: File[] }) => void;
-  onManualAdd: () => void;
+  active?: NavTab;
+  onTabChange?: (tab: NavTab) => void;
+  onUploadClick?: (options?: { autoOpenPicker?: boolean; file?: File | null, files?: File[] }) => void;
+  onManualAdd?: () => void;
   composerOpen?: boolean;
   onComposerOpenChange?: (open: boolean) => void;
   onImportEvents?: (
@@ -759,7 +759,7 @@ export const BottomNav = memo(function BottomNav({
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      onUploadClick({ autoOpenPicker: false, files });
+      onUploadClick?.({ autoOpenPicker: false, files });
     }
     // Reset so the same file can be selected again
     e.target.value = "";
@@ -789,7 +789,7 @@ export const BottomNav = memo(function BottomNav({
     canvas.toBlob((blob) => {
       if (blob) {
         const file = new File([blob], `photo_${Date.now()}.jpg`, { type: "image/jpeg" });
-        onUploadClick({ autoOpenPicker: false, file });
+        onUploadClick?.({ autoOpenPicker: false, file });
       }
     }, "image/jpeg", 0.9);
   }, [cameraStream, onUploadClick]);
@@ -839,7 +839,7 @@ export const BottomNav = memo(function BottomNav({
   const handleManualEvent = () => {
     setMenuOpen(false);
     setShowPhotoOptions(false);
-    onManualAdd();
+    onManualAdd?.();
   };
 
   // Connect stream to video element whenever it changes
