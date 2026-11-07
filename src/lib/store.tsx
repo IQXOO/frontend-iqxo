@@ -73,7 +73,12 @@ interface AppContextValue {
     email: string,
     password: string,
     fullName?: string,
-  ) => Promise<{ error: string | null }>;
+  ) => Promise<{
+    error: string | null;
+    alreadyRegistered?: boolean;
+    session?: Session | null;
+    requiresEmailConfirmation?: boolean;
+  }>;
   signOut: () => Promise<void>;
 
   // Subscription
@@ -951,6 +956,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         sessionRef.current = sess; // keep ref in sync immediately
         setSession(sess);
         setUser(sess?.user ?? null);
+        const onboard = !!sess?.user?.user_metadata?.onboarding_done;
+        setOnboardingDoneState(onboard);
         const calOnboard = !!sess?.user?.user_metadata?.calendar_onboarding_done;
         setCalendarOnboardingDoneState(calOnboard);
 
@@ -1550,14 +1557,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         emailDomain: email.split("@")[1] || "",
       });
       try {
-        const { error } = await supabase.auth.signUp({
+        const redirectUrl = typeof window !== "undefined" ? window.location.origin + "/" : undefined;
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
               full_name: fullName ?? "",
             },
-            // Email confirmation is disabled — user is logged in immediately after sign-up
+            emailRedirectTo: redirectUrl,
           },
         });
 
@@ -1568,10 +1576,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return { error: error.message };
         }
 
+        // Supabase returns an empty identities array if the email is already registered (enumeration protection)
+        if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          devWarn("Auth", "Signup attempted for already registered email", {
+            emailDomain: email.split("@")[1] || "",
+          });
+          return {
+            error: "This email is already registered. Please sign in instead.",
+            alreadyRegistered: true,
+          };
+        }
+
         devLog("Auth", "Signup succeeded", {
           emailDomain: email.split("@")[1] || "",
+          hasSession: !!data?.session,
         });
-        return { error: null };
+
+        if (data?.session) {
+          return { error: null, session: data.session };
+        }
+
+        return { error: null, requiresEmailConfirmation: true };
       } catch (error) {
         devError("Auth", "Signup threw unexpectedly", error, {
           emailDomain: email.split("@")[1] || "",
