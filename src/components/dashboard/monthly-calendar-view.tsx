@@ -91,16 +91,35 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
     return hours;
   }, [dailyEvents]);
 
-  const monthNames = [
+  const monthNames = useMemo(() => [
     t("January", "Janvier", "يناير"), t("February", "Février", "فبراير"), t("March", "Mars", "مارس"),
     t("April", "Avril", "أبريل"), t("May", "Mai", "مايو"), t("June", "Juin", "يونيو"),
     t("July", "Juillet", "يوليو"), t("August", "Août", "أغسطس"), t("September", "Septembre", "سبتمبر"),
     t("October", "Octobre", "أكتوبر"), t("November", "Novembre", "نوفمبر"), t("December", "Décembre", "ديسمبر")
-  ]
-  const weekDays = [
+  ], [t]);
+
+  const weekDays = useMemo(() => [
     t("Sun", "Dim", "أحد"), t("Mon", "Lun", "إثنين"), t("Tue", "Mar", "ثلاثاء"),
     t("Wed", "Mer", "أربعاء"), t("Thu", "Jeu", "خميس"), t("Fri", "Ven", "جمعة"), t("Sat", "Sam", "سبت")
-  ]
+  ], [t]);
+
+  const eventCountLabel = useMemo(() => {
+    const count = dailyEvents.length;
+    if (language === "ar") {
+      if (count === 0) return "لا توجد أحداث";
+      if (count === 1) return "حدث واحد";
+      if (count === 2) return "حدثان";
+      if (count >= 3 && count <= 10) return `${count} أحداث`;
+      return `${count} حدث`;
+    }
+    if (language === "fr") {
+      if (count === 0) return "0 événement";
+      if (count === 1) return "1 événement";
+      return `${count} événements`;
+    }
+    if (count === 1) return "1 Event";
+    return `${count} Events`;
+  }, [dailyEvents.length, language]);
 
   return (
     <div className="flex flex-col h-full w-full max-w-md mx-auto relative pb-24" dir={isRTL ? "rtl" : "ltr"}>
@@ -110,10 +129,18 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
           {monthNames[currentMonth]} {currentYear}
         </h2>
         <div className="flex gap-2">
-          <button onClick={prevMonth} className="p-2 rounded-full hover:bg-muted/50 transition-colors">
+          <button
+            onClick={prevMonth}
+            className="p-2 rounded-full hover:bg-muted/50 transition-colors"
+            aria-label={language === "fr" ? "Mois précédent" : language === "ar" ? "الشهر السابق" : "Previous month"}
+          >
             {isRTL ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
           </button>
-          <button onClick={nextMonth} className="p-2 rounded-full hover:bg-muted/50 transition-colors">
+          <button
+            onClick={nextMonth}
+            className="p-2 rounded-full hover:bg-muted/50 transition-colors"
+            aria-label={language === "fr" ? "Mois suivant" : language === "ar" ? "الشهر التالي" : "Next month"}
+          >
             {isRTL ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
           </button>
         </div>
@@ -172,7 +199,7 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
         <h3 className="text-lg font-semibold text-foreground mb-4 border-b border-border/50 pb-2 flex items-center justify-between">
           <span>{selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}</span>
           <span className="text-sm font-normal text-muted-foreground">
-            {dailyEvents.length} {t("Events", "Événements", "أحداث")}
+            {eventCountLabel}
           </span>
         </h3>
 
@@ -193,7 +220,7 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
                   className={`absolute top-4 w-10 text-xs font-bold text-primary text-right`}
                   style={{ left: isRTL ? 'auto' : '-3.5rem', right: isRTL ? '-3.5rem' : 'auto', textAlign: isRTL ? 'left' : 'right' }}
                 >
-                  {t("All Day", "Jour", "اليوم كله")}
+                  {t("All Day", "Toute la journée", "طوال اليوم")}
                 </div>
                 
                 <div 
@@ -275,7 +302,7 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
                   {events.length === 0 && (
                     <div className="pl-4 pr-4 h-full flex items-center mt-1">
                       <div className="h-10 w-full rounded-xl border border-dashed border-border/30 bg-muted/5 flex items-center justify-center opacity-50">
-                        <span className="text-[10px] text-muted-foreground/40 uppercase tracking-widest">{t("Empty", "Vide", "فارغ")}</span>
+                        <span className="text-[10px] text-muted-foreground/40 uppercase tracking-widest">{t("Empty", "Libre", "فارغ")}</span>
                       </div>
                     </div>
                   )}

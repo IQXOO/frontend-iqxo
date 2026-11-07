@@ -8,7 +8,7 @@ export default function FuturePage() {
   const { openEventDetail } = useEventEditor();
 
   return (
-    <Suspense fallback={<div className="p-6">Loading…</div>}>
+    <Suspense fallback={<div className="h-64 rounded-[24px] border border-white/5 bg-white/5 animate-pulse m-4" />}>
       <div className="px-4 h-full overflow-y-auto">
         <MonthlyCalendarView onEventClick={openEventDetail} />
       </div>
