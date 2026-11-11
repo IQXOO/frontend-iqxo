@@ -2,14 +2,19 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useApp } from "../lib/store";
-import {
-  isAudioSupported,
-} from "../lib/openai-voice";
+import { isAudioSupported } from "../lib/openai-voice";
 import { ParsedEvent } from "../lib/parse-voice-input";
-import { devError, devLog, devWarn, fetchWithDiagnostics, getFriendlyErrorMessage, readResponseText } from "../lib/logger";
+import {
+  devError,
+  devLog,
+  devWarn,
+  fetchWithDiagnostics,
+  getFriendlyErrorMessage,
+  readResponseText,
+} from "../lib/logger";
 import { useToast } from "../hooks/use-toast";
 
-// Type declarations for Web Speech API (for interim results)
+// Type declarations for Web Speech API
 declare global {
   interface Window {
     SpeechRecognition: {
@@ -72,12 +77,14 @@ export interface VoiceLang {
 // Comprehensive language list - Web Speech API supports all of these
 export const VOICE_LANGUAGES: VoiceLang[] = [
   { code: "en-US", label: "English", flag: "US" },
-  { code: "fr-FR", label: "Francais", flag: "FR" },
+  { code: "ar-EG", label: "عربي مصري", flag: "EG" },
+  { code: "ar-SA", label: "عربي خليجي", flag: "SA" },
+  { code: "fr-FR", label: "Français", flag: "FR" },
   { code: "it-IT", label: "Italiano", flag: "IT" },
-  { code: "es-ES", label: "Espanol", flag: "ES" },
+  { code: "es-ES", label: "Español", flag: "ES" },
   { code: "de-DE", label: "Deutsch", flag: "DE" },
-  { code: "pt-BR", label: "Portugues", flag: "BR" },
-  { code: "tr-TR", label: "Turkce", flag: "TR" },
+  { code: "pt-BR", label: "Português", flag: "BR" },
+  { code: "tr-TR", label: "Türkçe", flag: "TR" },
   { code: "hi-IN", label: "Hindi", flag: "IN" },
   { code: "ja-JP", label: "日本語", flag: "JP" },
   { code: "zh-CN", label: "中文", flag: "CN" },
@@ -85,16 +92,17 @@ export const VOICE_LANGUAGES: VoiceLang[] = [
   { code: "ru-RU", label: "Русский", flag: "RU" },
   { code: "nl-NL", label: "Nederlands", flag: "NL" },
   { code: "pl-PL", label: "Polski", flag: "PL" },
-  { code: "ar-EG", label: "عربي مصري", flag: "EG" },
-  { code: "ar-SA", label: "عربي خليجي", flag: "SA" },
 ];
 
-interface UseVoiceInputReturn {
+export interface UseVoiceInputReturn {
   isListening: boolean;
   transcript: string;
   interimTranscript: string;
-  startListening: (langCode?: string) => void;
-  stopListening: () => void;
+  startListening: (langCode?: string) => Promise<void>;
+  stopListening: () => Promise<void>;
+  cancelListening: () => void;
+  changeLanguage: (langCode: string) => void;
+  resetVoiceState: () => void;
   isSupported: boolean;
   error: string | null;
   isProcessing: boolean;
@@ -105,50 +113,33 @@ interface UseVoiceInputReturn {
 export function useVoiceInput(): UseVoiceInputReturn {
   const { user, session, setTotalUsage, language } = useApp();
   const { toast } = useToast();
+
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isSupported, setIsSupported] = useState(true); // default true to avoid hydration flash
+  const [isSupported, setIsSupported] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [speechRecognitionFailed, setSpeechRecognitionFailed] = useState(false);
   const [eventData, setEventData] = useState<ParsedEvent | null>(null);
+
+  // Native hardware and recognizer refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const restartTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Lifecycle flags
   const isRecognitionActiveRef = useRef(false);
-  const audioCaptureRetryCountRef = useRef(0);
-  const accumulatedTranscriptRef = useRef(""); // للباك اند — يجمع الجمل المكتملة عند نهاية كل جلسة
-  const sessionFinalRef = useRef("");           // آخر نتيجة نهائية داخل الجلسة الحالية فقط
-  const displayBaseRef = useRef("");             // للعرض — آخر جملة مؤكدة في الجلسة الحالية
-  // يسجّل القرار مرة واحدة عند start ويُعاد قراءته في stop — لضمان تطابق المسار
+  const accumulatedTranscriptRef = useRef("");
+  const sessionFinalRef = useRef("");
+  const displayBaseRef = useRef("");
   const isAndroidModeRef = useRef(false);
-  // guard: يمنع إضافة sessionFinalRef مرتين (مرة في flush ومرة في onend)
   const sessionCommittedRef = useRef(false);
   const currentLangRef = useRef("");
 
-  // Convert WebM to WAV format
-  const _convertWebMToWav = async (webmBlob: Blob): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          // For now, just return the original blob with WAV mimetype
-          // Your server should handle the actual conversion
-          // This is a simpler approach that should work
-          const wavBlob = new Blob([webmBlob], { type: "audio/wav" });
-          resolve(wavBlob);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      reader.onerror = reject;
-      reader.readAsArrayBuffer(webmBlob);
-    });
-  };
-
-  // Check support after hydration
+  // Check hardware and browser support on mount
   useEffect(() => {
     const audioSupported = isAudioSupported();
     const speechSupported =
@@ -156,24 +147,132 @@ export function useVoiceInput(): UseVoiceInputReturn {
       ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
 
     const supported = audioSupported || speechSupported;
-
-    devLog('Voice', 'Audio support check completed', { audioSupported, speechSupported, supported });
+    devLog("Voice", "Audio support check completed", {
+      audioSupported,
+      speechSupported,
+      supported,
+    });
     setIsSupported(supported);
 
     if (!supported) {
-      devWarn('Voice', 'Voice input is not supported in this browser');
+      devWarn("Voice", "Voice input is not supported in this browser");
     }
   }, []);
 
+  /**
+   * Complete, safe resource cleanup.
+   * Cancels any active recognition, stops recorder, releases audio tracks.
+   * Guarantees zero dangling mic locks.
+   */
+  const cleanupAllResources = useCallback(() => {
+    isRecognitionActiveRef.current = false;
+
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
+    }
+
+    // Abort speech recognition immediately to release native microphone focus
+    if (speechRecognitionRef.current) {
+      const sr = speechRecognitionRef.current;
+      speechRecognitionRef.current = null;
+      sr.onstart = null;
+      sr.onresult = null;
+      sr.onerror = null;
+      sr.onend = null;
+      try {
+        sr.abort();
+      } catch (_) {}
+    }
+
+    // Stop MediaRecorder cleanly without triggering unwanted onstop events
+    if (mediaRecorderRef.current) {
+      const mr = mediaRecorderRef.current;
+      mediaRecorderRef.current = null;
+      mr.ondataavailable = null;
+      mr.onerror = null;
+      mr.onstop = null;
+      if (mr.state !== "inactive") {
+        try {
+          mr.stop();
+        } catch (_) {}
+      }
+    }
+
+    // Release all MediaStream tracks immediately
+    if (streamRef.current) {
+      try {
+        streamRef.current.getTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch (_) {}
+        });
+      } catch (_) {}
+      streamRef.current = null;
+    }
+
+    audioChunksRef.current = [];
+  }, []);
+
+  // Cleanup immediately when unmounting to prevent background mic leaks
+  useEffect(() => {
+    return () => {
+      cleanupAllResources();
+    };
+  }, [cleanupAllResources]);
+
+  /**
+   * Abort and cancel voice session immediately.
+   * Does NOT trigger backend request or deduct API balance.
+   */
+  const cancelListening = useCallback(() => {
+    devLog("Voice", "Cancelling voice input and resetting state");
+    cleanupAllResources();
+    setIsListening(false);
+    setIsProcessing(false);
+    setInterimTranscript("");
+    setError(null);
+  }, [cleanupAllResources]);
+
+  /**
+   * Reset all voice state so user can retry or re-record cleanly.
+   */
+  const resetVoiceState = useCallback(() => {
+    cancelListening();
+    setTranscript("");
+    setEventData(null);
+    setError(null);
+    setSpeechRecognitionFailed(false);
+  }, [cancelListening]);
+
+  /**
+   * Start listening and recording audio.
+   */
   const startListening = useCallback(
     async (langCode?: string) => {
-      devLog('Voice', 'Starting voice input');
-      currentLangRef.current = langCode || "";
+      devLog("Voice", "Starting voice input", { langCode });
+
+      // First cleanly abort any previous session
+      cleanupAllResources();
+
+      const defaultLang =
+        langCode ||
+        currentLangRef.current ||
+        (language === "ar"
+          ? "ar-EG"
+          : language === "fr"
+            ? "fr-FR"
+            : typeof navigator !== "undefined"
+              ? navigator.language
+              : "") ||
+        "en-US";
+
+      currentLangRef.current = defaultLang;
 
       if (!isSupported) {
         const errorMsg = "Voice input is not supported in this browser";
         setError(errorMsg);
-        devWarn('Voice', errorMsg);
+        devWarn("Voice", errorMsg);
         toast({
           title: "Voice input unavailable",
           description: "Your browser doesn't support voice input on this device.",
@@ -185,49 +284,67 @@ export function useVoiceInput(): UseVoiceInputReturn {
       setError(null);
       setTranscript("");
       setInterimTranscript("");
-      setEventData(null); // reset previous result so it never bleeds into next analysis
+      setEventData(null);
       setSpeechRecognitionFailed(false);
       audioChunksRef.current = [];
       isRecognitionActiveRef.current = true;
-      audioCaptureRetryCountRef.current = 0;
       accumulatedTranscriptRef.current = "";
       sessionFinalRef.current = "";
       sessionCommittedRef.current = false;
       displayBaseRef.current = "";
 
       try {
-        // نحدد المسار مرة واحدة ونخزنه — سيتم استخدامه دون إعادة حساب في stopListening
-        const isAndroidPlatform = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+        const isAndroidPlatform =
+          typeof navigator !== "undefined" &&
+          /Android/i.test(navigator.userAgent);
         isAndroidModeRef.current = isAndroidPlatform;
 
+        // ── Android Flow (Direct Web Speech API) ──────────────────────────
         if (isAndroidPlatform) {
           const SpeechRecognitionAPI =
             window.SpeechRecognition || window.webkitSpeechRecognition;
 
           if (!SpeechRecognitionAPI) {
-            throw new Error("Speech recognition API not supported on this browser/device.");
+            isRecognitionActiveRef.current = false;
+            setIsListening(false);
+            throw new Error(
+              "Speech recognition API not supported on this browser/device.",
+            );
           }
+
+          // Safety pause (100ms) to ensure previous native speech service released
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          if (!isRecognitionActiveRef.current) return;
 
           const startAndroidSpeech = () => {
             if (!isRecognitionActiveRef.current) return;
 
-            // Reset per-session state for the new session
             sessionFinalRef.current = "";
             sessionCommittedRef.current = false;
 
-            // Re-instantiate to avoid Android Chrome state locks
-            const speechRecognition = new SpeechRecognitionAPI();
+            let speechRecognition: SpeechRecognition;
+            try {
+              speechRecognition = new SpeechRecognitionAPI();
+            } catch (instError) {
+              devError("Voice", "Failed to construct SpeechRecognition", instError);
+              isRecognitionActiveRef.current = false;
+              setIsListening(false);
+              return;
+            }
+
             speechRecognition.continuous = true;
             speechRecognition.interimResults = true;
             speechRecognition.maxAlternatives = 1;
-            speechRecognition.lang = langCode || (typeof navigator !== 'undefined' ? navigator.language : '') || "ar-EG";
+            speechRecognition.lang = currentLangRef.current || defaultLang;
 
             speechRecognition.onstart = () => {
-              devLog('Voice', 'Speech recognition session started (Android Mode)');
+              devLog("Voice", "Speech recognition session started (Android Mode)");
               setIsListening(true);
             };
 
             speechRecognition.onresult = (event: SpeechRecognitionEvent) => {
+              if (!isRecognitionActiveRef.current) return;
+
               let interim = "";
               let final = "";
 
@@ -241,40 +358,58 @@ export function useVoiceInput(): UseVoiceInputReturn {
               }
 
               if (final) {
-                // = داخل الجلسة: نتابع فقط آخر نتيجة نهائية (Chrome يرسل كل كلمة بشكل متراكم)
                 sessionFinalRef.current = final.trim();
                 displayBaseRef.current = final.trim();
                 setInterimTranscript(displayBaseRef.current);
-                // للعرض الكلي: كل الجلسات السابقة + الجلسة الحالية
+
                 const preview = accumulatedTranscriptRef.current
                   ? accumulatedTranscriptRef.current + " " + sessionFinalRef.current
                   : sessionFinalRef.current;
                 setTranscript(preview.trim());
-                devLog('Voice', 'Speech final chunk (Android Mode)', { transcript: final });
+                devLog("Voice", "Speech final chunk (Android Mode)", {
+                  transcript: final,
+                });
               } else if (interim) {
-                // الـ interim يظهر بعد الجملة الأخيرة المؤكدة فقط
                 setInterimTranscript(
                   displayBaseRef.current
                     ? displayBaseRef.current + " " + interim.trim()
-                    : interim.trim()
+                    : interim.trim(),
                 );
               }
             };
 
             speechRecognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-              devWarn('Voice', 'Speech recognition error (Android Mode)', { error: event.error });
-              
-              // Ignore harmless errors like silence or aborts so they don't break the UI
-              if (event.error !== "no-speech" && event.error !== "aborted" && event.error !== "network") {
+              devWarn("Voice", "Speech recognition error (Android Mode)", {
+                error: event.error,
+              });
+
+              if (
+                event.error === "not-allowed" ||
+                event.error === "service-not-allowed"
+              ) {
+                isRecognitionActiveRef.current = false;
+                setIsListening(false);
+                setError(
+                  language === "ar"
+                    ? "تم رفض إذن الوصول إلى المايكروفون."
+                    : "Microphone permission denied.",
+                );
+                return;
+              }
+
+              if (
+                event.error !== "no-speech" &&
+                event.error !== "aborted" &&
+                event.error !== "network"
+              ) {
                 setError(`Error: ${event.error}`);
                 setSpeechRecognitionFailed(true);
               }
             };
 
             speechRecognition.onend = () => {
-              devLog('Voice', 'Speech recognition session ended (Android Mode)');
+              devLog("Voice", "Speech recognition session ended (Android Mode)");
 
-              // commit دائماً — لكن مرة واحدة فقط (guard يمنع التكرار مع flush)
               if (sessionFinalRef.current && !sessionCommittedRef.current) {
                 accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
                   ? accumulatedTranscriptRef.current + " " + sessionFinalRef.current
@@ -282,12 +417,15 @@ export function useVoiceInput(): UseVoiceInputReturn {
                 sessionCommittedRef.current = true;
               }
 
+              // Only auto-restart if still actively listening
               if (isRecognitionActiveRef.current) {
-                // الشاشة تبدأ من آخر جملة مؤكدة في الجلسة السابقة
                 displayBaseRef.current = sessionFinalRef.current;
-                setTimeout(() => {
-                  startAndroidSpeech();
-                }, 0);
+                // Throttled 150ms restart to avoid crashing native speech engine
+                restartTimerRef.current = setTimeout(() => {
+                  if (isRecognitionActiveRef.current) {
+                    startAndroidSpeech();
+                  }
+                }, 150);
               }
             };
 
@@ -295,7 +433,20 @@ export function useVoiceInput(): UseVoiceInputReturn {
             try {
               speechRecognition.start();
             } catch (err) {
-              devWarn('Voice', 'Failed to call start() on Android SpeechRecognition', err);
+              devWarn("Voice", "Failed to start Android SpeechRecognition", err);
+              // One-time retry if engine was temporarily busy
+              restartTimerRef.current = setTimeout(() => {
+                if (isRecognitionActiveRef.current) {
+                  try {
+                    const retrySR = new SpeechRecognitionAPI();
+                    retrySR.continuous = true;
+                    retrySR.interimResults = true;
+                    retrySR.lang = currentLangRef.current || defaultLang;
+                    retrySR.start();
+                    speechRecognitionRef.current = retrySR;
+                  } catch (_) {}
+                }
+              }, 250);
             }
           };
 
@@ -303,21 +454,32 @@ export function useVoiceInput(): UseVoiceInputReturn {
           return;
         }
 
-        // Ensure browser mediaDevices support (requires HTTPS secure context on mobile browsers)
-        if (typeof window === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        // ── iOS & Desktop Flow (MediaRecorder + Subtitle SpeechRecognition) ──
+        if (
+          typeof window === "undefined" ||
+          !navigator.mediaDevices ||
+          !navigator.mediaDevices.getUserMedia
+        ) {
           throw new Error(
-            "Microphone access is not supported or requires a secure context (HTTPS). " +
-            "Please ensure you are accessing this site via HTTPS or localhost."
+            "Microphone access is not supported or requires HTTPS context.",
           );
         }
 
-        // Get user media stream
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
         });
+
+        if (!isRecognitionActiveRef.current) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
         streamRef.current = stream;
 
-        // Try MP4 format first (better OpenAI compatibility), fallback to WebM
         const supportedMimeType = MediaRecorder.isTypeSupported("audio/mp4")
           ? "audio/mp4"
           : MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
@@ -331,235 +493,190 @@ export function useVoiceInput(): UseVoiceInputReturn {
         mediaRecorderRef.current = mediaRecorder;
         audioChunksRef.current = [];
 
-        // Start speech recognition for interim results
+        // Parallel speech recognition for live on-screen text preview
         const SpeechRecognitionAPI =
           window.SpeechRecognition || window.webkitSpeechRecognition;
 
         if (SpeechRecognitionAPI) {
-          const speechRecognition = new SpeechRecognitionAPI();
-          speechRecognition.continuous = true;
-          speechRecognition.interimResults = true;
-          speechRecognition.maxAlternatives = 1;
+          const createSubtitleRecognition = () => {
+            if (!isRecognitionActiveRef.current) return;
+            try {
+              const sr = new SpeechRecognitionAPI();
+              sr.continuous = true;
+              sr.interimResults = true;
+              sr.maxAlternatives = 1;
+              sr.lang = currentLangRef.current || defaultLang;
 
-          // Set language, falling back to navigator.language or ar-EG
-          speechRecognition.lang = langCode || (typeof navigator !== 'undefined' ? navigator.language : '') || "ar-EG";
-          devLog('Voice', 'Speech recognition language set', { lang: speechRecognition.lang });
-
-          speechRecognition.onstart = () => {
-            devLog('Voice', 'Speech recognition started for interim results');
-          };
-
-          speechRecognition.onresult = (event: SpeechRecognitionEvent) => {
-            let interim = "";
-            let final = "";
-
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-              const result = event.results[i];
-              if (result.isFinal) {
-                final += result[0].transcript;
-              } else {
-                interim += result[0].transcript;
-              }
-            }
-
-            // Always update interim transcript for real-time display
-            if (interim) {
-              setInterimTranscript(interim);
-              devLog('Voice', 'Speech interim result', { transcript: interim });
-            }
-            // Update with final results when available
-            if (final) {
-              setInterimTranscript(final);
-              devLog('Voice', 'Speech final result', { transcript: final });
-            }
-          };
-
-          speechRecognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-            devWarn('Voice', 'Speech recognition error (interim)', { error: event.error });
-            
-            // Handle audio-capture (mic conflict) on Android by retrying shortly
-            if (event.error === "audio-capture") {
-              if (audioCaptureRetryCountRef.current < 3) {
-                audioCaptureRetryCountRef.current += 1;
-                devWarn('Voice', `Audio capture conflict, retry ${audioCaptureRetryCountRef.current}/3 in 800ms...`);
-                setTimeout(() => {
-                  if (isRecognitionActiveRef.current && speechRecognitionRef.current) {
-                    try {
-                      speechRecognitionRef.current.start();
-                    } catch (e) {
-                      devWarn('Voice', 'Failed to restart after audio-capture error', { error: String(e) });
-                    }
-                  }
-                }, 800);
-                return;
-              } else {
-                devWarn('Voice', 'Audio capture conflict persistent after 3 retries. Continuing in recording-only mode.');
-                // Show a non-destructive warning toast once
-                if (!speechRecognitionFailed) {
-                  toast({
-                    title:
-                      language === "ar"
-                        ? "معاينة النص غير متاحة"
-                        : language === "fr"
-                          ? "Aperçu du texte indisponible"
-                          : "Text preview unavailable",
-                    description:
-                      language === "ar"
-                        ? "نحن نسجل صوتك الآن، وسيتم تحويله إلى نص فور التوقف."
-                        : language === "fr"
-                          ? "Votre voix est en cours d'enregistrement, le texte sera traité dès l'arrêt."
-                          : "We are recording your voice, text will be processed when you stop.",
-                  });
+              sr.onresult = (e: SpeechRecognitionEvent) => {
+                if (!isRecognitionActiveRef.current) return;
+                let interim = "";
+                let final = "";
+                for (let i = e.resultIndex; i < e.results.length; i++) {
+                  if (e.results[i].isFinal) final += e.results[i][0].transcript;
+                  else interim += e.results[i][0].transcript;
                 }
-                setSpeechRecognitionFailed(true);
-                return;
-              }
-            }
+                if (interim) setInterimTranscript(interim);
+                if (final) setInterimTranscript(final);
+              };
 
-            // Only show error for critical errors, not network issues or aborted ones
-            if (event.error !== "network" && event.error !== "no-speech" && event.error !== "aborted") {
-              devWarn('Voice', 'Speech recognition critical error, fallback to recording-only', { error: event.error });
-              if (!speechRecognitionFailed) {
-                toast({
-                  title:
-                    language === "ar"
-                      ? "معاينة النص غير متاحة"
-                      : language === "fr"
-                        ? "Aperçu du texte indisponible"
-                        : "Text preview unavailable",
-                  description:
-                    language === "ar"
-                      ? "نحن نسجل صوتك الآن، وسيتم تحويله إلى نص فور التوقف."
-                      : language === "fr"
-                        ? "Votre voix est en cours d'enregistrement, le texte sera traité dès l'arrêt."
-                        : "We are recording your voice, text will be processed when you stop.",
+              sr.onerror = (e) => {
+                devWarn("Voice", "Subtitle recognition error (non-fatal)", {
+                  error: e.error,
                 });
-              }
-            }
-            // Mark as failed but don't stop recording
-            setSpeechRecognitionFailed(true);
-            // Don't stop recording - let audio recording continue for OpenAI
-          };
+              };
 
-          speechRecognition.onend = () => {
-            devLog('Voice', 'Speech recognition ended');
-            // Auto restart loop for Android continuous limitations and silence timeouts
-            if (isRecognitionActiveRef.current && speechRecognitionRef.current) {
-              try {
-                speechRecognitionRef.current.start();
-                devLog('Voice', 'Speech recognition restarted successfully in onend');
-              } catch (e) {
-                devWarn('Voice', 'Could not restart speech recognition in onend', { error: String(e) });
-              }
+              sr.onend = () => {
+                if (isRecognitionActiveRef.current) {
+                  restartTimerRef.current = setTimeout(() => {
+                    createSubtitleRecognition();
+                  }, 150);
+                }
+              };
+
+              speechRecognitionRef.current = sr;
+              sr.start();
+            } catch (err) {
+              devWarn("Voice", "Failed to start subtitle SpeechRecognition", err);
             }
           };
 
-          speechRecognitionRef.current = speechRecognition;
-          speechRecognition.start();
+          createSubtitleRecognition();
         }
 
         mediaRecorder.onstart = () => {
-          devLog('Voice', 'Audio recording started');
+          devLog("Voice", "Audio recording started");
           setIsListening(true);
         };
 
         mediaRecorder.ondataavailable = (event: BlobEvent) => {
-          if (event.data.size > 0) {
+          if (event.data && event.data.size > 0) {
             audioChunksRef.current.push(event.data);
           }
         };
 
+        mediaRecorder.onerror = (event: Event) => {
+          devError("Voice", "MediaRecorder error", event);
+          cleanupAllResources();
+          const message = "Audio recording failed. Please try again.";
+          setError(message);
+          toast({
+            title: "Recording failed",
+            description: message,
+            variant: "destructive",
+          });
+          setIsListening(false);
+          setIsProcessing(false);
+        };
+
         mediaRecorder.onstop = async () => {
-          devLog('Voice', 'Audio recording stopped');
+          devLog("Voice", "Audio recording stopped, processing...");
           setIsListening(false);
           setIsProcessing(true);
-          setInterimTranscript(""); // Clear interim transcript
+          setInterimTranscript("");
 
-          // Stop speech recognition
-          isRecognitionActiveRef.current = false;
-
+          // Clean up live speech recognition
           if (speechRecognitionRef.current) {
             try {
-              speechRecognitionRef.current.stop();
-            } catch (e) {
-              devWarn('Voice', 'Error stopping speech recognition on mediaRecorder stop', { error: String(e) });
-            }
+              speechRecognitionRef.current.abort();
+            } catch (_) {}
             speechRecognitionRef.current = null;
           }
 
+          // Build audio blob safely
+          const audioBlob = new Blob(audioChunksRef.current, {
+            type: mediaRecorder.mimeType || "audio/webm",
+          });
+
+          // NOW release the media stream tracks cleanly
+          if (streamRef.current) {
+            try {
+              streamRef.current.getTracks().forEach((track) => track.stop());
+            } catch (_) {}
+            streamRef.current = null;
+          }
+
+          if (audioBlob.size === 0) {
+            setIsProcessing(false);
+            setError(
+              language === "ar"
+                ? "لم يتم التقاط أي صوت، يرجى التحدث مرة أخرى."
+                : "No audio captured. Please speak again.",
+            );
+            return;
+          }
+
           try {
-            const audioBlob = new Blob(audioChunksRef.current, {
-              // نقرأ الـ mimeType من الـ mediaRecorder مباشرة (متاح في الـ closure)
-              type: mediaRecorder.mimeType || "audio/webm",
-            });
-            devLog('Voice', 'Sending audio to server', {
-              mimeType: audioBlob.type,
-              size: audioBlob.size,
-            });
-
-            if (audioBlob.size === 0) {
-              throw new Error('No audio data recorded. Please try again.');
-            }
-
-            // Create form data to send to your server
             const formData = new FormData();
-
-            // Use appropriate file extension based on MIME type
-            const fileExtension = audioBlob.type.includes("mp4")
-              ? "m4a"
-              : "webm";
+            const fileExtension = audioBlob.type.includes("mp4") ? "m4a" : "webm";
             formData.append("audio", audioBlob, `recording.${fileExtension}`);
 
-            // Include userId in the request payload when available
-            if (user?.id) {
-              formData.append("userId", user.id);
-            }
+            if (user?.id) formData.append("userId", user.id);
             if (currentLangRef.current) {
-              formData.append("language", currentLangRef.current.split('-')[0]); // Send ISO code like 'en', 'fr', 'ar'
+              formData.append("language", currentLangRef.current.split("-")[0]);
             }
 
-            const headers: Record<string, string> = {}
-            if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+            const headers: Record<string, string> = {};
+            if (session?.access_token) {
+              headers["Authorization"] = `Bearer ${session.access_token}`;
+            }
 
             const response = await fetchWithDiagnostics(
-              'Voice',
-              'POST /analyze-voice',
+              "Voice",
+              "POST /analyze-voice",
               `${import.meta.env.VITE_BACKEND_API}/analyze-voice`,
               {
                 method: "POST",
                 headers,
                 body: formData,
               },
-              { timeoutMs: 60000, context: { mimeType: audioBlob.type, size: audioBlob.size } },
+              {
+                timeoutMs: 30000,
+                context: { mimeType: audioBlob.type, size: audioBlob.size },
+              },
             );
 
             if (!response.ok) {
               const responseText = await readResponseText(response);
-              throw new Error(responseText || `Server error: ${response.status}`);
+              let serverMsg = responseText;
+              try {
+                const parsed = JSON.parse(responseText);
+                if (parsed?.error) serverMsg = parsed.error;
+              } catch (_) {}
+              if (
+                serverMsg.includes("No audio") ||
+                serverMsg.includes("no text")
+              ) {
+                serverMsg =
+                  language === "ar"
+                    ? "لم يتم سماع أي صوت واضح، يرجى إعادة التحدث."
+                    : language === "fr"
+                      ? "Aucun son détecté. Veuillez réessayer."
+                      : "No clear speech detected. Please speak again.";
+              }
+              throw new Error(serverMsg || `Server error: ${response.status}`);
             }
 
             const result = await response.json();
-            devLog('Voice', 'Voice analysis response received', {
+            devLog("Voice", "Voice analysis response received", {
               hasTranscript: Boolean(result.transcript || result.text),
               hasEvent: Boolean(result.event),
             });
+
             if (result.event) {
               setEventData(result.event);
             }
-            // Use the transcript from your server
+
             const transcription = result.transcript || result.text || "";
             setTranscript(transcription);
 
-            // Update totalUsage directly from the API response
             if (typeof result.total_usage === "number") {
-              devLog('Voice', 'analyze-voice total_usage received', { total_usage: result.total_usage });
               setTotalUsage(result.total_usage);
             }
           } catch (transcriptionError) {
-            devError('Voice', 'Transcription failed', transcriptionError);
+            devError("Voice", "Transcription failed", transcriptionError);
             const message = getFriendlyErrorMessage(
               transcriptionError,
-              "Failed to transcribe audio",
+              "Failed to process voice message",
             );
             setError(message);
             toast({
@@ -572,35 +689,19 @@ export function useVoiceInput(): UseVoiceInputReturn {
           }
         };
 
-        mediaRecorder.onerror = (event: Event) => {
-          devError('Voice', 'MediaRecorder error', event);
-          const message = "Audio recording failed. Please try again.";
-          setError(message);
-          toast({
-            title: "Recording failed",
-            description: message,
-            variant: "destructive",
-          });
-          setIsListening(false);
-          setIsProcessing(false);
-
-          // Stop speech recognition
-          isRecognitionActiveRef.current = false;
-          if (speechRecognitionRef.current) {
-            try {
-              speechRecognitionRef.current.stop();
-            } catch (e) {
-              devWarn('Voice', 'Error stopping speech recognition on mediaRecorder error', { error: String(e) });
-            }
-            speechRecognitionRef.current = null;
-          }
-        };
-
-        mediaRecorder.start(1000); // Collect data every second
-        devLog('Voice', 'MediaRecorder start() called');
+        try {
+          mediaRecorder.start(500); // Collect chunk every 500ms
+        } catch (_) {
+          mediaRecorder.start();
+        }
+        devLog("Voice", "MediaRecorder start() called");
       } catch (err) {
-        devError('Voice', 'Error starting voice input', err);
-        const message = getFriendlyErrorMessage(err, "Failed to start voice input");
+        cleanupAllResources();
+        devError("Voice", "Error starting voice input", err);
+        const message = getFriendlyErrorMessage(
+          err,
+          "Failed to start voice input",
+        );
         setError(message);
         toast({
           title: "Couldn't start voice input",
@@ -609,62 +710,71 @@ export function useVoiceInput(): UseVoiceInputReturn {
         });
         setIsListening(false);
         setIsProcessing(false);
+      }
+    },
+    [isSupported, language, user, session, setTotalUsage, toast, cleanupAllResources],
+  );
 
-        // Stop speech recognition if it started
-        isRecognitionActiveRef.current = false;
-        if (speechRecognitionRef.current) {
-          try {
-            speechRecognitionRef.current.stop();
-          } catch (e) {
-            devWarn('Voice', 'Error stopping speech recognition on start catch block', { error: String(e) });
+  /**
+   * Seamless language switching.
+   * Allows changing the language anytime without freezing or restarting the app.
+   */
+  const changeLanguage = useCallback(
+    (langCode: string) => {
+      devLog("Voice", "Language switched to", { langCode });
+      currentLangRef.current = langCode;
+
+      // If currently recording, smoothly restart recognition with the new language
+      if (isRecognitionActiveRef.current) {
+        if (isAndroidModeRef.current) {
+          if (speechRecognitionRef.current) {
+            try {
+              speechRecognitionRef.current.abort();
+            } catch (_) {}
           }
-          speechRecognitionRef.current = null;
+          if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+          restartTimerRef.current = setTimeout(() => {
+            if (isRecognitionActiveRef.current) {
+              startListening(langCode);
+            }
+          }, 100);
+        } else {
+          // Non-Android: restart subtitle recognizer with the new language
+          if (speechRecognitionRef.current) {
+            try {
+              speechRecognitionRef.current.abort();
+            } catch (_) {}
+          }
         }
       }
     },
-    [isSupported, toast],
+    [startListening],
   );
 
+  /**
+   * Stop listening and finalize recognition.
+   */
   const stopListening = useCallback(async () => {
-    devLog('Voice', 'Stopping voice input');
-    // نقرأ القرار المخزّن عند البداية — ضمان نفس المسار بالضبط
-    const isAndroidPlatform = isAndroidModeRef.current;
-
-    // Prevent any further auto restart loops
+    devLog("Voice", "Stopping voice input");
     isRecognitionActiveRef.current = false;
 
-    // Stop audio recording
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state !== "inactive"
-    ) {
-      // نحفظ الـ ref محلياً قبل ما يتمسح — onstop محتاجه يقرأ الـ mimeType
-      const recorder = mediaRecorderRef.current;
-      mediaRecorderRef.current = null;
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-      recorder.stop(); // ← onstop هيشتغل بعدها وعنده الـ mimeType من المتغير المحلي
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
     }
 
-    // Stop speech recognition
-    if (speechRecognitionRef.current) {
-      try {
-        speechRecognitionRef.current.stop();
-      } catch (e) {
-        devWarn('Voice', 'Error stopping speech recognition in stopListening', { error: String(e) });
+    // ── Android Stop Flow ──────────────────────────────────────────
+    if (isAndroidModeRef.current) {
+      if (speechRecognitionRef.current) {
+        try {
+          speechRecognitionRef.current.stop();
+        } catch (_) {}
       }
-      speechRecognitionRef.current = null;
-    }
 
-    setIsListening(false);
-    setInterimTranscript("");
-    setSpeechRecognitionFailed(false);
+      setIsListening(false);
+      setInterimTranscript("");
+      setSpeechRecognitionFailed(false);
 
-    if (isAndroidPlatform) {
-      // flush الجلسة الأخيرة قبل الإرسال (في حال onend لم يشتغل بعد أو لم يكن هناك شيء)
-      // sessionCommittedRef يمنع الإضافة المزدوجة لو onend سبق stopListening
       if (sessionFinalRef.current && !sessionCommittedRef.current) {
         accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
           ? accumulatedTranscriptRef.current + " " + sessionFinalRef.current
@@ -674,9 +784,14 @@ export function useVoiceInput(): UseVoiceInputReturn {
       }
 
       const finalResult = accumulatedTranscriptRef.current.trim();
-      devLog('Voice', 'Android final transcript ready', { length: finalResult.length, preview: finalResult.slice(0, 80) });
+      devLog("Voice", "Android final transcript ready", {
+        length: finalResult.length,
+      });
 
-      if (!finalResult) return;
+      if (!finalResult) {
+        setIsProcessing(false);
+        return;
+      }
 
       setIsProcessing(true);
       setError(null);
@@ -684,36 +799,51 @@ export function useVoiceInput(): UseVoiceInputReturn {
       try {
         const formData = new FormData();
         formData.append("text", finalResult);
-        if (user?.id) {
-          formData.append("userId", user.id);
-        }
+        if (user?.id) formData.append("userId", user.id);
         if (currentLangRef.current) {
-          formData.append("language", currentLangRef.current.split('-')[0]);
+          formData.append("language", currentLangRef.current.split("-")[0]);
         }
 
         const headers: Record<string, string> = {};
-        if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
 
         const response = await fetchWithDiagnostics(
-          'Voice',
-          'POST /analyze-voice',
+          "Voice",
+          "POST /analyze-voice",
           `${import.meta.env.VITE_BACKEND_API}/analyze-voice`,
           {
             method: "POST",
             headers,
             body: formData,
           },
-          { timeoutMs: 60000, context: { textLength: finalResult.length } },
+          { timeoutMs: 30000, context: { textLength: finalResult.length } },
         );
 
         if (!response.ok) {
           const responseText = await readResponseText(response);
-          throw new Error(responseText || `Server error: ${response.status}`);
+          let serverMsg = responseText;
+          try {
+            const parsed = JSON.parse(responseText);
+            if (parsed?.error) serverMsg = parsed.error;
+          } catch (_) {}
+          if (
+            serverMsg.includes("No audio") ||
+            serverMsg.includes("no text")
+          ) {
+            serverMsg =
+              language === "ar"
+                ? "لم يتم سماع أي صوت واضح، يرجى إعادة التحدث."
+                : language === "fr"
+                  ? "Aucun son détecté. Veuillez réessayer."
+                  : "No clear speech detected. Please speak again.";
+          }
+          throw new Error(serverMsg || `Server error: ${response.status}`);
         }
 
         const result = await response.json();
-        devLog('Voice', 'Android Voice analysis response received', {
-          hasTranscript: Boolean(result.transcript || result.text),
+        devLog("Voice", "Android voice analysis response received", {
           hasEvent: Boolean(result.event),
         });
 
@@ -727,10 +857,10 @@ export function useVoiceInput(): UseVoiceInputReturn {
         if (typeof result.total_usage === "number") {
           setTotalUsage(result.total_usage);
         }
-      } catch (transcriptionError) {
-        devError('Voice', 'Android text submission failed', transcriptionError);
+      } catch (err) {
+        devError("Voice", "Android text submission failed", err);
         const message = getFriendlyErrorMessage(
-          transcriptionError,
+          err,
           "Failed to process text description",
         );
         setError(message);
@@ -742,8 +872,35 @@ export function useVoiceInput(): UseVoiceInputReturn {
       } finally {
         setIsProcessing(false);
       }
+      return;
     }
-  }, [user, session, setTotalUsage, toast]);
+
+    // ── Non-Android Stop Flow ──────────────────────────────────────────
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.abort();
+      } catch (_) {}
+      speechRecognitionRef.current = null;
+    }
+
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
+      try {
+        mediaRecorderRef.current.stop(); // onstop handles processing and releasing stream
+      } catch (err) {
+        devWarn("Voice", "Error calling mediaRecorder.stop()", err);
+        cleanupAllResources();
+        setIsListening(false);
+        setIsProcessing(false);
+      }
+    } else {
+      cleanupAllResources();
+      setIsListening(false);
+      setIsProcessing(false);
+    }
+  }, [user, session, setTotalUsage, toast, cleanupAllResources, language]);
 
   return {
     isListening,
@@ -751,6 +908,9 @@ export function useVoiceInput(): UseVoiceInputReturn {
     interimTranscript,
     startListening,
     stopListening,
+    cancelListening,
+    changeLanguage,
+    resetVoiceState,
     isSupported,
     error,
     isProcessing,
@@ -758,4 +918,5 @@ export function useVoiceInput(): UseVoiceInputReturn {
     eventData,
   };
 }
+
 export type { ParsedEvent };

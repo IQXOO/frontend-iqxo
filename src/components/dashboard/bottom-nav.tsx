@@ -37,6 +37,7 @@ interface ParsedCalEvent {
   location: string;
   notes: string;
   calendar_id?: string;
+  reminders?: { minutes_before: number }[];
   selected: boolean;
 }
 
@@ -102,6 +103,7 @@ function parseICS(content: string): ParsedCalEvent[] {
           recurrence_rule: current.recurrence_rule,
           location: current.location || "",
           notes: current.notes || "",
+          reminders: [{ minutes_before: 60 }],
           selected: true,
         });
       }
@@ -910,6 +912,9 @@ export const BottomNav = memo(function BottomNav({
         location: e.location || '',
         notes: e.notes || '',
         calendar_id: e.calendar_id || '',
+        reminders: (e.reminders && Array.isArray(e.reminders) && e.reminders.length > 0)
+          ? e.reminders
+          : [{ minutes_before: 60 }],
         selected: true,
       }));
       // Filter future + next 12 months, then sort chronologically
@@ -941,6 +946,7 @@ export const BottomNav = memo(function BottomNav({
       start_time?: string;
       end_time?: string;
       calendar_id?: string;
+      reminders?: { minutes_before: number }[];
     }[],
   ) => {
     if (onImportEvents) {
@@ -958,7 +964,10 @@ export const BottomNav = memo(function BottomNav({
           location: ev.location,
           notes: ev.notes,
           calendar_id: ev.calendar_id,
-          source: "calendar_sync"
+          source: "calendar_sync",
+          reminders: (ev.reminders && Array.isArray(ev.reminders) && ev.reminders.length > 0)
+            ? ev.reminders
+            : [{ minutes_before: 60 }]
         }));
 
         const { fetchWithDiagnostics, readResponseText } = await import("../../lib/logger");

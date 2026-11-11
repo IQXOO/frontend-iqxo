@@ -32,23 +32,23 @@ export interface IQXOEvent {
   notes: string;
   date: string;
   time: string;
-  start_time?: string;
-  end_time?: string;
-  color?: string;
-  recurrence_rule?: string;
-  recurrence_end_date?: string;
-  reminders?: { minutes_before: number }[];
-  phone?: string;
-  location?: string;
-  link?: string;
-  email?: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  color?: string | null;
+  recurrence_rule?: string | null;
+  recurrence_end_date?: string | null;
+  reminders?: { minutes_before: number }[] | null;
+  phone?: string | null;
+  location?: string | null;
+  link?: string | null;
+  email?: string | null;
   source: string;
-  image_url?: string;
-  pdf_url?: string;
+  image_url?: string | null;
+  pdf_url?: string | null;
   is_done: boolean;
-  native_event_id?: string;
-  calendar_id?: string;
-  has_conflict?: boolean;
+  native_event_id?: string | null;
+  calendar_id?: string | null;
+  has_conflict?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -795,7 +795,11 @@ function rowToEvent(row: Record<string, any>): IQXOEvent {
     color: (row.color as string) ?? undefined,
     recurrence_rule: (row.recurrence_rule as string) ?? undefined,
     recurrence_end_date: (row.recurrence_end_date as string) ?? undefined,
-    reminders: row.reminders ?? undefined,
+    reminders: (row.reminders && Array.isArray(row.reminders) && row.reminders.length > 0)
+      ? row.reminders
+      : (row.source === "calendar_sync" || row.source === "google" || row.source === "azure")
+        ? [{ minutes_before: 60 }]
+        : undefined,
     phone: (row.phone as string) ?? undefined,
     location: (row.location as string) ?? undefined,
     link: (row.link as string) ?? undefined,
@@ -805,6 +809,8 @@ function rowToEvent(row: Record<string, any>): IQXOEvent {
     pdf_url: (row.pdf_url as string) ?? undefined,
     is_done: (row.is_done as boolean) ?? false,
     native_event_id: (row.native_event_id as string) ?? undefined,
+    calendar_id: (row.calendar_id as string) ?? undefined,
+    has_conflict: (row.has_conflict as boolean) ?? false,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -1031,6 +1037,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (native_event_id && reqId) {
         try {
           await supabase.from("events").update({ native_event_id }).eq("id", reqId);
+          setActiveEvents((prev) =>
+            prev.map((ev) => (ev.id === reqId ? { ...ev, native_event_id } : ev))
+          );
         } catch (err) {
           console.warn("Failed to link native_event_id", err);
         }
@@ -1108,7 +1117,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase
         .from("events")
         .select(
-          "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,link,email,source,image_url,pdf_url,is_done,created_at,updated_at"
+          "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,link,email,source,image_url,pdf_url,is_done,native_event_id,calendar_id,has_conflict,created_at,updated_at"
         )
         .eq("user_id", uid)
         .or(`date.gte.${todayStr},recurrence_rule.not.is.null`)
@@ -1146,7 +1155,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase
         .from("events")
         .select(
-          "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,link,email,source,image_url,pdf_url,is_done,created_at,updated_at"
+          "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,link,email,source,image_url,pdf_url,is_done,native_event_id,calendar_id,has_conflict,created_at,updated_at"
         )
         .eq("user_id", uid)
         .lt("date", todayStr)
@@ -1201,7 +1210,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         supabase
           .from("events")
           .select(
-            "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,link,email,source,image_url,pdf_url,is_done,created_at,updated_at"
+            "id,user_id,title,notes,date,time,start_time,end_time,color,recurrence_rule,recurrence_end_date,reminders,phone,location,link,email,source,image_url,pdf_url,is_done,native_event_id,calendar_id,has_conflict,created_at,updated_at"
           )
           .eq("user_id", uid)
           .or(`date.gte.${toLocalDateStr()},recurrence_rule.not.is.null`)

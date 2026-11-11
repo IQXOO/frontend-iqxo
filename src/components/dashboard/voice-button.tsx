@@ -8,6 +8,7 @@ import {
   X,
   Loader2,
   CheckCircle,
+  RotateCcw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -39,24 +40,47 @@ export function VoiceButton({
   externalOpen = false,
   onClose,
 }: VoiceButtonProps) {
+  const { language } = useApp();
+  const isRTL = language === "ar";
+
   const {
     isListening,
     transcript,
     interimTranscript,
     startListening,
     stopListening,
+    cancelListening,
+    changeLanguage,
+    resetVoiceState,
     isSupported,
     error,
     isProcessing,
     eventData,
   } = useVoiceInput();
 
-  const { language } = useApp();
-  const isRTL = language === "ar";
+  // Smart initial language based on app language & localStorage
+  const getInitialLang = useCallback((): VoiceLang => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(STORAGE_VOICE_LANG);
+      if (saved) {
+        const found = VOICE_LANGUAGES.find((l) => l.code === saved);
+        if (found) return found;
+      }
+    }
+    if (language === "ar") {
+      return (
+        VOICE_LANGUAGES.find((l) => l.code === "ar-EG") || VOICE_LANGUAGES[1]
+      );
+    }
+    if (language === "fr") {
+      return (
+        VOICE_LANGUAGES.find((l) => l.code === "fr-FR") || VOICE_LANGUAGES[3]
+      );
+    }
+    return VOICE_LANGUAGES[0]; // en-US default
+  }, [language]);
 
-  const [selectedLang, setSelectedLang] = useState<VoiceLang>(
-    VOICE_LANGUAGES[2],
-  ); // en-US default
+  const [selectedLang, setSelectedLang] = useState<VoiceLang>(getInitialLang);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [showDone, setShowDone] = useState(false);
 
@@ -68,19 +92,33 @@ export function VoiceButton({
   onTranscriptRef.current = onTranscript;
   onCloseRef.current = onClose;
 
-  // Load saved language
+  // Sync if app language changes and no manual override saved
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = localStorage.getItem(STORAGE_VOICE_LANG);
-    if (saved) {
-      const found = VOICE_LANGUAGES.find((l) => l.code === saved);
-      if (found) setSelectedLang(found);
+    if (!saved) {
+      const initial = getInitialLang();
+      setSelectedLang(initial);
+      changeLanguage(initial.code);
     }
-  }, []);
+  }, [language, getInitialLang, changeLanguage]);
 
+  // Cleanup on unmount to guarantee zero dangling mic streams
   useEffect(() => {
-    localStorage.setItem(STORAGE_VOICE_LANG, selectedLang.code);
-  }, [selectedLang]);
+    return () => {
+      cancelListening();
+    };
+  }, [cancelListening]);
+
+  // Reset states whenever modal opens or closes
+  useEffect(() => {
+    if (externalOpen) {
+      callbackFiredRef.current = false;
+      setShowDone(false);
+    } else {
+      cancelListening();
+    }
+  }, [externalOpen, cancelListening]);
 
   // Close picker on outside click
   useEffect(() => {
@@ -94,28 +132,40 @@ export function VoiceButton({
     return () => document.removeEventListener("mousedown", handle);
   }, [pickerOpen]);
 
-  // Fire callback when transcription is ready
+  // Fire callback when transcription/event is ready
   useEffect(() => {
-    if (isListening) {
-      callbackFiredRef.current = false;
-      return;
-    }
-    if (isProcessing) return;
+    if (isListening || isProcessing) return;
 
     const data = eventData ?? (transcript.trim() || null);
     if (!data || callbackFiredRef.current) return;
 
     callbackFiredRef.current = true;
 
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       onTranscriptRef.current(data);
       setShowDone(true);
-      setTimeout(() => {
+      const closeTimer = setTimeout(() => {
         setShowDone(false);
         onCloseRef.current?.();
-      }, 100);
+      }, 300);
+      return () => clearTimeout(closeTimer);
     }, 50);
+
+    return () => clearTimeout(timer);
   }, [isListening, isProcessing, transcript, eventData]);
+
+  // Seamless language selection
+  const handleSelectLang = useCallback(
+    (lang: VoiceLang) => {
+      setSelectedLang(lang);
+      setPickerOpen(false);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(STORAGE_VOICE_LANG, lang.code);
+      }
+      changeLanguage(lang.code);
+    },
+    [changeLanguage],
+  );
 
   const handleToggle = useCallback(() => {
     if (isListening) {
@@ -123,14 +173,30 @@ export function VoiceButton({
     } else {
       callbackFiredRef.current = false;
       setShowDone(false);
+      resetVoiceState();
       startListening(selectedLang.code);
     }
-  }, [isListening, startListening, stopListening, selectedLang]);
+  }, [
+    isListening,
+    startListening,
+    stopListening,
+    resetVoiceState,
+    selectedLang.code,
+  ]);
+
+  const handleRetry = useCallback(() => {
+    callbackFiredRef.current = false;
+    setShowDone(false);
+    resetVoiceState();
+    setTimeout(() => {
+      startListening(selectedLang.code);
+    }, 80);
+  }, [resetVoiceState, startListening, selectedLang.code]);
 
   const handleClose = useCallback(() => {
-    if (isListening) stopListening();
+    cancelListening();
     onClose?.();
-  }, [isListening, stopListening, onClose]);
+  }, [cancelListening, onClose]);
 
   if (!isSupported) return null;
 
@@ -149,11 +215,11 @@ export function VoiceButton({
           : "Listening...",
     processing:
       language === "ar"
-        ? "جاري المعالجة..."
+        ? "جاري المعالجة الذكية..."
         : language === "fr"
-          ? "Traitement..."
-          : "Processing...",
-    done: language === "ar" ? "تم!" : language === "fr" ? "Fait!" : "Done!",
+          ? "Traitement IA..."
+          : "Analyzing with AI...",
+    done: language === "ar" ? "تم بنجاح!" : language === "fr" ? "Fait!" : "Done!",
     tapToSpeak:
       language === "ar"
         ? "اضغط للتحدث"
@@ -162,10 +228,16 @@ export function VoiceButton({
           : "Tap to speak",
     tapToStop:
       language === "ar"
-        ? "اضغط للإيقاف"
+        ? "اضغط لإنهاء التسجيل"
         : language === "fr"
-          ? "Appuyez pour arrêter"
+          ? "Appuyez pour terminer"
           : "Tap to stop",
+    retry:
+      language === "ar"
+        ? "إعادة التسجيل"
+        : language === "fr"
+          ? "Réessayer"
+          : "Record again",
   };
 
   return (
@@ -177,25 +249,26 @@ export function VoiceButton({
             className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0 } }}
+            exit={{ opacity: 0, transition: { duration: 0.15 } }}
             onClick={handleClose}
           />
 
           {/* Panel */}
           <motion.div
             className="fixed inset-x-0 bottom-0 z-[90] flex flex-col items-center pb-16 pt-6 px-6"
-            initial={{ y: 120 }}
-            animate={{ y: 0 }}
-            exit={{ y: 120, opacity: 0, transition: { duration: 0 } }}
+            initial={{ y: 120, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 120, opacity: 0, transition: { duration: 0.15 } }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
             dir={isRTL ? "rtl" : "ltr"}
           >
             {/* Close */}
             <button
               onClick={handleClose}
-              className="absolute top-4 right-5 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              aria-label="Close voice modal"
+              className="absolute top-4 right-5 p-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white"
             >
-              <X className="w-5 h-5 text-white" />
+              <X className="w-5 h-5" />
             </button>
 
             {/* Title */}
@@ -204,11 +277,11 @@ export function VoiceButton({
             </h2>
 
             {/* Status line */}
-            <div className="h-8 flex items-center justify-center mb-6">
+            <div className="h-9 flex items-center justify-center mb-6 px-4">
               {isProcessing ? (
-                <div className="flex items-center gap-2 text-white/70">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">{L.processing}</span>
+                <div className="flex items-center gap-2 text-white/80 animate-pulse">
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+                  <span className="text-sm font-medium">{L.processing}</span>
                 </div>
               ) : showDone ? (
                 <div className="flex items-center gap-2 text-emerald-400">
@@ -216,17 +289,26 @@ export function VoiceButton({
                   <span className="text-sm font-medium">{L.done}</span>
                 </div>
               ) : isListening && interimTranscript ? (
-                <p className="text-white/80 text-sm text-center max-w-xs truncate">
+                <p className="text-white/90 text-sm text-center max-w-xs truncate bg-white/5 py-1 px-3 rounded-full border border-white/10">
                   {interimTranscript}
                 </p>
               ) : isListening ? (
-                <p className="text-white/50 text-sm animate-pulse">
+                <p className="text-white/60 text-sm animate-pulse">
                   {L.listening}
                 </p>
               ) : error ? (
-                <p className="text-red-400 text-xs text-center max-w-xs">
-                  {error}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-red-400 text-xs text-center max-w-xs">
+                    {error}
+                  </p>
+                  <button
+                    onClick={handleRetry}
+                    className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 underline font-medium"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    {L.retry}
+                  </button>
+                </div>
               ) : (
                 <p className="text-white/40 text-sm">{L.tapToSpeak}</p>
               )}
@@ -236,10 +318,11 @@ export function VoiceButton({
             <motion.button
               onClick={handleToggle}
               disabled={isProcessing}
-              className={`relative h-20 w-20 rounded-full flex items-center justify-center shadow-2xl transition-colors disabled:opacity-50 ${
+              aria-label={isListening ? L.tapToStop : L.tapToSpeak}
+              className={`relative h-20 w-20 rounded-full flex items-center justify-center shadow-2xl transition-all disabled:opacity-50 ${
                 isListening
-                  ? "bg-red-500 hover:bg-red-600"
-                  : "bg-gradient-to-br from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+                  ? "bg-red-500 hover:bg-red-600 shadow-red-500/40"
+                  : "bg-gradient-to-br from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 shadow-blue-500/30"
               }`}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -259,7 +342,7 @@ export function VoiceButton({
               )}
             </motion.button>
 
-            <p className="text-white/40 text-xs mt-3 mb-5">
+            <p className="text-white/50 text-xs mt-3 mb-5">
               {isListening ? L.tapToStop : L.tapToSpeak}
             </p>
 
@@ -267,7 +350,8 @@ export function VoiceButton({
             <div className="relative" ref={pickerRef}>
               <button
                 onClick={() => setPickerOpen((p) => !p)}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 transition-colors"
+                type="button"
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors border border-white/10"
               >
                 <span className="text-base">
                   {toFlagEmoji(selectedLang.flag)}
@@ -284,25 +368,29 @@ export function VoiceButton({
                     initial={{ opacity: 0, y: 8, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-52 bg-[#1a1a2e] border border-white/10 rounded-2xl overflow-hidden shadow-2xl max-h-64 overflow-y-auto"
+                    transition={{ duration: 0.15 }}
+                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-56 bg-[#1a1a2e] border border-white/15 rounded-2xl overflow-hidden shadow-2xl max-h-64 overflow-y-auto z-[100]"
                   >
                     {VOICE_LANGUAGES.map((lang) => (
                       <button
                         key={lang.code}
-                        onClick={() => {
-                          setSelectedLang(lang);
-                          setPickerOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-white/10 ${
+                        type="button"
+                        onClick={() => handleSelectLang(lang)}
+                        className={`w-full flex items-center justify-between px-4 py-3 text-sm transition-colors hover:bg-white/10 ${
                           selectedLang.code === lang.code
-                            ? "bg-white/10 text-white"
-                            : "text-white/70"
+                            ? "bg-white/15 text-blue-400 font-medium"
+                            : "text-white/80"
                         }`}
                       >
-                        <span className="text-base">
-                          {toFlagEmoji(lang.flag)}
-                        </span>
-                        <span>{lang.label}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-base">
+                            {toFlagEmoji(lang.flag)}
+                          </span>
+                          <span>{lang.label}</span>
+                        </div>
+                        {selectedLang.code === lang.code && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                        )}
                       </button>
                     ))}
                   </motion.div>

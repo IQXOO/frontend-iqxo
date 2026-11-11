@@ -13,7 +13,6 @@ import { computeEventPriority, getNextOccurrence } from "../lib/recurrence";
 import { type ParsedEvent } from "../lib/parse-voice-input";
 import { useEventNotifications } from "../hooks/use-event-notifications";
 import type { IQXOEvent } from "../lib/types";
-import { useVoiceInput } from "../hooks/use-voice-input";
 import { useEventEditor } from "../lib/event-editor-context";
 import { lazyNamed } from "../lib/lazy";
 import { InfiniteScroll } from "../components/dashboard/infinite-scroll";
@@ -78,7 +77,6 @@ export default function Page() {
     (theme === "system" &&
       typeof document !== "undefined" &&
       document.documentElement.classList.contains("dark"));
-  const { isListening: _isListening } = useVoiceInput();
   const { openEventDetail, openEventForm } = useEventEditor();
 
   // Filter events by search and exclude work schedule events

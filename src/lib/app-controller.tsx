@@ -154,7 +154,10 @@ export default function AppController() {
               link: ev.link || null,
               notes: ev.notes,
               calendar_id: ev.calendar_id,
-              source: "calendar_sync"
+              source: "calendar_sync",
+              reminders: (ev.reminders && Array.isArray(ev.reminders) && ev.reminders.length > 0)
+                ? ev.reminders
+                : [{ minutes_before: 60 }]
             };
           });
 

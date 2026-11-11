@@ -3,10 +3,11 @@
 import { useMemo } from "react"
 import { motion } from "framer-motion"
 import { Coffee, Phone, MapPin } from "lucide-react"
-import { useApp } from "@/lib/store"
+import { useApp, toLocalDateStr } from "@/lib/store"
 import { TomorrowChainFAB } from "@/components/dashboard/tomorrow-chain-modal"
 import type { IQXOEvent } from "@/lib/types"
-import { format, isToday, differenceInHours, isPast } from "../../lib/date-utils"
+import { format, differenceInHours, isPast } from "../../lib/date-utils"
+import { isEventOnDate } from "../../lib/recurrence"
 
 interface TodayHomeScreenProps {
   onEventClick: (event: IQXOEvent) => void
@@ -54,12 +55,12 @@ const URGENCY_STYLES: Record<UrgencyLevel, { bar: string; badge: string; badgeTe
 export function TodayHomeScreen({ onEventClick, onFabClick: _onFabClick }: TodayHomeScreenProps) {
   const { events, language } = useApp()
 
-  const todayEvents = useMemo(() =>
-    events
-      .filter((e) => isToday(new Date(e.date)))
-      .sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00")),
-    [events]
-  )
+  const todayEvents = useMemo(() => {
+    const todayStr = toLocalDateStr()
+    return events
+      .filter((e) => isEventOnDate(e, todayStr))
+      .sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"))
+  }, [events])
 
   const isRTL = language === "ar"
   const today = format(new Date(), "EEEE, MMMM d", language)
