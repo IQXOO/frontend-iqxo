@@ -30,6 +30,7 @@ import { useApp } from "../../lib/store";
 import { supabase } from "../../lib/supabase";
 import { devError, devLog, devWarn, getFriendlyErrorMessage } from "../../lib/logger";
 import { useToast } from "../../hooks/use-toast";
+import { compressImage } from "../../lib/compress-image";
 import type { IQXOEvent } from "../../lib/types";
 import type { ParsedEvent } from "../../lib/parse-voice-input";
 
@@ -90,23 +91,51 @@ async function uploadToStorage(
   userId: string,
   bucket: "event-images" | "event-pdfs"
 ): Promise<string> {
-  const ext = file.name.split(".").pop() ?? "bin";
+  let fileToUpload: File | Blob = file;
+  let ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+
+  // Client-side image compression: converts to lightweight JPEG under 1MB
+  // Also solves iOS HEIC compatibility issues automatically
+  if (bucket === "event-images" && file.type.startsWith("image/")) {
+    try {
+      const compressedBlob = await compressImage(file, 1.0, 1600, 1600, 0.85, "image/jpeg");
+      fileToUpload = compressedBlob;
+      ext = "jpg";
+    } catch (compressErr) {
+      console.warn("Image compression fallback to original file:", compressErr);
+    }
+  }
+
   const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-  // 10-second timeout safeguard so it never hangs indefinitely
+  // 30-second timeout safeguard
   const uploadPromise = supabase.storage
     .from(bucket)
-    .upload(path, file, { cacheControl: "3600", upsert: false });
+    .upload(path, fileToUpload, { cacheControl: "3600", upsert: false });
 
   const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) =>
-    setTimeout(() => reject(new Error("Upload timed out after 10 seconds")), 10000)
+    setTimeout(() => reject(new Error("Upload timed out after 30 seconds")), 30000)
   );
 
-  const { error } = (await Promise.race([uploadPromise, timeoutPromise])) as any;
-  if (error) throw new Error(`Upload failed: ${error.message}`);
+  try {
+    const { error } = (await Promise.race([uploadPromise, timeoutPromise])) as any;
+    if (error) throw error;
 
-  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    return data.publicUrl;
+  } catch (err: any) {
+    console.warn("Supabase storage upload failed, falling back to base64 DataURL:", err);
+    // If it's an image, fall back to base64 DataURL so the user's attachment is never rejected
+    if (bucket === "event-images") {
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error(`Upload failed: ${err?.message || "File reading error"}`));
+        reader.readAsDataURL(fileToUpload instanceof Blob ? fileToUpload : file);
+      });
+    }
+    throw new Error(`Upload failed: ${err?.message || "Storage error"}`);
+  }
 }
 
 export function EventFormModal({
@@ -489,62 +518,84 @@ export function EventFormModal({
     setUploadError(null);
 
     try {
-      const isHttpUrl = (url?: string | null) =>
-        typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://"));
+      const isHttpOrDataUrl = (url?: string | null) =>
+        typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:"));
 
-      let finalImageUrl: string | undefined = undefined;
+      let finalImageUrl: string | null = null;
       if (imageFile) {
         finalImageUrl = await uploadToStorage(imageFile, user.id, "event-images");
-      } else if (isHttpUrl(imagePreview)) {
-        finalImageUrl = imagePreview || undefined;
+      } else if (isHttpOrDataUrl(imagePreview)) {
+        finalImageUrl = imagePreview || null;
+      } else {
+        finalImageUrl = null;
       }
 
-      let finalPdfUrl: string | undefined = undefined;
+      let finalPdfUrl: string | null = null;
       if (pdfFile) {
         finalPdfUrl = await uploadToStorage(pdfFile, user.id, "event-pdfs");
-      } else if (isHttpUrl(existingPdfUrl)) {
-        finalPdfUrl = existingPdfUrl || undefined;
+      } else if (isHttpOrDataUrl(existingPdfUrl)) {
+        finalPdfUrl = existingPdfUrl || null;
+      } else {
+        finalPdfUrl = null;
       }
 
-      let cleanLocation = location.trim() || undefined;
-      let cleanLink = link.trim() || undefined;
+      let cleanLocation = location.trim() ? location.trim() : null;
+      let cleanLink = link.trim() ? link.trim() : null;
 
       // Smart check: If user typed a web/meeting URL in the location input by accident
       if (cleanLocation && /^(https?:\/\/|www\.|zoom\.us|meet\.google\.com|teams\.microsoft\.com|bit\.ly)/i.test(cleanLocation)) {
         if (!cleanLink) {
           cleanLink = cleanLocation;
         }
-        cleanLocation = undefined;
+        cleanLocation = null;
       }
 
       if (cleanLink && !/^https?:\/\//i.test(cleanLink)) {
         cleanLink = `https://${cleanLink}`;
       }
 
-      const payload = {
-        title: title.trim(),
-        date,
-        time,
-        start_time: time,
-        end_time: endTime || undefined,
-        color,
-        recurrence_rule: recurrence || undefined,
-        reminders,
-        phone: phone.trim() || undefined,
-        email: email.trim() || undefined,
-        location: cleanLocation,
-        link: cleanLink,
-        notes: notes.trim(),
-        image_url: finalImageUrl,
-        pdf_url: finalPdfUrl,
-        source: "manual",
-        is_done: false,
-      };
-
       if (editEvent) {
-        await updateEvent(editEvent.id, payload);
+        // When editing: explicitly send null for cleared fields so Supabase updates columns to NULL
+        await updateEvent(editEvent.id, {
+          title: title.trim(),
+          date,
+          time,
+          start_time: time || null,
+          end_time: endTime.trim() ? endTime.trim() : null,
+          color: color || "#00C2FF",
+          recurrence_rule: recurrence || null,
+          reminders: reminders && reminders.length > 0 ? reminders : null,
+          phone: phone.trim() ? phone.trim() : null,
+          email: email.trim() ? email.trim() : null,
+          location: cleanLocation,
+          link: cleanLink,
+          notes: notes.trim(),
+          image_url: finalImageUrl, // string URL or null (which clears the image in DB!)
+          pdf_url: finalPdfUrl,     // string URL or null (which clears the PDF in DB!)
+          source: editEvent.source || "manual",
+          is_done: editEvent.is_done, // preserves completed status!
+        });
       } else {
-        await addEvent(payload);
+        // When creating a new event:
+        await addEvent({
+          title: title.trim(),
+          date,
+          time,
+          start_time: time || undefined,
+          end_time: endTime.trim() || undefined,
+          color,
+          recurrence_rule: recurrence || undefined,
+          reminders: reminders && reminders.length > 0 ? reminders : undefined,
+          phone: phone.trim() || undefined,
+          email: email.trim() || undefined,
+          location: cleanLocation || undefined,
+          link: cleanLink || undefined,
+          notes: notes.trim(),
+          image_url: finalImageUrl || undefined,
+          pdf_url: finalPdfUrl || undefined,
+          source: "manual",
+          is_done: false,
+        });
       }
 
       onOpenChange(false);
@@ -982,7 +1033,7 @@ export function EventFormModal({
             <input
               ref={attachInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,application/pdf"
               onChange={handleAttachSelect}
               className="hidden"
             />

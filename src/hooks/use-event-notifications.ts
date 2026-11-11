@@ -104,20 +104,27 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
       const nextOcc = getNextOccurrence(event);
       if (!nextOcc) return; // Event is entirely in the past or invalid
 
-      // Use custom reminders combined with the default 1-hour (60 mins) reminder
-      const customReminders = event.reminders && event.reminders.length > 0 
-        ? event.reminders.map(r => r.minutes_before)
-        : [];
-      
-      const reminderMinutes = Array.from(new Set([60, ...customReminders]));
+      // Synced events default to 1-hour (60m) reminder if none specified
+      const isSynced = event.source === "calendar_sync" || event.source === "google" || event.source === "azure";
+      const reminderMinutes = (event.reminders && event.reminders.length > 0)
+        ? Array.from(new Set(event.reminders.map(r => r.minutes_before)))
+        : (isSynced ? [60] : [60]);
 
       reminderMinutes.forEach(minutesBefore => {
         const reminderTime = new Date(nextOcc.getTime() - minutesBefore * 60 * 1000)
         if (reminderTime.getTime() > now) {
+          const notificationTitle = minutesBefore === 60
+            ? (language === "ar" ? `تذكير (بعد ساعة): ${event.title}` : language === "fr" ? `Rappel (dans 1h) : ${event.title}` : `In 1 hour: ${event.title}`)
+            : minutesBefore === 0
+            ? (language === "ar" ? `حان الآن: ${event.title}` : language === "fr" ? `Maintenant : ${event.title}` : `Starting now: ${event.title}`)
+            : minutesBefore < 60
+            ? (language === "ar" ? `تذكير (بعد ${minutesBefore} دقيقة): ${event.title}` : language === "fr" ? `Rappel (dans ${minutesBefore}m) : ${event.title}` : `In ${minutesBefore}m: ${event.title}`)
+            : (language === "ar" ? `تذكير: ${event.title}` : `Reminder: ${event.title}`);
+
           notificationsToSchedule.push({
             id: `${event.id}-${minutesBefore}m`,
-            title: `IQXO - ${event.title}`,
-            body: strings.oneHourBody(event.title, event.location || undefined),
+            title: notificationTitle,
+            body: event.location ? `${event.title} · ${event.location}` : (strings.oneHourBody(event.title) || event.title),
             triggerAt: reminderTime.getTime(),
           })
         }
