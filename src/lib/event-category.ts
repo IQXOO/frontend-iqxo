@@ -19,19 +19,45 @@ export interface CategoryDetails {
   border: string;
 }
 
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Checks if a phrase or word matches inside the text with proper boundary protection.
+ * - Multi-word phrases are checked directly.
+ * - Single words use Unicode-aware word boundaries to prevent false substring matches
+ *   (e.g., 'dr' will NOT match inside 'drive' or 'children'; 'tax' will NOT match 'syntax').
+ */
+function matchesKeyword(text: string, keyword: string): boolean {
+  const lowerKw = keyword.toLowerCase().trim();
+  if (!lowerKw) return false;
+
+  if (lowerKw.includes(" ")) {
+    return text.includes(lowerKw);
+  }
+
+  const regex = new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRegExp(lowerKw)}([^\\p{L}\\p{N}]|$)`, "u");
+  return regex.test(text);
+}
+
+function matchesAny(text: string, keywords: string[]): boolean {
+  return keywords.some((kw) => matchesKeyword(text, kw));
+}
+
 // 🏥 Health & Medical Keywords (EN / FR / AR)
 const HEALTH_KEYWORDS = [
   // French
   "médecin", "docteur", "dr", "dr.", "médical", "médicale", "santé", "clinique",
   "hôpital", "hopital", "dentiste", "dentaire", "médicament", "ordonnance", "pharmacie",
-  "vaccin", "vaccination", "suivi", "consultation", "cabinet médical", "laboratoire",
-  "analyse", "prise de sang", "radiologie", "radio", "échographie", "irm", "scanner",
+  "vaccin", "vaccination", "consultation", "cabinet médical", "laboratoire",
+  "analyse", "prise de sang", "radiologie", "radiographie", "échographie", "irm", "scanner",
   "ophtalmo", "ophtalmologue", "kiné", "kinésithérapeute", "cardiologue", "pédiatre",
   "gynécologue", "dermatologue", "chirurgien", "chirurgie", "soin", "soins", "infirmier",
   "infirmière", "urgences", "patient", "maladie", "rendez-vous médical", "examen médical",
-  "doctolib", "bilan de santé", "traitement", "posologie", "qare",
+  "doctolib", "bilan de santé", "traitement", "posologie", "qare", "suivi médical",
   // English
-  "doctor", "medical", "health", "clinic", "hospital", "dentist", "dental",
+  "doctor", "dr", "dr.", "medical", "health", "clinic", "hospital", "dentist", "dental",
   "medicine", "medication", "prescription", "rx", "therapy", "pharmacy", "vaccine",
   "vaccination", "checkup", "check-up", "blood test", "lab", "laboratory",
   "radiology", "ultrasound", "mri", "ct scan", "x-ray", "consultation", "patient",
@@ -40,7 +66,7 @@ const HEALTH_KEYWORDS = [
   // Arabic
   "طبيب", "دكتور", "د.", "مستشفى", "عيادة", "صحة", "طبي", "طبية", "دواء", "علاج",
   "أسنان", "كشف", "فحص", "تحليل", "روشتة", "صيدلية", "لقاح", "تطعيم", "عملية",
-  "أشعة", "استشارة", "متابعة", "مريض", "جراحة", "طوارئ", "ممرض", "ممرضة", "نفسي",
+  "أشعة", "استشارة", "متابعة طبية", "مريض", "جراحة", "طوارئ", "ممرض", "ممرضة", "نفسي",
   "جلدية", "باطنة", "أطفال", "عيون", "علاج طبيعي", "سونار", "رنين", "فحص دوري"
 ];
 
@@ -63,33 +89,44 @@ const WORK_KEYWORDS = [
 // ✈️ Travel & Transportation Keywords (EN / FR / AR)
 const TRAVEL_KEYWORDS = [
   // French
-  "voyage", "vol", "avion", "aéroport", "aeroport", "billet", "gare", "sncf",
-  "train", "hôtel", "hotel", "vacances", "réservation", "sejour", "séjour",
-  "déplacement", "croisière", "bagage", "embarquement", "terminal", "air france",
+  "voyage", "vol", "avion", "aéroport", "aeroport", "billet d'avion", "billet de train",
+  "gare", "sncf", "train", "hôtel", "hotel", "vacances", "réservation hôtel", "séjour",
+  "déplacement", "croisière", "embarquement", "terminal", "air france",
   // English
-  "flight", "airport", "airline", "boarding", "hotel", "train", "station",
-  "trip", "travel", "vacation", "booking", "luggage", "transit", "reservation",
+  "flight", "airport", "airline", "boarding pass", "hotel", "train station",
+  "trip", "travel", "vacation", "flight booking", "hotel booking", "transit", "reservation",
   "cruise", "departure", "arrival", "hostel", "airbnb",
   // Arabic
-  "سفر", "رحلة", "طيران", "مطار", "تذكرة", "فندق", "حجز فندق", "قطار",
-  "محطة", "إجازة", "عطلة", "حجز", "حقائب", "مغادرة", "وصول", "سياحة"
+  "سفر", "رحلة سفر", "طيران", "مطار", "تذكرة طيران", "تذكرة قطار", "حجز فندق", "فندق",
+  "محطة القطار", "إجازة", "عطلة", "حقائب سفر", "مغادرة", "وصول", "سياحة"
 ];
 
-// 📄 Documents & Finance Keywords (EN / FR / AR)
+// 📄 Official Documents, Legal & Administrative Keywords (EN / FR / AR)
+// Specifically targeted to avoid classifying casual tasks, notes, or tickets as documents!
 const DOC_KEYWORDS = [
   // French
-  "passeport", "assurance", "contrat", "permis", "facture", "quittance", "impôt",
-  "impots", "carte d'identité", "titre de séjour", "banque", "reçu", "formulaire",
-  "attestation", "justificatif", "préfecture", "loyer", "mutuelle", "rib",
-  "relevé", "paiement", "notaire", "taxe", "carte vitale",
+  "passeport", "carte d'identité", "carte nationale d'identité", "cni", "titre de séjour",
+  "carte de séjour", "assurance", "mutuelle", "assurance habitation", "assurance auto",
+  "contrat", "contrat de travail", "bail", "acte notarié", "notaire", "facture",
+  "quittance", "quittance de loyer", "avis d'imposition", "impôt", "impôts", "taxe foncière",
+  "taxe d'habitation", "permis de conduire", "relevé bancaire", "compte bancaire", "rib",
+  "bulletin de paie", "fiche de paie", "bulletin de salaire", "attestation",
+  "justificatif de domicile", "carte vitale", "préfecture", "france travail", "pole emploi",
+  "ameli", "caf",
   // English
-  "insurance", "passport", "visa", "document", "contract", "license", "bill",
-  "receipt", "invoice", "tax", "identity", "id card", "ticket", "certificate",
-  "policy", "statement", "form", "permit", "bank", "payment", "renewal", "lease",
+  "passport", "visa", "residence permit", "green card", "national id", "id card",
+  "driver's license", "insurance", "insurance policy", "health insurance", "car insurance",
+  "contract", "lease agreement", "rental agreement", "invoice", "utility bill",
+  "tax return", "tax bill", "property tax", "bank statement", "financial statement",
+  "payslip", "pay stub", "birth certificate", "marriage certificate", "notary",
+  "affidavit", "power of attorney", "legal document", "official document",
   // Arabic
-  "وثيقة", "مستند", "جواز", "فيزا", "تأشيرة", "تأمين", "عقد", "رخصة", "فاتورة",
-  "ايصال", "إيصال", "ضريبة", "بطاقة", "شهادة", "ورقة", "هوية", "ملف", "استمارة",
-  "إقامة", "بطاقة شخصية", "بنك", "تجديد", "إيجار", "معاملة", "كشف حساب"
+  "جواز سفر", "جواز", "تأشيرة", "فيزا", "إقامة", "تجديد إقامة", "بطاقة شخصية",
+  "بطاقة هوية", "رقم قومي", "رخصة قيادة", "رخصة سيارة", "عقد إيجار", "عقد عمل",
+  "عقد بيع", "توكيل رسمي", "توكيل", "تأمين صحي", "تأمين سيارة", "بوليصة تأمين",
+  "فاتورة كهرباء", "فاتورة مياه", "فاتورة غاز", "إقرار ضريبي", "ضرائب", "ضريبة",
+  "كشف حساب بنكي", "كشف حساب", "مفردات مرتب", "شهادة ميلاد", "شهادة تخرج",
+  "قيد عائلي", "معاملة حكومية", "سجل مدني", "شهر عقاري"
 ];
 
 // 🎓 Education & Learning Keywords (EN / FR / AR)
@@ -113,7 +150,7 @@ const URGENT_KEYWORDS = [
   // English
   "urgent", "urgency", "emergency", "critical", "asap", "immediate",
   // Arabic
-  "عاجل", "طارئ", "ضروري", "فوري", "حرج"
+  "عاجل", "طارئ", "ضروري جدا", "فوري", "حرج"
 ];
 
 // ✨ Personal & Social Keywords (EN / FR / AR)
@@ -132,7 +169,11 @@ const PERSONAL_KEYWORDS = [
 ];
 
 /**
- * Categorizes an event into a semantic category based on its title, notes, location, and source.
+ * Categorizes an event into a semantic category based on its real content (title, notes, location, source).
+ * Important: An attachment (PDF or image) is just a medium, NOT a category.
+ * If the PDF contains a medical appointment, it is 'health'.
+ * If it contains a concert or dinner invite, it is 'personal'.
+ * It only becomes 'documents' if it is an actual administrative, legal, or financial document.
  */
 export function categorizeEvent(event: IQXOEvent): EventCategory {
   const src = (event.source || "").toLowerCase();
@@ -142,54 +183,44 @@ export function categorizeEvent(event: IQXOEvent): EventCategory {
     return "work";
   }
 
-  const text = `${event.title || ""} ${event.notes || ""} ${event.location || ""} ${event.link || ""}`.toLowerCase();
+  const text = `${event.title || ""} ${event.notes || ""} ${event.location || ""}`.toLowerCase();
 
   // 2. Health & Medical has top domain precedence (e.g. "Examen Médical & Suivi - Dr Dubois")
-  if (HEALTH_KEYWORDS.some((kw) => text.includes(kw))) {
+  if (matchesAny(text, HEALTH_KEYWORDS)) {
     return "health";
   }
 
   // 3. Travel & Transportation
-  if (TRAVEL_KEYWORDS.some((kw) => text.includes(kw))) {
+  if (matchesAny(text, TRAVEL_KEYWORDS)) {
     return "travel";
   }
 
-  // 4. Documents & Administrative & Finance
-  if (DOC_KEYWORDS.some((kw) => text.includes(kw)) || src === "document") {
+  // 4. Documents & Administrative & Finance (Strict keywords only)
+  if (matchesAny(text, DOC_KEYWORDS)) {
     return "documents";
   }
 
   // 5. Education & Studies
-  if (EDUCATION_KEYWORDS.some((kw) => text.includes(kw))) {
+  if (matchesAny(text, EDUCATION_KEYWORDS)) {
     return "education";
   }
 
   // 6. Work keywords (meetings, projects, clients)
-  if (WORK_KEYWORDS.some((kw) => text.includes(kw))) {
+  if (matchesAny(text, WORK_KEYWORDS)) {
     return "work";
   }
 
   // 7. Explicit urgent keywords
-  if (URGENT_KEYWORDS.some((kw) => text.includes(kw))) {
+  if (matchesAny(text, URGENT_KEYWORDS)) {
     return "urgent";
   }
 
-  // 8. Personal keywords
-  if (PERSONAL_KEYWORDS.some((kw) => text.includes(kw))) {
+  // 8. Personal keywords (parties, dinner, birthdays, gym)
+  if (matchesAny(text, PERSONAL_KEYWORDS)) {
     return "personal";
   }
 
-  // 9. Document attachment fallback (if not already matched)
-  if (
-    Boolean(event.image_url) ||
-    Boolean(event.pdf_url) ||
-    src === "upload" ||
-    src === "photo"
-  ) {
-    return "documents";
-  }
-
-  // 10. Default fallback
+  // 9. Default fallback: Any regular everyday task or unclassified note is 'personal'
   return "personal";
 }
 
@@ -272,22 +303,8 @@ export function getEventCategoryDetails(
 }
 
 /**
- * Checks if an event is considered a processed document (accounting for attachments without misclassifying health or travel).
+ * Checks if an event is considered an official document/administrative event.
  */
 export function isDocumentEvent(event: IQXOEvent): boolean {
-  const cat = categorizeEvent(event);
-  if (cat === "documents") {
-    return true;
-  }
-  if (cat === "health" || cat === "work" || cat === "travel" || cat === "education") {
-    return false;
-  }
-
-  return (
-    Boolean(event.image_url) ||
-    Boolean(event.pdf_url) ||
-    event.source === "upload" ||
-    event.source === "photo" ||
-    event.source === "document"
-  );
+  return categorizeEvent(event) === "documents";
 }
