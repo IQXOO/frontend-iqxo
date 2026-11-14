@@ -90,19 +90,33 @@ export function QuickActionBar({ event, language }: QuickActionBarProps) {
         if (savedScrollY > 0) {
           window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior })
         }
-        if (navigator.share) {
+        const shareMsg = `${event.date} at ${event.time}: ${event.title}\n${event.notes}`;
+        if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
+          (window as any).ReactNativeWebView.postMessage(
+            JSON.stringify({
+              type: "share",
+              title: event.title,
+              message: shareMsg,
+              text: shareMsg,
+            })
+          );
+        } else if (navigator.share) {
           try {
             await navigator.share({
               title: event.title,
-              text: `${event.date} at ${event.time}: ${event.title}\n${event.notes}`,
-            })
+              text: shareMsg,
+            });
           } catch {
             // User cancelled
           } finally {
             if (savedScrollY > 0) {
-              window.scrollTo({ top: savedScrollY, behavior: "instant" as ScrollBehavior })
+              window.scrollTo({ top: savedScrollY, behavior: "instant" as ScrollBehavior });
             }
           }
+        } else {
+          try {
+            await navigator.clipboard.writeText(shareMsg);
+          } catch (_) {}
         }
       },
       color: "text-purple-500",

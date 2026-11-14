@@ -230,7 +230,17 @@ ${origin}`;
     }
 
     try {
-      if (navigator.share) {
+      if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
+        (window as any).ReactNativeWebView.postMessage(
+          JSON.stringify({
+            type: "share",
+            title: event.title,
+            message: shareText,
+            text: shareText,
+            url: origin,
+          })
+        );
+      } else if (typeof navigator !== "undefined" && navigator.share) {
         await navigator.share({
           title: event.title,
           text: shareText,
@@ -248,23 +258,39 @@ ${origin}`;
             language === "ar"
               ? "تم نسخ تفاصيل الحدث إلى الحافظة بنجاح."
               : language === "fr"
-                ? "Détails de l'événement copiés dans le presse-papiers avec succès."
+                ? "Détails de l'événement copiés dans le presse-papiers مع succès."
                 : "Event details copied to clipboard successfully.",
         });
       }
     } catch (err) {
       if (err instanceof Error && err.name !== "AbortError") {
         console.error("Failed to share:", err);
-        toast({
-          title:
-            language === "ar"
-              ? "فشلت المشاركة"
-              : language === "fr"
-                ? "Échec du partage"
-                : "Share failed",
-          description: String(err),
-          variant: "destructive",
-        });
+        try {
+          await navigator.clipboard.writeText(shareText);
+          toast({
+            title:
+              language === "ar"
+                ? "تم نسخ التفاصيل"
+                : language === "fr"
+                  ? "Détails copiés"
+                  : "Details copied",
+            description:
+              language === "ar"
+                ? "تم نسخ تفاصيل الحدث إلى الحافظة بنجاح."
+                : "Event details copied to clipboard successfully.",
+          });
+        } catch (_) {
+          toast({
+            title:
+              language === "ar"
+                ? "فشلت المشاركة"
+                : language === "fr"
+                  ? "Échec du partage"
+                  : "Share failed",
+            description: String(err),
+            variant: "destructive",
+          });
+        }
       }
     } finally {
       if (savedScrollY > 0) {

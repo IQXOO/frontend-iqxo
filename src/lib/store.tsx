@@ -846,6 +846,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return [...activeEvents, ...archiveEvents];
   }, [activeEvents, archiveEvents]);
 
+  // Track dismissed virtual work shifts so deleting them persists
+  const [dismissedVirtualShifts, setDismissedVirtualShifts] = useState<Set<string>>(() => {
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem("iqxo_dismissed_virtual_shifts") : null;
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
   // Active events pagination state
   const [activePage, setActivePage] = useState(0);
   const [activeHasMore, setActiveHasMore] = useState(true);
@@ -1910,6 +1920,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         throw new Error("No authenticated user");
       }
 
+      // Handle virtual work schedule shifts immediately
+      if (id.startsWith("virtual-ws-")) {
+        setDismissedVirtualShifts((prev) => {
+          const next = new Set(prev).add(id);
+          try {
+            localStorage.setItem("iqxo_dismissed_virtual_shifts", JSON.stringify(Array.from(next)));
+          } catch (_) {}
+          return next;
+        });
+        return;
+      }
+
       const existingEvent = dbEvents.find(e => e.id === id);
       const isCloudEvent = existingEvent && (existingEvent.source === 'google' || existingEvent.source === 'azure');
 
@@ -1920,10 +1942,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const { session } = (await supabase.auth.getSession()).data;
         const backendUrl = import.meta.env.VITE_BACKEND_API || "https://backend-iqxo.fly.dev";
 
-        // Notify backend to delete from Cloud APIs and/or register Tombstone
+        // Query parameters ensure proxies and gateways never drop tombstone data on DELETE
+        const queryParams = new URLSearchParams({
+          native_event_id: existingEvent?.native_event_id || "",
+          title: existingEvent?.title || "",
+          date: existingEvent?.date || "",
+          time: existingEvent?.start_time || existingEvent?.time || "",
+        }).toString();
+
+        // Notify backend to delete from Cloud APIs and register Tombstone
         if (session) {
           try {
-            await fetch(`${backendUrl}/api/calendar/event/${id}`, {
+            await fetch(`${backendUrl}/api/calendar/event/${id}?${queryParams}`, {
               method: 'DELETE',
               headers: {
                 'Authorization': `Bearer ${session.access_token}`,
@@ -1950,17 +1980,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (existingEvent?.native_event_id || existingEvent?.title) {
           try {
             const titleKey = `${(existingEvent.title || "").trim().toLowerCase()}_${existingEvent.date}_${existingEvent.start_time || existingEvent.time || ""}`;
-            await supabase.from("deleted_events").upsert({
-              user_id: user.id,
-              native_event_id: existingEvent.native_event_id || null,
-              title_key: titleKey
-            }, { onConflict: "user_id,native_event_id", ignoreDuplicates: true });
+            if (existingEvent.native_event_id) {
+              await supabase.from("deleted_events").upsert({
+                user_id: user.id,
+                native_event_id: existingEvent.native_event_id,
+                title_key: titleKey
+              }, { onConflict: "user_id,native_event_id", ignoreDuplicates: true });
+            } else {
+              await supabase.from("deleted_events").insert({
+                user_id: user.id,
+                native_event_id: null,
+                title_key: titleKey
+              });
+            }
           } catch (_) {}
         }
       } catch (err) {
         console.error("Delete event error:", err);
-        // Revert optimistic update on failure
-        if (existingEvent) {
+        // Only revert optimistic update if cloud delete critically failed
+        if (isCloudEvent && existingEvent) {
           const isPast = existingEvent.date && new Date(`${existingEvent.date}T00:00:00`).getTime() < new Date().setHours(0,0,0,0);
           if (isPast) {
              setArchiveEvents(prev => [...prev, existingEvent]);
@@ -1986,7 +2024,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }));
       }
     },
-    [user, removeEventFromState, dbEvents],
+    [user, removeEventFromState, dbEvents, setDismissedVirtualShifts],
   );
 
   // ── Generate virtual shift events from work schedule (next 30 days) ──────────
@@ -2015,8 +2053,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const shiftsForDay = workScheduleRows.filter((r) => r.day_of_week === dow);
       for (const shift of shiftsForDay) {
+        const shiftId = `virtual-ws-${dateStr}-${shift.schedule_label}-${shift.start_time}`;
+        if (dismissedVirtualShifts.has(shiftId)) continue;
+
         virtualEvents.push({
-          id: `virtual-ws-${dateStr}-${shift.schedule_label}-${shift.start_time}`,
+          id: shiftId,
           user_id: userId,
           title: shift.schedule_label && shift.schedule_label !== "Main"
             ? shift.schedule_label
@@ -2033,7 +2074,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
     return virtualEvents;
-  }, [userId, workScheduleRows, dbEvents]);
+  }, [userId, workScheduleRows, dbEvents, dismissedVirtualShifts]);
 
   // ── Merged events (DB events + virtual shift events) ─────────────────────────
   const events = React.useMemo<IQXOEvent[]>(() => {
