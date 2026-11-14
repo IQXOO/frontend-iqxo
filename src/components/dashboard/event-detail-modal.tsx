@@ -30,6 +30,7 @@ import {
 import { useApp } from "@/lib/store";
 import { parseLocalDate } from "@/lib/store";
 import { ImageLightbox } from "./image-lightbox";
+import { parseImageUrls } from "./event-form-modal";
 import type { IQXOEvent } from "@/lib/types";
 import { format, isToday, isTomorrow } from "@/lib/date-utils";
 import { getNextOccurrence, getEventDisplayDate, computeEventPriority } from "@/lib/recurrence";
@@ -134,17 +135,15 @@ export function EventDetailModal({
   const { toast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showImageLightbox, setShowImageLightbox] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const [imgError, setImgError] = useState(false);
   const isRTL = language === "ar";
 
   if (!event) return null;
 
+  const images = parseImageUrls(event.image_url);
+  const hasImage = images.length > 0 && !imgError;
   const _priority = computeEventPriority(event);
-  const localDate = getEventDisplayDate(event);
-  const dateStr = format(localDate, "EEEE, MMMM d, yyyy", language);
-  const isEventToday = isToday(localDate);
-  const isEventTomorrow = isTomorrow(localDate);
-  const hasImage = !!event.image_url && !imgError;
   const isVirtual = event.source === "work_schedule_virtual";
   const category = getEventCategoryDetails(event, language);
 
@@ -173,8 +172,27 @@ export function EventDetailModal({
     }
   };
 
-  const handleShare = async () => {
+  const handleShare = async (e?: React.MouseEvent) => {
     if (!event) return;
+
+    // 1. Remove focus from the share button and any active element so WebKit
+    // does not miscalculate the popover anchor on iOS WKWebView.
+    if (e?.currentTarget) {
+      (e.currentTarget as HTMLElement).blur?.();
+    }
+    if (document.activeElement && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
+    // 2. Temporarily reset page scroll position while modal is open.
+    // In WKWebView on iOS, if the background document was scrolled before opening
+    // the dialog, WebKit mistakenly adds window.scrollY to the fixed header's coordinates,
+    // pushing the native UIActivityViewController sourceRect into the bottom-right corner.
+    const savedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    if (savedScrollY > 0) {
+      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+    }
+
     const origin = "https://iqxo.ai";
     let shareText;
 
@@ -244,6 +262,10 @@ ${origin}`;
           variant: "destructive",
         });
       }
+    } finally {
+      if (savedScrollY > 0) {
+        window.scrollTo({ top: savedScrollY, behavior: "instant" as ScrollBehavior });
+      }
     }
   };
 
@@ -251,7 +273,7 @@ ${origin}`;
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] bg-background border-0 border-none shadow-none flex flex-col p-0 gap-0 top-0 left-0 right-0 bottom-0 translate-x-0 translate-y-0 max-w-md mx-auto rounded-none sm:inset-auto sm:max-w-[430px] sm:h-[90dvh] sm:max-h-[850px] sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:border sm:border-border sm:shadow-2xl overflow-hidden outline-none duration-150 data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100"
+          className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] bg-background border-0 border-none shadow-none flex flex-col p-0 gap-0 top-0 left-0 right-0 bottom-0 !transform-none sm:!transform sm:inset-auto sm:max-w-[430px] sm:h-[90dvh] sm:max-h-[850px] sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:border sm:border-border sm:shadow-2xl overflow-hidden outline-none duration-150 data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100"
           showCloseButton={false}
           dir={isRTL ? "rtl" : "ltr"}
         >
@@ -287,15 +309,18 @@ ${origin}`;
             </div>
           </div>
 
-          {/* ── HERO IMAGE (if present) ── */}
-          {hasImage && (
+          {/* ── HERO IMAGE (Single or Multi-Gallery) ── */}
+          {hasImage && images.length === 1 && (
             <div
               className="relative w-full overflow-hidden cursor-pointer shrink-0"
               style={{ height: "200px" }}
-              onClick={() => setShowImageLightbox(true)}
+              onClick={() => {
+                setLightboxIndex(0);
+                setShowImageLightbox(true);
+              }}
             >
               <img
-                src={event.image_url!}
+                src={images[0]}
                 alt={event.title}
                 className="w-full h-full object-cover"
                 onError={() => setImgError(true)}
@@ -311,6 +336,33 @@ ${origin}`;
                       ? "Agrandir"
                       : "Tap to expand"}
                 </span>
+              </div>
+            </div>
+          )}
+
+          {hasImage && images.length > 1 && (
+            <div className="relative w-full overflow-hidden shrink-0 bg-black/30 border-b border-border/40">
+              <div className="flex gap-2.5 p-3 overflow-x-auto no-scrollbar scroll-smooth">
+                {images.map((imgUrl, idx) => (
+                  <div
+                    key={idx}
+                    className="relative h-28 w-28 rounded-2xl overflow-hidden shrink-0 border border-white/10 group cursor-pointer shadow-md hover:border-[#5BC0DE]/60 transition-all active:scale-95"
+                    onClick={() => {
+                      setLightboxIndex(idx);
+                      setShowImageLightbox(true);
+                    }}
+                  >
+                    <img
+                      src={imgUrl}
+                      alt={`${event.title} ${idx + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+                    <div className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm text-[10px] font-semibold text-white">
+                      {idx + 1}/{images.length}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -662,7 +714,8 @@ ${origin}`;
           {hasImage && (
             <ImageLightbox
               isOpen={showImageLightbox}
-              imageUrl={event.image_url!}
+              images={images}
+              initialIndex={lightboxIndex}
               title={event.title}
               onClose={() => setShowImageLightbox(false)}
             />

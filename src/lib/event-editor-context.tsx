@@ -3,6 +3,7 @@
 import React, { Suspense, createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { IQXOEvent } from "./types";
 import type { ParsedEvent } from "./parse-voice-input";
+import { useApp } from "./store";
 
 import { EventFormModal } from "../components/dashboard/event-form-modal";
 import { EventDetailModal } from "../components/dashboard/event-detail-modal";
@@ -31,15 +32,24 @@ interface EventEditorProviderProps {
 }
 
 export function EventEditorProvider({ children }: EventEditorProviderProps) {
-  const [selectedEvent, setSelectedEvent] = useState<IQXOEvent | null>(null);
+  const { events } = useApp();
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [directEvent, setDirectEvent] = useState<IQXOEvent | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<IQXOEvent | null>(null);
   const [voicePrefill, setVoicePrefill] = useState<ParsedEvent | null>(null);
   const [prefillImageUrl, setPrefillImageUrl] = useState<string | undefined>(undefined);
 
+  // Live synchronization: always get the latest state from the store
+  const selectedEvent = useMemo(() => {
+    if (!selectedEventId) return directEvent;
+    return events.find((e) => e.id === selectedEventId) || directEvent;
+  }, [selectedEventId, events, directEvent]);
+
   const openEventDetail = useCallback((event: IQXOEvent) => {
-    setSelectedEvent(event);
+    setSelectedEventId(event.id);
+    setDirectEvent(event);
     setDetailOpen(true);
   }, []);
 
@@ -72,11 +82,14 @@ export function EventEditorProvider({ children }: EventEditorProviderProps) {
   const handleDetailClose = useCallback((open: boolean) => {
     setDetailOpen(open);
     if (!open) {
-      setSelectedEvent(null);
+      setSelectedEventId(null);
+      setDirectEvent(null);
     }
   }, []);
 
   const handleEditFromDetail = useCallback((event: IQXOEvent) => {
+    // Close detail modal so it does not linger underneath holding stale state
+    setDetailOpen(false);
     setEditEvent(event);
     setFormOpen(true);
   }, []);

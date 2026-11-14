@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { X, ZoomIn, ZoomOut } from "lucide-react"
+import { useState, useEffect } from "react"
+import { X, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from "lucide-react"
 
 interface ImageLightboxProps {
-  imageUrl: string
+  imageUrl?: string
+  images?: string[]
+  initialIndex?: number
   isOpen: boolean
   onClose: () => void
   title?: string
@@ -12,13 +14,25 @@ interface ImageLightboxProps {
 
 export function ImageLightbox({
   imageUrl,
+  images: propImages,
+  initialIndex = 0,
   isOpen,
   onClose,
   title,
 }: ImageLightboxProps) {
+  const images = propImages && propImages.length > 0 ? propImages : (imageUrl ? [imageUrl] : [])
+  const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [zoom, setZoom] = useState(1)
 
-  if (!isOpen) return null
+  useEffect(() => {
+    setCurrentIndex(initialIndex)
+    setZoom(1)
+  }, [initialIndex, isOpen])
+
+  if (!isOpen || images.length === 0) return null
+
+  const currentImage = images[currentIndex] || images[0]
+  const hasMultiple = images.length > 1
 
   return (
     <div
@@ -36,18 +50,58 @@ export function ImageLightbox({
         className="flex flex-col items-center gap-3 max-w-2xl w-full"
         onClick={(e) => e.stopPropagation()}
       >
-        {title && (
-          <p className="text-sm font-medium text-foreground text-center">{title}</p>
-        )}
+        <div className="flex items-center justify-between w-full px-2">
+          {title ? (
+            <p className="text-sm font-medium text-foreground truncate">{title}</p>
+          ) : <div />}
+          {hasMultiple && (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-secondary text-foreground">
+              {currentIndex + 1} / {images.length}
+            </span>
+          )}
+        </div>
 
         <div className="relative w-full flex items-center justify-center overflow-hidden rounded-2xl bg-secondary">
           <img
-            src={imageUrl}
+            src={currentImage}
             alt={title || "Preview"}
             className="max-w-full max-h-[70vh] object-contain transition-transform duration-200"
             style={{ transform: `scale(${zoom})` }}
             loading="lazy"
           />
+
+          {hasMultiple && (
+            <>
+              {currentIndex > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setCurrentIndex((prev) => prev - 1)
+                    setZoom(1)
+                  }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black/80 text-white transition-all cursor-pointer"
+                  aria-label="Previous image"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+              )}
+              {currentIndex < images.length - 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setCurrentIndex((prev) => prev + 1)
+                    setZoom(1)
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black/80 text-white transition-all cursor-pointer"
+                  aria-label="Next image"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              )}
+            </>
+          )}
         </div>
 
         {/* Zoom controls */}

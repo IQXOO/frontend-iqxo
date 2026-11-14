@@ -248,7 +248,9 @@ export function UploadButton({
           if (user?.id) formData.append("userId", user.id)
           formData.append("language", language || "ar")
           formData.append("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC")
-          formData.append("clientDate", new Date().toISOString())
+          const now = new Date()
+          const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+          formData.append("clientDate", localDate)
 
           for (const preview of previews) {
             let fileToUpload = preview.file
