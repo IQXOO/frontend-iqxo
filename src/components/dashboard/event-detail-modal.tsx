@@ -144,6 +144,10 @@ export function EventDetailModal({
   const images = parseImageUrls(event.image_url);
   const hasImage = images.length > 0 && !imgError;
   const _priority = computeEventPriority(event);
+  const localDate = getEventDisplayDate(event);
+  const dateStr = format(localDate, "EEEE, MMMM d, yyyy", language);
+  const isEventToday = isToday(localDate);
+  const isEventTomorrow = isTomorrow(localDate);
   const isVirtual = event.source === "work_schedule_virtual";
   const category = getEventCategoryDetails(event, language);
 
