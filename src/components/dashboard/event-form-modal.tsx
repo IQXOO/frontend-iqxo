@@ -138,6 +138,22 @@ async function uploadToStorage(
   }
 }
 
+export function parseImageUrls(imageUrl?: string | null): string[] {
+  if (!imageUrl || imageUrl === "null" || imageUrl === "undefined") return [];
+  if (typeof imageUrl !== "string") return [];
+  const trimmed = imageUrl.trim();
+  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+    } catch (_) {}
+  }
+  if (trimmed.includes(",")) {
+    return trimmed.split(",").map(s => s.trim()).filter(Boolean);
+  }
+  return [trimmed];
+}
+
 export function EventFormModal({
   open,
   onOpenChange,
@@ -167,9 +183,9 @@ export function EventFormModal({
 
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
 
-  // Attachment states
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  // Attachment states (supports multiple images and reliable deletion)
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
+  const [newImageFiles, setNewImageFiles] = useState<{ file: File; previewUrl: string }[]>([]);
   const attachInputRef = useRef<HTMLInputElement>(null);
 
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -232,14 +248,9 @@ export function EventFormModal({
       setLocation(editLoc);
       setLink(editLnk);
       setNotes(editEvent.notes || "");
-      setImagePreview(
-        editEvent.image_url &&
-          editEvent.image_url !== "null" &&
-          editEvent.image_url !== "undefined"
-          ? editEvent.image_url
-          : null
-      );
-      setImageFile(null);
+      const urls = parseImageUrls(editEvent.image_url);
+      setExistingImageUrls(urls);
+      setNewImageFiles([]);
       setExistingPdfUrl(
         editEvent.pdf_url &&
           editEvent.pdf_url !== "null" &&
@@ -273,14 +284,9 @@ export function EventFormModal({
       setLocation(pLoc);
       setLink(pLnk);
       setNotes(prefillData.notes || "");
-      setImagePreview(
-        prefillImageUrl &&
-          prefillImageUrl !== "null" &&
-          prefillImageUrl !== "undefined"
-          ? prefillImageUrl
-          : null
-      );
-      setImageFile(null);
+      const initialUrls = prefillImageUrl ? parseImageUrls(prefillImageUrl) : [];
+      setExistingImageUrls(initialUrls);
+      setNewImageFiles([]);
       setPdfFile(null);
       setPdfName(null);
       setExistingPdfUrl(null);
@@ -301,8 +307,9 @@ export function EventFormModal({
       setLocation("");
       setLink("");
       setNotes("");
-      setImagePreview(null);
-      setImageFile(null);
+      const initialUrls = prefillImageUrl ? parseImageUrls(prefillImageUrl) : [];
+      setExistingImageUrls(initialUrls);
+      setNewImageFiles([]);
       setPdfFile(null);
       setPdfName(null);
       setExistingPdfUrl(null);
@@ -420,40 +427,50 @@ export function EventFormModal({
     checkDuplicateAndConflict(title, date, time);
   }, [title, date, time, checkDuplicateAndConflict]);
 
-  // ── File Handlers (Using instant ObjectURL for 0ms lag) ─────────────────────
+  // ── File Handlers (supports multiple files + mobile MIME fallback) ─────────
   const handleAttachSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    if (file.type.startsWith("image/")) {
-      setImageFile(file);
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
-      setUploadError(null);
-    } else if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
-      if (file.size > 10 * 1024 * 1024) {
+    const newImgs: { file: File; previewUrl: string }[] = [];
+
+    for (const file of files) {
+      const isImg = file.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name);
+      const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
+
+      if (isImg) {
+        newImgs.push({
+          file,
+          previewUrl: URL.createObjectURL(file),
+        });
+      } else if (isPdf) {
+        if (file.size > 10 * 1024 * 1024) {
+          setUploadError(
+            language === "ar"
+              ? "يجب أن يكون حجم الملف أقل من 10 ميجابايت."
+              : language === "fr"
+              ? "Le fichier PDF doit faire moins de 10 Mo."
+              : "PDF must be under 10 MB."
+          );
+          continue;
+        }
+        setPdfFile(file);
+        setPdfName(file.name);
+        setExistingPdfUrl(null);
+      } else {
         setUploadError(
           language === "ar"
-            ? "يجب أن يكون حجم الملف أقل من 10 ميجابايت."
+            ? "يرجى اختيار صورة أو ملف PDF."
             : language === "fr"
-            ? "Le fichier PDF doit faire moins de 10 Mo."
-            : "PDF must be under 10 MB."
+            ? "Veuillez sélectionner une image أو un PDF."
+            : "Please select an image or PDF file."
         );
-        e.target.value = "";
-        return;
       }
-      setPdfFile(file);
-      setPdfName(file.name);
-      setExistingPdfUrl(null);
+    }
+
+    if (newImgs.length > 0) {
+      setNewImageFiles((prev) => [...prev, ...newImgs]);
       setUploadError(null);
-    } else {
-      setUploadError(
-        language === "ar"
-          ? "يرجى اختيار صورة أو ملف PDF."
-          : language === "fr"
-          ? "Veuillez sélectionner une image ou un fichier PDF."
-          : "Please select an image or PDF file."
-      );
     }
 
     e.target.value = "";
@@ -521,11 +538,27 @@ export function EventFormModal({
       const isHttpOrDataUrl = (url?: string | null) =>
         typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:"));
 
+      // 1. Upload newly selected image files
+      const uploadedUrls: string[] = [];
+      if (newImageFiles.length > 0) {
+        for (const item of newImageFiles) {
+          try {
+            const url = await uploadToStorage(item.file, user.id, "event-images");
+            if (url) uploadedUrls.push(url);
+          } catch (uploadErr) {
+            console.warn("Failed to upload image file:", uploadErr);
+          }
+        }
+      }
+
+      // 2. Combine remaining existing URLs and uploaded URLs
+      const allImageUrls = [...existingImageUrls, ...uploadedUrls].filter(Boolean);
+
       let finalImageUrl: string | null = null;
-      if (imageFile) {
-        finalImageUrl = await uploadToStorage(imageFile, user.id, "event-images");
-      } else if (isHttpOrDataUrl(imagePreview)) {
-        finalImageUrl = imagePreview || null;
+      if (allImageUrls.length === 1) {
+        finalImageUrl = allImageUrls[0];
+      } else if (allImageUrls.length > 1) {
+        finalImageUrl = JSON.stringify(allImageUrls);
       } else {
         finalImageUrl = null;
       }
@@ -1004,24 +1037,24 @@ export function EventFormModal({
                 <button
                   type="button"
                   onClick={() => attachInputRef.current?.click()}
-                  className={`p-1.5 rounded-xl transition-all active:scale-95 flex items-center justify-center ${
-                    imagePreview || hasPdf
+                  className={`p-1.5 rounded-xl transition-all active:scale-95 flex items-center justify-center cursor-pointer ${
+                    existingImageUrls.length > 0 || newImageFiles.length > 0 || hasPdf
                       ? "text-[#5BC0DE] bg-[#5BC0DE]/15 hover:bg-[#5BC0DE]/25"
                       : "text-muted-foreground/60 hover:text-foreground hover:bg-secondary/60"
                   }`}
                   aria-label="Attach file"
                   title={
-                    imagePreview || hasPdf
+                    existingImageUrls.length > 0 || newImageFiles.length > 0 || hasPdf
                       ? language === "ar"
-                        ? "تمت إضافة المرفق"
+                        ? `تمت إضافة المرفقات (${existingImageUrls.length + newImageFiles.length + (hasPdf ? 1 : 0)})`
                         : language === "fr"
-                        ? "Pièce jointe ajoutée"
-                        : "Attachment added"
+                        ? "Pièces jointes ajoutées"
+                        : "Attachments added"
                       : language === "ar"
-                      ? "إرفاق صورة أو PDF"
+                      ? "إرفاق صور أو PDF"
                       : language === "fr"
-                      ? "Joindre une image ou un PDF"
-                      : "Attach image or PDF"
+                      ? "Joindre des images ou un PDF"
+                      : "Attach images or PDF"
                   }
                 >
                   <Paperclip className="w-4 h-4" />
@@ -1034,18 +1067,20 @@ export function EventFormModal({
               ref={attachInputRef}
               type="file"
               accept="image/*,application/pdf"
+              multiple
               onChange={handleAttachSelect}
               className="hidden"
             />
 
             {/* Attachment preview pills */}
-            {(imagePreview || hasPdf) && (
+            {(existingImageUrls.length > 0 || newImageFiles.length > 0 || hasPdf) && (
               <div className="flex flex-wrap items-center gap-2 mt-2.5">
-                {imagePreview && (
-                  <div className="relative h-14 w-14 rounded-xl overflow-hidden border border-border/80 bg-black/20 group shadow-sm">
+                {/* Existing saved images */}
+                {existingImageUrls.map((url, idx) => (
+                  <div key={`existing-${idx}`} className="relative h-14 w-14 rounded-xl overflow-hidden border border-border/80 bg-black/20 group shadow-sm shrink-0">
                     <img
-                      src={imagePreview}
-                      alt="Attachment preview"
+                      src={url}
+                      alt={`Attachment ${idx + 1}`}
                       className="h-full w-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
@@ -1054,16 +1089,36 @@ export function EventFormModal({
                     <button
                       type="button"
                       onClick={() => {
-                        setImagePreview(null);
-                        setImageFile(null);
+                        setExistingImageUrls(prev => prev.filter((_, i) => i !== idx));
                       }}
-                      className="absolute top-1 right-1 bg-black/70 hover:bg-black/90 text-white rounded-full p-0.5 transition-colors"
+                      className="absolute top-1 right-1 bg-black/70 hover:bg-black/90 text-white rounded-full p-0.5 transition-colors cursor-pointer"
                       aria-label="Remove image"
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </div>
-                )}
+                ))}
+
+                {/* Newly selected image files */}
+                {newImageFiles.map((item, idx) => (
+                  <div key={`new-${idx}`} className="relative h-14 w-14 rounded-xl overflow-hidden border border-[#5BC0DE]/60 bg-black/20 group shadow-sm shrink-0">
+                    <img
+                      src={item.previewUrl}
+                      alt={`New attachment ${idx + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewImageFiles(prev => prev.filter((_, i) => i !== idx));
+                      }}
+                      className="absolute top-1 right-1 bg-black/70 hover:bg-black/90 text-white rounded-full p-0.5 transition-colors cursor-pointer"
+                      aria-label="Remove image"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
 
                 {hasPdf && (
                   <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary/60 border border-border/80 max-w-full shadow-sm">
@@ -1078,7 +1133,7 @@ export function EventFormModal({
                         setPdfName(null);
                         setExistingPdfUrl(null);
                       }}
-                      className="text-muted-foreground hover:text-destructive transition-colors shrink-0 p-0.5"
+                      className="text-muted-foreground hover:text-destructive transition-colors shrink-0 p-0.5 cursor-pointer"
                       aria-label="Remove PDF"
                     >
                       <X className="h-3 w-3" />

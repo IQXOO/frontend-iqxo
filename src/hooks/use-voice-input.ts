@@ -129,6 +129,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const restartTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastStreamStopTimeRef = useRef<number>(0);
 
   // Lifecycle flags
   const isRecognitionActiveRef = useRef(false);
@@ -209,6 +210,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
         });
       } catch (_) {}
       streamRef.current = null;
+      lastStreamStopTimeRef.current = Date.now();
     }
 
     audioChunksRef.current = [];
@@ -292,6 +294,13 @@ export function useVoiceInput(): UseVoiceInputReturn {
       sessionFinalRef.current = "";
       sessionCommittedRef.current = false;
       displayBaseRef.current = "";
+
+      // Ensure iOS/WebKit audio hardware release cooldown (300ms) before requesting mic again
+      const elapsed = Date.now() - lastStreamStopTimeRef.current;
+      if (elapsed < 300) {
+        await new Promise((resolve) => setTimeout(resolve, 300 - elapsed));
+      }
+      if (!isRecognitionActiveRef.current) return;
 
       try {
         const isAndroidPlatform =
@@ -475,7 +484,21 @@ export function useVoiceInput(): UseVoiceInputReturn {
 
         if (!isRecognitionActiveRef.current) {
           stream.getTracks().forEach((track) => track.stop());
+          lastStreamStopTimeRef.current = Date.now();
           return;
+        }
+
+        // If iOS initially mutes the track while setting up AVAudioSession, wait briefly for it to unmute
+        const audioTracks = stream.getAudioTracks();
+        if (audioTracks.length > 0 && audioTracks[0].muted) {
+          await new Promise<void>((resolve) => {
+            const track = audioTracks[0];
+            const timeout = setTimeout(resolve, 300);
+            track.onunmute = () => {
+              clearTimeout(timeout);
+              resolve();
+            };
+          });
         }
 
         streamRef.current = stream;
@@ -493,9 +516,19 @@ export function useVoiceInput(): UseVoiceInputReturn {
         mediaRecorderRef.current = mediaRecorder;
         audioChunksRef.current = [];
 
-        // Parallel speech recognition for live on-screen text preview
+        // Check if device is iOS (iPhone/iPad/WKWebView)
+        const isIOS =
+          typeof navigator !== "undefined" &&
+          (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
+        // Subtitle speech recognition:
+        // CRITICAL FIX: On iOS WebKit, running SpeechRecognition and MediaRecorder simultaneously
+        // causes hardware AVAudioSession conflict, muting the microphone on subsequent recordings.
+        // Therefore, disable parallel SpeechRecognition on iOS so MediaRecorder has exclusive access.
         const SpeechRecognitionAPI =
-          window.SpeechRecognition || window.webkitSpeechRecognition;
+          !isIOS &&
+          (window.SpeechRecognition || window.webkitSpeechRecognition);
 
         if (SpeechRecognitionAPI) {
           const createSubtitleRecognition = () => {
@@ -582,6 +615,9 @@ export function useVoiceInput(): UseVoiceInputReturn {
             speechRecognitionRef.current = null;
           }
 
+          // Allow a macrotask tick (60ms) to ensure the final ondataavailable event has been dispatched
+          await new Promise((r) => setTimeout(r, 60));
+
           // Build audio blob safely
           const audioBlob = new Blob(audioChunksRef.current, {
             type: mediaRecorder.mimeType || "audio/webm",
@@ -593,7 +629,9 @@ export function useVoiceInput(): UseVoiceInputReturn {
               streamRef.current.getTracks().forEach((track) => track.stop());
             } catch (_) {}
             streamRef.current = null;
+            lastStreamStopTimeRef.current = Date.now();
           }
+          mediaRecorderRef.current = null;
 
           if (audioBlob.size === 0) {
             setIsProcessing(false);
@@ -614,6 +652,10 @@ export function useVoiceInput(): UseVoiceInputReturn {
             if (currentLangRef.current) {
               formData.append("language", currentLangRef.current.split("-")[0]);
             }
+            formData.append("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
+            const now = new Date();
+            const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+            formData.append("clientDate", localDate);
 
             const headers: Record<string, string> = {};
             if (session?.access_token) {
@@ -803,6 +845,10 @@ export function useVoiceInput(): UseVoiceInputReturn {
         if (currentLangRef.current) {
           formData.append("language", currentLangRef.current.split("-")[0]);
         }
+        formData.append("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
+        const now = new Date();
+        const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        formData.append("clientDate", localDate);
 
         const headers: Record<string, string> = {};
         if (session?.access_token) {
@@ -888,6 +934,14 @@ export function useVoiceInput(): UseVoiceInputReturn {
       mediaRecorderRef.current.state !== "inactive"
     ) {
       try {
+        if (
+          typeof mediaRecorderRef.current.requestData === "function" &&
+          mediaRecorderRef.current.state === "recording"
+        ) {
+          try {
+            mediaRecorderRef.current.requestData();
+          } catch (_) {}
+        }
         mediaRecorderRef.current.stop(); // onstop handles processing and releasing stream
       } catch (err) {
         devWarn("Voice", "Error calling mediaRecorder.stop()", err);

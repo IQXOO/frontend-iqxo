@@ -1870,9 +1870,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // 2-Way Sync: Update Native App
       const existingEvent = dbEvents.find(e => e.id === id);
       if (existingEvent?.native_event_id && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        const lastUnderscore = existingEvent.native_event_id.lastIndexOf('_');
+        const rawNativeId = (lastUnderscore !== -1 && /^\d+$/.test(existingEvent.native_event_id.slice(lastUnderscore + 1)))
+          ? existingEvent.native_event_id.slice(0, lastUnderscore)
+          : (existingEvent.native_event_id.includes('_')
+              ? existingEvent.native_event_id.slice(0, existingEvent.native_event_id.lastIndexOf('_'))
+              : existingEvent.native_event_id);
+
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({
           type: "updateNativeEvent",
-          native_event_id: existingEvent.native_event_id,
+          native_event_id: rawNativeId,
           title: data.title ?? existingEvent.title,
           startDate: (data.date ?? existingEvent.date) + "T" + (data.start_time ?? existingEvent.start_time ?? "00:00:00"),
           endDate: (data.date ?? existingEvent.date) + "T" + (data.end_time ?? existingEvent.end_time ?? "23:59:59"),
@@ -1901,23 +1908,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       removeEventFromState(id);
 
       try {
-        if (isCloudEvent) {
-          // MUST use backend to delete from Cloud APIs, otherwise it resurrects on next sync
-          const { session } = (await supabase.auth.getSession()).data;
-          if (session) {
-            const backendUrl = import.meta.env.VITE_BACKEND_API || "https://backend-iqxo.fly.dev";
-            const res = await fetch(`${backendUrl}/api/calendar/event/${id}`, {
+        const { session } = (await supabase.auth.getSession()).data;
+        const backendUrl = import.meta.env.VITE_BACKEND_API || "https://backend-iqxo.fly.dev";
+
+        // Notify backend to delete from Cloud APIs and/or register Tombstone
+        if (session) {
+          try {
+            await fetch(`${backendUrl}/api/calendar/event/${id}`, {
               method: 'DELETE',
-              headers: { 'Authorization': `Bearer ${session.access_token}` }
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                native_event_id: existingEvent?.native_event_id,
+                title: existingEvent?.title,
+                date: existingEvent?.date,
+                start_time: existingEvent?.start_time || existingEvent?.time
+              })
             });
-            if (!res.ok) {
-              throw new Error(`Cloud deletion failed`);
-            }
+          } catch (backendErr) {
+            console.warn("Backend delete / tombstone call:", backendErr);
+            if (isCloudEvent) throw backendErr;
           }
-        } else {
-          // Local event, delete directly from Supabase
-          const { error } = await supabase.from("events").delete().eq("id", id).eq("user_id", user.id);
-          if (error) throw error;
+        }
+
+        // Also ensure deleted from Supabase events table
+        const { error } = await supabase.from("events").delete().eq("id", id).eq("user_id", user.id);
+        if (error && isCloudEvent) throw error;
+
+        // Persist tombstone directly in Supabase if table is present
+        if (existingEvent?.native_event_id || existingEvent?.title) {
+          try {
+            const titleKey = `${(existingEvent.title || "").trim().toLowerCase()}_${existingEvent.date}_${existingEvent.start_time || existingEvent.time || ""}`;
+            await supabase.from("deleted_events").upsert({
+              user_id: user.id,
+              native_event_id: existingEvent.native_event_id || null,
+              title_key: titleKey
+            }, { onConflict: "user_id,native_event_id", ignoreDuplicates: true });
+          } catch (_) {}
         }
       } catch (err) {
         console.error("Delete event error:", err);
@@ -1935,9 +1964,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // 2-Way Sync: Delete from Native App
       if (existingEvent?.native_event_id && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        const lastUnderscore = existingEvent.native_event_id.lastIndexOf('_');
+        const rawNativeId = (lastUnderscore !== -1 && /^\d+$/.test(existingEvent.native_event_id.slice(lastUnderscore + 1)))
+          ? existingEvent.native_event_id.slice(0, lastUnderscore)
+          : (existingEvent.native_event_id.includes('_')
+              ? existingEvent.native_event_id.slice(0, existingEvent.native_event_id.lastIndexOf('_'))
+              : existingEvent.native_event_id);
+
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({
           type: "deleteNativeEvent",
-          native_event_id: existingEvent.native_event_id
+          native_event_id: rawNativeId
         }));
       }
     },

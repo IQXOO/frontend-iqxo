@@ -79,12 +79,30 @@ export function QuickActionBar({ event, language }: QuickActionBarProps) {
     {
       icon: Share2,
       label: language === "fr" ? "Partager" : language === "ar" ? "مشاركة" : "Share",
-      onClick: () => {
+      onClick: async (e?: React.MouseEvent) => {
+        if (e?.currentTarget) {
+          (e.currentTarget as HTMLElement).blur?.()
+        }
+        if (document.activeElement && document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur()
+        }
+        const savedScrollY = window.scrollY || document.documentElement.scrollTop || 0
+        if (savedScrollY > 0) {
+          window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior })
+        }
         if (navigator.share) {
-          navigator.share({
-            title: event.title,
-            text: `${event.date} at ${event.time}: ${event.title}\n${event.notes}`,
-          })
+          try {
+            await navigator.share({
+              title: event.title,
+              text: `${event.date} at ${event.time}: ${event.title}\n${event.notes}`,
+            })
+          } catch {
+            // User cancelled
+          } finally {
+            if (savedScrollY > 0) {
+              window.scrollTo({ top: savedScrollY, behavior: "instant" as ScrollBehavior })
+            }
+          }
         }
       },
       color: "text-purple-500",

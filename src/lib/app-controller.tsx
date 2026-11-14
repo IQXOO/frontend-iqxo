@@ -125,23 +125,9 @@ export default function AppController() {
         syncInProgress = true;
         try {
           const mappedEvents = result.events.map((ev: any) => {
-            let eventDate = ev.date;
-
-            // Defensive normalization for all-day events (no time specified):
-            // Native calendars on iOS/Android anchor all-day events to UTC midnight (e.g. 23:00 on the night before in UTC+1).
-            // Using the midday (12h) timestamp from native_event_id ensures the date cleanly matches the intended calendar day
-            // across all timezones, protecting existing production users immediately even before native app updates.
-            const isAllDay = (!ev.time || String(ev.time).trim() === "") && (!ev.start_time || String(ev.start_time).trim() === "");
-            if (isAllDay && ev.native_event_id) {
-              const lastUnderscore = ev.native_event_id.lastIndexOf("_");
-              if (lastUnderscore !== -1) {
-                const ts = Number(ev.native_event_id.slice(lastUnderscore + 1));
-                if (!isNaN(ts) && ts > 1000000000000) {
-                  const noon = new Date(ts + 12 * 60 * 60 * 1000);
-                  eventDate = `${noon.getFullYear()}-${String(noon.getMonth() + 1).padStart(2, "0")}-${String(noon.getDate()).padStart(2, "0")}`;
-                }
-              }
-            }
+            // Directly preserve the clean calendar date (ev.date formatted as YYYY-MM-DD)
+            // without secondary recalculations that corrupt all-day events across local timezones.
+            const eventDate = ev.date;
 
             return {
               native_event_id: ev.native_event_id || ev.id,
