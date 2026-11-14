@@ -158,11 +158,6 @@ export function useVoiceInput(): UseVoiceInputReturn {
 
   // Lifecycle flags
   const isRecognitionActiveRef = useRef(false);
-  const accumulatedTranscriptRef = useRef("");
-  const sessionFinalRef = useRef("");
-  const displayBaseRef = useRef("");
-  const isAndroidModeRef = useRef(false);
-  const sessionCommittedRef = useRef(false);
   const currentLangRef = useRef("");
 
   // Check hardware and browser support on mount
@@ -316,12 +311,8 @@ export function useVoiceInput(): UseVoiceInputReturn {
       setSpeechRecognitionFailed(false);
       audioChunksRef.current = [];
       isRecognitionActiveRef.current = true;
-      accumulatedTranscriptRef.current = "";
-      sessionFinalRef.current = "";
-      sessionCommittedRef.current = false;
-      displayBaseRef.current = "";
 
-      // Ensure iOS/WebKit audio hardware release cooldown (350ms) before requesting mic again
+      // Ensure iOS/WebKit and mobile audio hardware release cooldown (350ms) before requesting mic again
       const elapsed = Date.now() - lastStreamStopTimeRef.current;
       if (elapsed < 350) {
         await new Promise((resolve) => setTimeout(resolve, 350 - elapsed));
@@ -331,167 +322,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
       activateIOSRecordingSession();
 
       try {
-        const isAndroidPlatform =
-          typeof navigator !== "undefined" &&
-          /Android/i.test(navigator.userAgent);
-        isAndroidModeRef.current = isAndroidPlatform;
-
-        // ── Android Flow (Direct Web Speech API) ──────────────────────────
-        if (isAndroidPlatform) {
-          const SpeechRecognitionAPI =
-            window.SpeechRecognition || window.webkitSpeechRecognition;
-
-          if (!SpeechRecognitionAPI) {
-            isRecognitionActiveRef.current = false;
-            setIsListening(false);
-            throw new Error(
-              "Speech recognition API not supported on this browser/device.",
-            );
-          }
-
-          // Safety pause (100ms) to ensure previous native speech service released
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          if (!isRecognitionActiveRef.current) return;
-
-          const startAndroidSpeech = () => {
-            if (!isRecognitionActiveRef.current) return;
-
-            sessionFinalRef.current = "";
-            sessionCommittedRef.current = false;
-
-            let speechRecognition: SpeechRecognition;
-            try {
-              speechRecognition = new SpeechRecognitionAPI();
-            } catch (instError) {
-              devError("Voice", "Failed to construct SpeechRecognition", instError);
-              isRecognitionActiveRef.current = false;
-              setIsListening(false);
-              return;
-            }
-
-            speechRecognition.continuous = true;
-            speechRecognition.interimResults = true;
-            speechRecognition.maxAlternatives = 1;
-            speechRecognition.lang = currentLangRef.current || defaultLang;
-
-            speechRecognition.onstart = () => {
-              devLog("Voice", "Speech recognition session started (Android Mode)");
-              setIsListening(true);
-            };
-
-            speechRecognition.onresult = (event: SpeechRecognitionEvent) => {
-              if (!isRecognitionActiveRef.current) return;
-
-              let interim = "";
-              let final = "";
-
-              for (let i = event.resultIndex; i < event.results.length; i++) {
-                const result = event.results[i];
-                if (result.isFinal) {
-                  final += result[0].transcript;
-                } else {
-                  interim += result[0].transcript;
-                }
-              }
-
-              if (final) {
-                sessionFinalRef.current = final.trim();
-                displayBaseRef.current = final.trim();
-                setInterimTranscript(displayBaseRef.current);
-
-                const preview = accumulatedTranscriptRef.current
-                  ? accumulatedTranscriptRef.current + " " + sessionFinalRef.current
-                  : sessionFinalRef.current;
-                setTranscript(preview.trim());
-                devLog("Voice", "Speech final chunk (Android Mode)", {
-                  transcript: final,
-                });
-              } else if (interim) {
-                setInterimTranscript(
-                  displayBaseRef.current
-                    ? displayBaseRef.current + " " + interim.trim()
-                    : interim.trim(),
-                );
-              }
-            };
-
-            speechRecognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-              devWarn("Voice", "Speech recognition error (Android Mode)", {
-                error: event.error,
-              });
-
-              if (
-                event.error === "not-allowed" ||
-                event.error === "service-not-allowed"
-              ) {
-                isRecognitionActiveRef.current = false;
-                setIsListening(false);
-                setError(
-                  language === "ar"
-                    ? "تم رفض إذن الوصول إلى المايكروفون."
-                    : "Microphone permission denied.",
-                );
-                return;
-              }
-
-              if (
-                event.error !== "no-speech" &&
-                event.error !== "aborted" &&
-                event.error !== "network"
-              ) {
-                setError(`Error: ${event.error}`);
-                setSpeechRecognitionFailed(true);
-              }
-            };
-
-            speechRecognition.onend = () => {
-              devLog("Voice", "Speech recognition session ended (Android Mode)");
-
-              if (sessionFinalRef.current && !sessionCommittedRef.current) {
-                accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
-                  ? accumulatedTranscriptRef.current + " " + sessionFinalRef.current
-                  : sessionFinalRef.current;
-                sessionCommittedRef.current = true;
-              }
-
-              // Only auto-restart if still actively listening
-              if (isRecognitionActiveRef.current) {
-                displayBaseRef.current = sessionFinalRef.current;
-                // Throttled 150ms restart to avoid crashing native speech engine
-                restartTimerRef.current = setTimeout(() => {
-                  if (isRecognitionActiveRef.current) {
-                    startAndroidSpeech();
-                  }
-                }, 150);
-              }
-            };
-
-            speechRecognitionRef.current = speechRecognition;
-            try {
-              speechRecognition.start();
-            } catch (err) {
-              devWarn("Voice", "Failed to start Android SpeechRecognition", err);
-              // One-time retry if engine was temporarily busy
-              restartTimerRef.current = setTimeout(() => {
-                if (isRecognitionActiveRef.current) {
-                  try {
-                    const retrySR = new SpeechRecognitionAPI();
-                    retrySR.continuous = true;
-                    retrySR.interimResults = true;
-                    retrySR.lang = currentLangRef.current || defaultLang;
-                    retrySR.start();
-                    speechRecognitionRef.current = retrySR;
-                  } catch (_) {}
-                }
-              }, 250);
-            }
-          };
-
-          startAndroidSpeech();
-          return;
-        }
-
-        // ── iOS & Desktop Flow (MediaRecorder + Subtitle SpeechRecognition) ──
+        // ── Universal Audio Recording Flow (iOS, Android, and Desktop/Web) ──
         if (
           typeof window === "undefined" ||
           !navigator.mediaDevices ||
@@ -774,19 +605,9 @@ export function useVoiceInput(): UseVoiceInputReturn {
           }
         };
 
-        // CRITICAL FIX FOR IOS: Do NOT pass a timeslice (e.g. 500ms) to mediaRecorder.start() on iOS/WebKit.
-        // Passing a timeslice with audio/mp4 on iOS causes the WebKit muxer to stutter, fail to flush,
-        // and yield 0-byte empty blobs on second or subsequent recordings.
-        // Calling start() without arguments produces a single, complete, valid MP4 blob upon stop().
-        if (isIOS) {
-          mediaRecorder.start();
-        } else {
-          try {
-            mediaRecorder.start(500); // Collect chunk every 500ms
-          } catch (_) {
-            mediaRecorder.start();
-          }
-        }
+        // Calling start() without arguments produces a single, complete, valid audio container upon stop()
+        // across all platforms (iOS, Android, and Desktop) avoiding chunk-flushing race conditions.
+        mediaRecorder.start();
         devLog("Voice", "MediaRecorder start() called", { isIOS });
       } catch (err) {
         cleanupAllResources();
@@ -817,35 +638,17 @@ export function useVoiceInput(): UseVoiceInputReturn {
       devLog("Voice", "Language switched to", { langCode });
       currentLangRef.current = langCode;
 
-      // If currently recording, smoothly restart recognition with the new language
-      if (isRecognitionActiveRef.current) {
-        if (isAndroidModeRef.current) {
-          if (speechRecognitionRef.current) {
-            try {
-              speechRecognitionRef.current.abort();
-            } catch (_) {}
-          }
-          if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
-          restartTimerRef.current = setTimeout(() => {
-            if (isRecognitionActiveRef.current) {
-              startListening(langCode);
-            }
-          }, 100);
-        } else {
-          // Non-Android: restart subtitle recognizer with the new language
-          if (speechRecognitionRef.current) {
-            try {
-              speechRecognitionRef.current.abort();
-            } catch (_) {}
-          }
-        }
+      if (speechRecognitionRef.current) {
+        try {
+          speechRecognitionRef.current.abort();
+        } catch (_) {}
       }
     },
-    [startListening],
+    [],
   );
 
   /**
-   * Stop listening and finalize recognition.
+   * Stop listening and finalize recognition cleanly across all platforms.
    */
   const stopListening = useCallback(async () => {
     devLog("Voice", "Stopping voice input");
@@ -856,123 +659,6 @@ export function useVoiceInput(): UseVoiceInputReturn {
       restartTimerRef.current = null;
     }
 
-    // ── Android Stop Flow ──────────────────────────────────────────
-    if (isAndroidModeRef.current) {
-      if (speechRecognitionRef.current) {
-        try {
-          speechRecognitionRef.current.stop();
-        } catch (_) {}
-      }
-
-      setIsListening(false);
-      setInterimTranscript("");
-      setSpeechRecognitionFailed(false);
-
-      if (sessionFinalRef.current && !sessionCommittedRef.current) {
-        accumulatedTranscriptRef.current = accumulatedTranscriptRef.current
-          ? accumulatedTranscriptRef.current + " " + sessionFinalRef.current
-          : sessionFinalRef.current;
-        sessionCommittedRef.current = true;
-        sessionFinalRef.current = "";
-      }
-
-      const finalResult = accumulatedTranscriptRef.current.trim();
-      devLog("Voice", "Android final transcript ready", {
-        length: finalResult.length,
-      });
-
-      if (!finalResult) {
-        setIsProcessing(false);
-        return;
-      }
-
-      setIsProcessing(true);
-      setError(null);
-
-      try {
-        const formData = new FormData();
-        formData.append("text", finalResult);
-        if (user?.id) formData.append("userId", user.id);
-        if (currentLangRef.current) {
-          formData.append("language", currentLangRef.current.split("-")[0]);
-        }
-        formData.append("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
-        const now = new Date();
-        const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-        formData.append("clientDate", localDate);
-
-        const headers: Record<string, string> = {};
-        if (session?.access_token) {
-          headers["Authorization"] = `Bearer ${session.access_token}`;
-        }
-
-        const response = await fetchWithDiagnostics(
-          "Voice",
-          "POST /analyze-voice",
-          `${import.meta.env.VITE_BACKEND_API}/analyze-voice`,
-          {
-            method: "POST",
-            headers,
-            body: formData,
-          },
-          { timeoutMs: 30000, context: { textLength: finalResult.length } },
-        );
-
-        if (!response.ok) {
-          const responseText = await readResponseText(response);
-          let serverMsg = responseText;
-          try {
-            const parsed = JSON.parse(responseText);
-            if (parsed?.error) serverMsg = parsed.error;
-          } catch (_) {}
-          if (
-            serverMsg.includes("No audio") ||
-            serverMsg.includes("no text")
-          ) {
-            serverMsg =
-              language === "ar"
-                ? "لم يتم سماع أي صوت واضح، يرجى إعادة التحدث."
-                : language === "fr"
-                  ? "Aucun son détecté. Veuillez réessayer."
-                  : "No clear speech detected. Please speak again.";
-          }
-          throw new Error(serverMsg || `Server error: ${response.status}`);
-        }
-
-        const result = await response.json();
-        devLog("Voice", "Android voice analysis response received", {
-          hasEvent: Boolean(result.event),
-        });
-
-        if (result.event) {
-          setEventData(result.event);
-        }
-
-        const transcription = result.transcript || result.text || finalResult;
-        setTranscript(transcription);
-
-        if (typeof result.total_usage === "number") {
-          setTotalUsage(result.total_usage);
-        }
-      } catch (err) {
-        devError("Voice", "Android text submission failed", err);
-        const message = getFriendlyErrorMessage(
-          err,
-          "Failed to process text description",
-        );
-        setError(message);
-        toast({
-          title: "Couldn't process voice message",
-          description: message,
-          variant: "destructive",
-        });
-      } finally {
-        setIsProcessing(false);
-      }
-      return;
-    }
-
-    // ── Non-Android Stop Flow ──────────────────────────────────────────
     if (speechRecognitionRef.current) {
       try {
         speechRecognitionRef.current.abort();
@@ -985,17 +671,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
       mediaRecorderRef.current.state !== "inactive"
     ) {
       try {
-        // Do NOT call requestData() on iOS before stop() - it corrupts the single MP4 buffer right before stop()
-        if (
-          !checkIsIOS() &&
-          typeof mediaRecorderRef.current.requestData === "function" &&
-          mediaRecorderRef.current.state === "recording"
-        ) {
-          try {
-            mediaRecorderRef.current.requestData();
-          } catch (_) {}
-        }
-        mediaRecorderRef.current.stop(); // onstop handles processing and releasing stream
+        mediaRecorderRef.current.stop(); // onstop handles assembling blob, releasing stream and backend analysis
       } catch (err) {
         devWarn("Voice", "Error calling mediaRecorder.stop()", err);
         cleanupAllResources();
@@ -1007,7 +683,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
       setIsListening(false);
       setIsProcessing(false);
     }
-  }, [user, session, setTotalUsage, toast, cleanupAllResources, language]);
+  }, [cleanupAllResources]);
 
   return {
     isListening,
