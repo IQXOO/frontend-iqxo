@@ -174,7 +174,9 @@ export function VoiceButton({
       callbackFiredRef.current = false;
       setShowDone(false);
       resetVoiceState();
-      startListening(selectedLang.code);
+      setTimeout(() => {
+        startListening(selectedLang.code);
+      }, 200);
     }
   }, [
     isListening,

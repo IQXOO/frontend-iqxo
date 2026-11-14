@@ -110,6 +110,31 @@ export interface UseVoiceInputReturn {
   eventData: ParsedEvent | null;
 }
 
+function checkIsIOS(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
+function resetIOSAudioSession() {
+  if (typeof navigator !== "undefined" && (navigator as any).audioSession) {
+    try {
+      (navigator as any).audioSession.type = "playback";
+      (navigator as any).audioSession.type = "auto";
+    } catch (_) {}
+  }
+}
+
+function activateIOSRecordingSession() {
+  if (typeof navigator !== "undefined" && (navigator as any).audioSession) {
+    try {
+      (navigator as any).audioSession.type = "play-and-record";
+    } catch (_) {}
+  }
+}
+
 export function useVoiceInput(): UseVoiceInputReturn {
   const { user, session, setTotalUsage, language } = useApp();
   const { toast } = useToast();
@@ -212,6 +237,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
       streamRef.current = null;
       lastStreamStopTimeRef.current = Date.now();
     }
+    resetIOSAudioSession();
 
     audioChunksRef.current = [];
   }, []);
@@ -295,12 +321,14 @@ export function useVoiceInput(): UseVoiceInputReturn {
       sessionCommittedRef.current = false;
       displayBaseRef.current = "";
 
-      // Ensure iOS/WebKit audio hardware release cooldown (300ms) before requesting mic again
+      // Ensure iOS/WebKit audio hardware release cooldown (350ms) before requesting mic again
       const elapsed = Date.now() - lastStreamStopTimeRef.current;
-      if (elapsed < 300) {
-        await new Promise((resolve) => setTimeout(resolve, 300 - elapsed));
+      if (elapsed < 350) {
+        await new Promise((resolve) => setTimeout(resolve, 350 - elapsed));
       }
       if (!isRecognitionActiveRef.current) return;
+
+      activateIOSRecordingSession();
 
       try {
         const isAndroidPlatform =
@@ -485,42 +513,56 @@ export function useVoiceInput(): UseVoiceInputReturn {
         if (!isRecognitionActiveRef.current) {
           stream.getTracks().forEach((track) => track.stop());
           lastStreamStopTimeRef.current = Date.now();
+          resetIOSAudioSession();
           return;
         }
 
-        // If iOS initially mutes the track while setting up AVAudioSession, wait briefly for it to unmute
+        const isIOS = checkIsIOS();
+
+        // If iOS initially mutes the track while setting up AVAudioSession, wait for it to unmute
         const audioTracks = stream.getAudioTracks();
-        if (audioTracks.length > 0 && audioTracks[0].muted) {
-          await new Promise<void>((resolve) => {
-            const track = audioTracks[0];
-            const timeout = setTimeout(resolve, 300);
-            track.onunmute = () => {
-              clearTimeout(timeout);
-              resolve();
-            };
-          });
+        if (audioTracks.length > 0) {
+          audioTracks[0].enabled = true;
+          if (audioTracks[0].muted) {
+            devLog("Voice", "Audio track initially muted by iOS, waiting for hardware activation...");
+            await new Promise<void>((resolve) => {
+              const track = audioTracks[0];
+              let done = false;
+              const timeout = setTimeout(() => {
+                if (!done) {
+                  done = true;
+                  resolve();
+                }
+              }, 800);
+              track.onunmute = () => {
+                if (!done) {
+                  done = true;
+                  clearTimeout(timeout);
+                  devLog("Voice", "Audio track unmuted successfully by iOS");
+                  resolve();
+                }
+              };
+            });
+          }
         }
 
         streamRef.current = stream;
 
-        const supportedMimeType = MediaRecorder.isTypeSupported("audio/mp4")
-          ? "audio/mp4"
-          : MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-            ? "audio/webm;codecs=opus"
-            : "audio/webm";
+        const supportedMimeType = isIOS
+          ? (MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "")
+          : (MediaRecorder.isTypeSupported("audio/mp4")
+              ? "audio/mp4"
+              : MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+                ? "audio/webm;codecs=opus"
+                : "audio/webm");
 
-        const mediaRecorder = new MediaRecorder(stream, {
-          mimeType: supportedMimeType,
-        });
+        const mediaRecorder = new MediaRecorder(
+          stream,
+          supportedMimeType ? { mimeType: supportedMimeType } : undefined
+        );
 
         mediaRecorderRef.current = mediaRecorder;
         audioChunksRef.current = [];
-
-        // Check if device is iOS (iPhone/iPad/WKWebView)
-        const isIOS =
-          typeof navigator !== "undefined" &&
-          (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
-            (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
 
         // Subtitle speech recognition:
         // CRITICAL FIX: On iOS WebKit, running SpeechRecognition and MediaRecorder simultaneously
@@ -615,12 +657,12 @@ export function useVoiceInput(): UseVoiceInputReturn {
             speechRecognitionRef.current = null;
           }
 
-          // Allow a macrotask tick (60ms) to ensure the final ondataavailable event has been dispatched
-          await new Promise((r) => setTimeout(r, 60));
+          // Allow a macrotask tick (120ms on iOS) to ensure the final ondataavailable event has been dispatched
+          await new Promise((r) => setTimeout(r, isIOS ? 120 : 60));
 
           // Build audio blob safely
           const audioBlob = new Blob(audioChunksRef.current, {
-            type: mediaRecorder.mimeType || "audio/webm",
+            type: mediaRecorder.mimeType || (isIOS ? "audio/mp4" : "audio/webm"),
           });
 
           // NOW release the media stream tracks cleanly
@@ -632,6 +674,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
             lastStreamStopTimeRef.current = Date.now();
           }
           mediaRecorderRef.current = null;
+          resetIOSAudioSession();
 
           if (audioBlob.size === 0) {
             setIsProcessing(false);
@@ -731,12 +774,20 @@ export function useVoiceInput(): UseVoiceInputReturn {
           }
         };
 
-        try {
-          mediaRecorder.start(500); // Collect chunk every 500ms
-        } catch (_) {
+        // CRITICAL FIX FOR IOS: Do NOT pass a timeslice (e.g. 500ms) to mediaRecorder.start() on iOS/WebKit.
+        // Passing a timeslice with audio/mp4 on iOS causes the WebKit muxer to stutter, fail to flush,
+        // and yield 0-byte empty blobs on second or subsequent recordings.
+        // Calling start() without arguments produces a single, complete, valid MP4 blob upon stop().
+        if (isIOS) {
           mediaRecorder.start();
+        } else {
+          try {
+            mediaRecorder.start(500); // Collect chunk every 500ms
+          } catch (_) {
+            mediaRecorder.start();
+          }
         }
-        devLog("Voice", "MediaRecorder start() called");
+        devLog("Voice", "MediaRecorder start() called", { isIOS });
       } catch (err) {
         cleanupAllResources();
         devError("Voice", "Error starting voice input", err);
@@ -934,7 +985,9 @@ export function useVoiceInput(): UseVoiceInputReturn {
       mediaRecorderRef.current.state !== "inactive"
     ) {
       try {
+        // Do NOT call requestData() on iOS before stop() - it corrupts the single MP4 buffer right before stop()
         if (
+          !checkIsIOS() &&
           typeof mediaRecorderRef.current.requestData === "function" &&
           mediaRecorderRef.current.state === "recording"
         ) {
