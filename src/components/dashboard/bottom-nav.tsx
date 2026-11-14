@@ -920,7 +920,7 @@ export const BottomNav = memo(function BottomNav({
       // Filter future + next 12 months, then sort chronologically
       const today = new Date(); today.setHours(0,0,0,0);
       const filtered = mapped
-        .filter(e => new Date(e.date) >= today)
+        .filter(e => new Date(e.date + 'T00:00:00') >= today)
         .sort((a, b) => {
           const dateA = a.date + (a.time ? 'T' + a.time : 'T00:00');
           const dateB = b.date + (b.time ? 'T' + b.time : 'T00:00');

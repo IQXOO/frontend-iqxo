@@ -1813,12 +1813,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // 2-Way Sync: Push to Native App
       if (typeof window !== 'undefined' && (window as any).ReactNativeWebView && data.source !== "calendar_import") {
+        const isAllDay = !data.start_time && !data.end_time;
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({
           type: "createNativeEvent",
           reqId: row.id,
           title: data.title,
           startDate: data.date + "T" + (data.start_time || "00:00:00"),
           endDate: data.date + "T" + (data.end_time || "23:59:59"),
+          allDay: isAllDay,
+          isAllDay: isAllDay,
           notes: data.notes || "",
           location: data.location || "",
           link: data.link || "",
@@ -1877,12 +1880,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               ? existingEvent.native_event_id.slice(0, existingEvent.native_event_id.lastIndexOf('_'))
               : existingEvent.native_event_id);
 
+        const finalStartTime = data.start_time !== undefined ? data.start_time : existingEvent.start_time;
+        const finalEndTime = data.end_time !== undefined ? data.end_time : existingEvent.end_time;
+        const isAllDay = !finalStartTime && !finalEndTime;
+
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({
           type: "updateNativeEvent",
           native_event_id: rawNativeId,
           title: data.title ?? existingEvent.title,
-          startDate: (data.date ?? existingEvent.date) + "T" + (data.start_time ?? existingEvent.start_time ?? "00:00:00"),
-          endDate: (data.date ?? existingEvent.date) + "T" + (data.end_time ?? existingEvent.end_time ?? "23:59:59"),
+          startDate: (data.date ?? existingEvent.date) + "T" + (finalStartTime || "00:00:00"),
+          endDate: (data.date ?? existingEvent.date) + "T" + (finalEndTime || "23:59:59"),
+          allDay: isAllDay,
+          isAllDay: isAllDay,
           notes: data.notes ?? existingEvent.notes ?? "",
           location: data.location ?? existingEvent.location ?? "",
           link: data.link ?? existingEvent.link ?? "",
