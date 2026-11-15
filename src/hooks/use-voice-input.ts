@@ -398,11 +398,8 @@ export function useVoiceInput(): UseVoiceInputReturn {
         audioChunksRef.current = [];
 
         // Subtitle speech recognition:
-        // On iOS WebKit, running SpeechRecognition and MediaRecorder simultaneously
-        // causes hardware AVAudioSession conflict, muting the microphone.
-        // On other platforms, provide smooth real-time live subtitle transcription without infinite restart loops.
+        // Provide smooth real-time live subtitle transcription across all platforms (Mobile, Desktop, iOS Safari, Android)
         const SpeechRecognitionAPI =
-          !isIOS &&
           typeof window !== "undefined" &&
           (window.SpeechRecognition || window.webkitSpeechRecognition);
 
@@ -549,7 +546,13 @@ export function useVoiceInput(): UseVoiceInputReturn {
           mediaRecorderRef.current = null;
           resetIOSAudioSession();
 
-          if (audioBlob.size === 0) {
+          const spokenText = (
+            accumulatedTextRef.current ||
+            interimTranscript ||
+            ""
+          ).trim();
+
+          if (audioBlob.size === 0 && !spokenText) {
             setIsProcessing(false);
             setError(
               language === "ar"
@@ -561,8 +564,13 @@ export function useVoiceInput(): UseVoiceInputReturn {
 
           try {
             const formData = new FormData();
-            const fileExtension = audioBlob.type.includes("mp4") ? "m4a" : "webm";
-            formData.append("audio", audioBlob, `recording.${fileExtension}`);
+            if (audioBlob.size > 0) {
+              const fileExtension = audioBlob.type.includes("mp4") ? "m4a" : "webm";
+              formData.append("audio", audioBlob, `recording.${fileExtension}`);
+            }
+            if (spokenText) {
+              formData.append("text", spokenText);
+            }
 
             if (user?.id) formData.append("userId", user.id);
             if (currentLangRef.current) {
