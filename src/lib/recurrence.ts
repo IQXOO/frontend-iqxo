@@ -134,7 +134,7 @@ export function isEventOnDate(event: IQXOEvent, targetDateStr: string): boolean 
 
 export function getNextOccurrence(event: IQXOEvent): Date | null {
   const now = new Date();
-  const timeStr = event.start_time || event.time || "23:59";
+  const timeStr = event.start_time || event.time || "09:00";
   const [hours, minutes] = timeStr.split(":").map(Number);
   
   let current = parseSafeDate(event.date);

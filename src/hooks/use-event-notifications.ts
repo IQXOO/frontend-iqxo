@@ -43,7 +43,7 @@ function getLang(language: string): Lang {
 // On browser: uses the Web Notification API directly.
 function showNotification(title: string, body: string, tag: string) {
   const win = typeof window !== "undefined" ? (window as unknown as MobileWindow) : null
-  const isNativeApp = win && !!win.isNativeApp
+  const isNativeApp = win && (!!win.isNativeApp || !!(win as any).ReactNativeWebView)
   if (isNativeApp && win?.ReactNativeWebView) {
     win.ReactNativeWebView.postMessage(
       JSON.stringify({ type: "showNotification", title, body, data: { tag } })
@@ -71,7 +71,7 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
   // ── Permission request ────────────────────────────────────────────────────
   const requestPermission = useCallback(async () => {
     const win = typeof window !== "undefined" ? (window as unknown as MobileWindow) : null
-    const isNativeApp = win && !!win.isNativeApp
+    const isNativeApp = win && (!!win.isNativeApp || !!(win as any).ReactNativeWebView)
     if (isNativeApp) return true
 
     if (!("Notification" in window)) return false
@@ -89,7 +89,7 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
   // ── Native app: sync reminders and calendar ─────────────
   useEffect(() => {
     const win = typeof window !== "undefined" ? (window as unknown as MobileWindow) : null
-    const isNativeApp = win && !!win.isNativeApp
+    const isNativeApp = win && (!!win.isNativeApp || !!(win as any).ReactNativeWebView)
     if (!isNativeApp || !win?.ReactNativeWebView || !events?.length) return
 
     const now = Date.now()
@@ -101,6 +101,7 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
     }[] = []
 
     events.forEach((event) => {
+      if (event.is_done) return; // Do not schedule notifications for completed events
       const nextOcc = getNextOccurrence(event);
       if (!nextOcc) return; // Event is entirely in the past or invalid
 
@@ -155,7 +156,7 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
         })),
       })
     )
-  }, [events, strings])
+  }, [events, strings, language])
 
   return { requestPermission }
 }
