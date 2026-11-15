@@ -1050,11 +1050,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setActiveEvents((prev) =>
             prev.map((ev) => (ev.id === reqId ? { ...ev, native_event_id } : ev))
           );
+          setArchiveEvents((prev) =>
+            prev.map((ev) => (ev.id === reqId ? { ...ev, native_event_id } : ev))
+          );
         } catch (err) {
           console.warn("Failed to link native_event_id", err);
         }
       }
     };
+    window.addEventListener("nativeEventCreated", handleNativeEventCreated);
     // ── Handle incoming OAuth tokens in hash (e.g., from deep link in native app) ──
     const handleHashAuth = async () => {
       if (typeof window === "undefined") return;
@@ -1882,30 +1886,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // 2-Way Sync: Update Native App
       const existingEvent = dbEvents.find(e => e.id === id);
-      if (existingEvent?.native_event_id && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
-        const lastUnderscore = existingEvent.native_event_id.lastIndexOf('_');
-        const rawNativeId = (lastUnderscore !== -1 && /^\d+$/.test(existingEvent.native_event_id.slice(lastUnderscore + 1)))
-          ? existingEvent.native_event_id.slice(0, lastUnderscore)
-          : (existingEvent.native_event_id.includes('_')
+      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        const lastUnderscore = existingEvent?.native_event_id ? existingEvent.native_event_id.lastIndexOf('_') : -1;
+        const rawNativeId = (lastUnderscore !== -1 && /^\d+$/.test(existingEvent!.native_event_id!.slice(lastUnderscore + 1)))
+          ? existingEvent!.native_event_id!.slice(0, lastUnderscore)
+          : (existingEvent?.native_event_id?.includes('_')
               ? existingEvent.native_event_id.slice(0, existingEvent.native_event_id.lastIndexOf('_'))
-              : existingEvent.native_event_id);
+              : existingEvent?.native_event_id);
 
-        const finalStartTime = data.start_time !== undefined ? data.start_time : existingEvent.start_time;
-        const finalEndTime = data.end_time !== undefined ? data.end_time : existingEvent.end_time;
+        const finalStartTime = data.start_time !== undefined ? data.start_time : existingEvent?.start_time;
+        const finalEndTime = data.end_time !== undefined ? data.end_time : existingEvent?.end_time;
         const isAllDay = !finalStartTime && !finalEndTime;
 
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({
           type: "updateNativeEvent",
-          native_event_id: rawNativeId,
-          title: data.title ?? existingEvent.title,
-          startDate: (data.date ?? existingEvent.date) + "T" + (finalStartTime || "00:00:00"),
-          endDate: (data.date ?? existingEvent.date) + "T" + (finalEndTime || "23:59:59"),
+          native_event_id: rawNativeId || null,
+          title: data.title ?? existingEvent?.title,
+          oldTitle: existingEvent?.title,
+          oldDate: existingEvent?.date,
+          startDate: (data.date ?? existingEvent?.date) + "T" + (finalStartTime || "00:00:00"),
+          endDate: (data.date ?? existingEvent?.date) + "T" + (finalEndTime || "23:59:59"),
           allDay: isAllDay,
           isAllDay: isAllDay,
-          notes: data.notes ?? existingEvent.notes ?? "",
-          location: data.location ?? existingEvent.location ?? "",
-          link: data.link ?? existingEvent.link ?? "",
-          url: data.link ?? existingEvent.link ?? ""
+          notes: data.notes ?? existingEvent?.notes ?? "",
+          location: data.location ?? existingEvent?.location ?? "",
+          link: data.link ?? existingEvent?.link ?? "",
+          url: data.link ?? existingEvent?.link ?? ""
         }));
       }
       updateEventInState(id, rowToEvent(row));
@@ -2010,17 +2016,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 2-Way Sync: Delete from Native App
-      if (existingEvent?.native_event_id && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
-        const lastUnderscore = existingEvent.native_event_id.lastIndexOf('_');
-        const rawNativeId = (lastUnderscore !== -1 && /^\d+$/.test(existingEvent.native_event_id.slice(lastUnderscore + 1)))
-          ? existingEvent.native_event_id.slice(0, lastUnderscore)
-          : (existingEvent.native_event_id.includes('_')
+      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        const lastUnderscore = existingEvent?.native_event_id ? existingEvent.native_event_id.lastIndexOf('_') : -1;
+        const rawNativeId = (lastUnderscore !== -1 && /^\d+$/.test(existingEvent!.native_event_id!.slice(lastUnderscore + 1)))
+          ? existingEvent!.native_event_id!.slice(0, lastUnderscore)
+          : (existingEvent?.native_event_id?.includes('_')
               ? existingEvent.native_event_id.slice(0, existingEvent.native_event_id.lastIndexOf('_'))
-              : existingEvent.native_event_id);
+              : existingEvent?.native_event_id);
 
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({
           type: "deleteNativeEvent",
-          native_event_id: rawNativeId
+          native_event_id: rawNativeId || null,
+          title: existingEvent?.title,
+          date: existingEvent?.date
         }));
       }
     },
