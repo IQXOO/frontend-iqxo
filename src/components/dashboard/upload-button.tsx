@@ -280,7 +280,7 @@ export function UploadButton({
             'POST /analyze-images',
             `${import.meta.env.VITE_BACKEND_API}/analyze-images`,
             { method: "POST", headers, body: formData },
-            { timeoutMs: 120000, context: { count: previews.length } },
+            { timeoutMs: 180000, context: { count: previews.length } },
           )
 
           if (!res.ok) {
