@@ -77,8 +77,6 @@ export interface VoiceLang {
 // Comprehensive language list - Web Speech API supports all of these
 export const VOICE_LANGUAGES: VoiceLang[] = [
   { code: "en-US", label: "English", flag: "US" },
-  { code: "ar-EG", label: "عربي مصري", flag: "EG" },
-  { code: "ar-SA", label: "عربي خليجي", flag: "SA" },
   { code: "fr-FR", label: "Français", flag: "FR" },
   { code: "it-IT", label: "Italiano", flag: "IT" },
   { code: "es-ES", label: "Español", flag: "ES" },
@@ -92,6 +90,8 @@ export const VOICE_LANGUAGES: VoiceLang[] = [
   { code: "ru-RU", label: "Русский", flag: "RU" },
   { code: "nl-NL", label: "Nederlands", flag: "NL" },
   { code: "pl-PL", label: "Polski", flag: "PL" },
+  { code: "ar-EG", label: "عربي مصري", flag: "EG" },
+  { code: "ar-SA", label: "عربي خليجي", flag: "SA" },
 ];
 
 export interface UseVoiceInputReturn {
@@ -159,6 +159,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
   // Lifecycle flags
   const isRecognitionActiveRef = useRef(false);
   const currentLangRef = useRef("");
+  const accumulatedTextRef = useRef("");
 
   // Check hardware and browser support on mount
   useEffect(() => {
@@ -310,6 +311,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
       setEventData(null);
       setSpeechRecognitionFailed(false);
       audioChunksRef.current = [];
+      accumulatedTextRef.current = "";
       isRecognitionActiveRef.current = true;
 
       // Ensure iOS/WebKit and mobile audio hardware release cooldown (350ms) before requesting mic again
@@ -396,16 +398,24 @@ export function useVoiceInput(): UseVoiceInputReturn {
         audioChunksRef.current = [];
 
         // Subtitle speech recognition:
-        // CRITICAL FIX: On iOS WebKit, running SpeechRecognition and MediaRecorder simultaneously
-        // causes hardware AVAudioSession conflict, muting the microphone on subsequent recordings.
-        // Therefore, disable parallel SpeechRecognition on iOS so MediaRecorder has exclusive access.
+        // On iOS WebKit, running SpeechRecognition and MediaRecorder simultaneously
+        // causes hardware AVAudioSession conflict, muting the microphone.
+        // On other platforms, provide smooth real-time live subtitle transcription without infinite restart loops.
         const SpeechRecognitionAPI =
           !isIOS &&
+          typeof window !== "undefined" &&
           (window.SpeechRecognition || window.webkitSpeechRecognition);
 
         if (SpeechRecognitionAPI) {
+          let consecutiveErrors = 0;
+
           const createSubtitleRecognition = () => {
             if (!isRecognitionActiveRef.current) return;
+            if (consecutiveErrors >= 3) {
+              devWarn("Voice", "Stopping live subtitle retries after consecutive errors");
+              return;
+            }
+
             try {
               const sr = new SpeechRecognitionAPI();
               sr.continuous = true;
@@ -413,29 +423,60 @@ export function useVoiceInput(): UseVoiceInputReturn {
               sr.maxAlternatives = 1;
               sr.lang = currentLangRef.current || defaultLang;
 
+              sr.onstart = () => {
+                consecutiveErrors = 0;
+              };
+
               sr.onresult = (e: SpeechRecognitionEvent) => {
                 if (!isRecognitionActiveRef.current) return;
-                let interim = "";
-                let final = "";
-                for (let i = e.resultIndex; i < e.results.length; i++) {
-                  if (e.results[i].isFinal) final += e.results[i][0].transcript;
-                  else interim += e.results[i][0].transcript;
+                consecutiveErrors = 0;
+                let currentFinal = "";
+                let currentInterim = "";
+
+                for (let i = 0; i < e.results.length; i++) {
+                  const res = e.results[i];
+                  if (res && res[0]) {
+                    if (res.isFinal) {
+                      currentFinal += res[0].transcript + " ";
+                    } else {
+                      currentInterim += res[0].transcript;
+                    }
+                  }
                 }
-                if (interim) setInterimTranscript(interim);
-                if (final) setInterimTranscript(final);
+
+                const base = accumulatedTextRef.current ? accumulatedTextRef.current + " " : "";
+                const fullText = (base + currentFinal + currentInterim).trim();
+                if (fullText) {
+                  setInterimTranscript(fullText);
+                }
               };
 
               sr.onerror = (e) => {
-                devWarn("Voice", "Subtitle recognition error (non-fatal)", {
+                devWarn("Voice", "Live speech recognition error (non-fatal)", {
                   error: e.error,
                 });
+                if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+                  consecutiveErrors = 99; // Never retry fatal permission errors
+                  return;
+                }
+                if (e.error !== "no-speech") {
+                  consecutiveErrors++;
+                }
               };
 
               sr.onend = () => {
-                if (isRecognitionActiveRef.current) {
+                if (!isRecognitionActiveRef.current) return;
+
+                // Save current accumulated text so next segment continues seamlessly
+                setInterimTranscript((latest) => {
+                  if (latest) accumulatedTextRef.current = latest;
+                  return latest;
+                });
+
+                if (consecutiveErrors < 3) {
                   restartTimerRef.current = setTimeout(() => {
                     createSubtitleRecognition();
-                  }, 150);
+                  }, 300);
                 }
               };
 
@@ -443,6 +484,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
               sr.start();
             } catch (err) {
               devWarn("Voice", "Failed to start subtitle SpeechRecognition", err);
+              consecutiveErrors++;
             }
           };
 

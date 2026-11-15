@@ -279,7 +279,7 @@ export function VoiceButton({
             </h2>
 
             {/* Status line */}
-            <div className="h-9 flex items-center justify-center mb-6 px-4">
+            <div className="min-h-[2.5rem] flex items-center justify-center mb-6 px-4">
               {isProcessing ? (
                 <div className="flex items-center gap-2 text-white/80 animate-pulse">
                   <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
@@ -291,7 +291,7 @@ export function VoiceButton({
                   <span className="text-sm font-medium">{L.done}</span>
                 </div>
               ) : isListening && interimTranscript ? (
-                <p className="text-white/90 text-sm text-center max-w-xs truncate bg-white/5 py-1 px-3 rounded-full border border-white/10">
+                <p className="text-white/90 text-sm text-center max-w-sm max-h-16 overflow-y-auto break-words bg-white/5 py-1.5 px-3.5 rounded-2xl border border-white/10 shadow-inner">
                   {interimTranscript}
                 </p>
               ) : isListening ? (

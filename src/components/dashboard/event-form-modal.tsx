@@ -12,6 +12,7 @@ import {
   X,
   FileCheck,
   AlertTriangle,
+  ImageIcon,
   Link as LinkIcon,
   ExternalLink,
 } from "lucide-react";
@@ -428,7 +429,7 @@ export function EventFormModal({
   }, [title, date, time, checkDuplicateAndConflict]);
 
   // ── File Handlers (supports multiple files + mobile MIME fallback) ─────────
-  const handleAttachSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAttachSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
@@ -439,10 +440,23 @@ export function EventFormModal({
       const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
 
       if (isImg) {
-        newImgs.push({
-          file,
-          previewUrl: URL.createObjectURL(file),
-        });
+        try {
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => resolve((ev.target?.result as string) || "");
+            reader.onerror = () => resolve("");
+            reader.readAsDataURL(file);
+          });
+          newImgs.push({
+            file,
+            previewUrl: dataUrl || URL.createObjectURL(file),
+          });
+        } catch {
+          newImgs.push({
+            file,
+            previewUrl: URL.createObjectURL(file),
+          });
+        }
       } else if (isPdf) {
         if (file.size > 10 * 1024 * 1024) {
           setUploadError(
@@ -1077,7 +1091,7 @@ export function EventFormModal({
               <div className="flex flex-wrap items-center gap-2 mt-2.5">
                 {/* Existing saved images */}
                 {existingImageUrls.map((url, idx) => (
-                  <div key={`existing-${idx}`} className="relative h-14 w-14 rounded-xl overflow-hidden border border-border/80 bg-black/20 group shadow-sm shrink-0">
+                  <div key={`existing-${idx}`} className="relative h-14 w-14 rounded-xl overflow-hidden border border-border/80 bg-secondary/60 group shadow-sm shrink-0 flex items-center justify-center">
                     <img
                       src={url}
                       alt={`Attachment ${idx + 1}`}
@@ -1091,7 +1105,7 @@ export function EventFormModal({
                       onClick={() => {
                         setExistingImageUrls(prev => prev.filter((_, i) => i !== idx));
                       }}
-                      className="absolute top-1 right-1 bg-black/70 hover:bg-black/90 text-white rounded-full p-0.5 transition-colors cursor-pointer"
+                      className="absolute top-1 right-1 bg-black/70 hover:bg-black/90 text-white rounded-full p-0.5 transition-colors cursor-pointer z-10"
                       aria-label="Remove image"
                     >
                       <X className="h-3 w-3" />
@@ -1101,18 +1115,22 @@ export function EventFormModal({
 
                 {/* Newly selected image files */}
                 {newImageFiles.map((item, idx) => (
-                  <div key={`new-${idx}`} className="relative h-14 w-14 rounded-xl overflow-hidden border border-[#5BC0DE]/60 bg-black/20 group shadow-sm shrink-0">
-                    <img
-                      src={item.previewUrl}
-                      alt={`New attachment ${idx + 1}`}
-                      className="h-full w-full object-cover"
-                    />
+                  <div key={`new-${idx}`} className="relative h-14 w-14 rounded-xl overflow-hidden border border-[#5BC0DE]/60 bg-secondary/60 group shadow-sm shrink-0 flex items-center justify-center">
+                    {item.previewUrl ? (
+                      <img
+                        src={item.previewUrl}
+                        alt={`New attachment ${idx + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <ImageIcon className="h-5 w-5 text-muted-foreground/60" />
+                    )}
                     <button
                       type="button"
                       onClick={() => {
                         setNewImageFiles(prev => prev.filter((_, i) => i !== idx));
                       }}
-                      className="absolute top-1 right-1 bg-black/70 hover:bg-black/90 text-white rounded-full p-0.5 transition-colors cursor-pointer"
+                      className="absolute top-1 right-1 bg-black/70 hover:bg-black/90 text-white rounded-full p-0.5 transition-colors cursor-pointer z-10"
                       aria-label="Remove image"
                     >
                       <X className="h-3 w-3" />
