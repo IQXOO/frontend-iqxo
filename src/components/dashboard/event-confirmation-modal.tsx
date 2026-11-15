@@ -3,13 +3,11 @@
 import { useState, useEffect } from "react"
 import {
   X,
+  ArrowLeft,
   CheckCircle,
   AlertCircle,
   Trash2,
-  Calendar,
-  Clock,
   Edit2,
-  ChevronLeft,
   MapPin,
   Phone,
   Link as LinkIcon,
@@ -62,6 +60,7 @@ export function EventConfirmationModal({
 
   const [events, setEvents] = useState<EditableEvent[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null)
 
@@ -214,17 +213,20 @@ export function EventConfirmationModal({
   const selectedCount = events.filter((e) => e.selected).length
 
   const labels = {
-    title: language === "ar" ? "العنوان" : language === "fr" ? "Titre" : "TITLE",
-    date: language === "ar" ? "متى" : language === "fr" ? "Quand" : "WHEN",
-    startTime: language === "ar" ? "وقت البدء" : language === "fr" ? "Heure de début" : "START TIME",
-    endTime: language === "ar" ? "وقت الانتهاء" : language === "fr" ? "Heure de fin" : "END TIME",
-    location: language === "ar" ? "الموقع (العنوان الفعلي)" : language === "fr" ? "Lieu" : "LOCATION",
+    title: language === "ar" ? "العنوان واللون" : language === "fr" ? "Titre & Couleur" : "TITLE & COLOR",
+    titlePlaceholder: language === "ar" ? "عنوان الحدث" : language === "fr" ? "Titre de l'événement" : "Event title",
+    dateAndTime: language === "ar" ? "التاريخ والوقت" : language === "fr" ? "Date & Heure" : "DATE & TIME",
+    dateLabel: language === "ar" ? "التاريخ" : language === "fr" ? "Date" : "DATE",
+    startLabel: language === "ar" ? "البدء" : language === "fr" ? "Début" : "START",
+    endLabel: language === "ar" ? "الانتهاء" : language === "fr" ? "Fin" : "END",
+    location: language === "ar" ? "الموقع (العنوان الفعلي)" : language === "fr" ? "Lieu physique" : "LOCATION",
+    locationPlaceholder: language === "ar" ? "اسم القاعة، العنوان، المدينة..." : language === "fr" ? "Nom de la salle, adresse, ville..." : "Venue name, street address, city...",
     link: language === "ar" ? "رابط الاجتماع / الويب" : language === "fr" ? "Lien de réunion" : "MEETING / WEB LINK",
+    linkPlaceholder: language === "ar" ? "https://zoom.us/...، رابط ميتينج أو ويب" : language === "fr" ? "https://zoom.us/..., lien Meet, Teams..." : "https://zoom.us/..., meeting or web link",
     phone: language === "ar" ? "الهاتف" : language === "fr" ? "Téléphone" : "PHONE",
     notes: language === "ar" ? "ملاحظات" : language === "fr" ? "Notes" : "NOTES",
-    color: language === "ar" ? "اللون" : language === "fr" ? "Couleur" : "COLOR",
-    recurrence: language === "ar" ? "التكرار" : language === "fr" ? "Répétition" : "REPEAT",
-    reminder: language === "ar" ? "تذكير" : language === "fr" ? "Rappel" : "REMINDER",
+    notesPlaceholder: language === "ar" ? "أضف ملاحظة أو تفاصيل إضافية..." : language === "fr" ? "Ajouter une note ou des détails..." : "Add a note or additional details...",
+    schedule: language === "ar" ? "الجدول والتكرار" : language === "fr" ? "Planning & Rappel" : "SCHEDULE & REPEAT",
     confirmAll:
       language === "ar"
         ? `حفظ (${selectedCount})`
@@ -233,7 +235,6 @@ export function EventConfirmationModal({
         : `Save (${selectedCount})`,
     headerPhoto: language === "ar" ? "مراجعة الأحداث" : language === "fr" ? "Événements" : "Review Events",
     editEvent: language === "ar" ? "تعديل الحدث" : language === "fr" ? "Modifier l'événement" : "Edit Event",
-    saving: language === "ar" ? "جاري الحفظ..." : language === "fr" ? "Un instant..." : "Saving...",
     empty: language === "ar" ? "لا توجد أحداث" : language === "fr" ? "Aucun événement" : "No events",
     newEvent: language === "ar" ? "حدث جديد" : language === "fr" ? "Nouvel événement" : "New Event",
     done: language === "ar" ? "تم" : language === "fr" ? "Terminé" : "Done",
@@ -257,7 +258,7 @@ export function EventConfirmationModal({
         {/* Floating Toast inside modal */}
         {toast && (
           <div
-            className={`fixed top-4 left-1/2 -translate-x-1/2 z-[70] px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-xl animate-in slide-in-from-top duration-300 ${
+            className={`fixed top-4 left-1/2 -translate-x-1/2 z-[70] px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-xl animate-in fade-in duration-200 ${
               toast.type === "success" ? "bg-green-500 text-white" : "bg-destructive text-destructive-foreground"
             }`}
           >
@@ -266,7 +267,7 @@ export function EventConfirmationModal({
           </div>
         )}
 
-        {/* ── STICKY TOP HEADER (Consistent with Manual Event Modal) ── */}
+        {/* ── STICKY TOP HEADER (Identical to Manual Event Modal) ── */}
         <div className="flex justify-between items-center px-4 py-3.5 border-b border-border/80 bg-background/95 backdrop-blur-xl sticky top-0 z-50 shrink-0">
           {editingEvent ? (
             <>
@@ -277,7 +278,7 @@ export function EventConfirmationModal({
                   className="p-2 -ml-1 rounded-xl text-foreground hover:bg-secondary/60 active:scale-95 transition-all"
                   aria-label="Back"
                 >
-                  <ChevronLeft className="w-5 h-5 rtl:rotate-180" />
+                  <ArrowLeft className="w-5 h-5 rtl:rotate-180" />
                 </button>
                 <h1 className="text-base sm:text-lg font-bold text-foreground tracking-tight truncate">
                   {labels.editEvent}
@@ -315,12 +316,12 @@ export function EventConfirmationModal({
           )}
         </div>
 
-        {/* ── SCROLLABLE BODY (Touch-stable, fixed width, no wobble) ── */}
-        <div className="px-5 py-5 overflow-y-auto flex-1 flex flex-col gap-4 min-h-0 pb-6 overscroll-contain touch-pan-y">
+        {/* ── SCROLLABLE BODY (Zero-wobble, overflow-x-hidden, full fixed width) ── */}
+        <div className="px-5 py-5 overflow-y-auto overflow-x-hidden flex-1 flex flex-col gap-4 min-h-0 pb-6 overscroll-contain w-full max-w-full">
           {editingEvent ? (
             /* ================= EDIT VIEW ================= */
-            <div className="space-y-4 animate-in slide-in-from-right-4 duration-200">
-              {/* Title & Color */}
+            <div className="flex flex-col gap-4 w-full min-w-0">
+              {/* 1. Title & Color */}
               <div className="flex flex-col">
                 <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
                   {labels.title}
@@ -331,32 +332,43 @@ export function EventConfirmationModal({
                     value={editingEvent.title || ""}
                     onChange={(e) => updateEventField(editingEvent._id, "title", e.target.value)}
                     className="flex-1 px-4 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium"
-                    placeholder="e.g. Weekly Team Meeting"
+                    placeholder={labels.titlePlaceholder}
                   />
-                  <Popover>
+
+                  {/* Color Swatch & Popover */}
+                  <Popover open={isColorPickerOpen} onOpenChange={setIsColorPickerOpen}>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className="w-12 h-12 rounded-2xl border border-border/80 shrink-0 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+                        className="w-12 h-12 rounded-2xl shrink-0 cursor-pointer transition-transform active:scale-95 shadow-md flex items-center justify-center border border-white/20 focus:outline-none focus:ring-2 focus:ring-[#5BC0DE]"
                         style={{ backgroundColor: editingEvent.color || "#00C2FF" }}
-                        aria-label="Color"
+                        aria-label="Select event color"
                       >
-                        <div className="w-4 h-4 rounded-full bg-white/30 backdrop-blur-sm border border-white/40" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-white/90 shadow-sm" />
                       </button>
                     </PopoverTrigger>
                     <PopoverContent
                       side="bottom"
                       align="end"
-                      className="p-3 w-auto bg-card border border-border/80 shadow-2xl rounded-2xl"
+                      sideOffset={8}
+                      className="w-auto p-3 rounded-2xl bg-popover/95 backdrop-blur-xl border border-border shadow-2xl z-[100]"
                     >
-                      <div className="grid grid-cols-5 gap-2">
+                      <div className="grid grid-cols-5 gap-2.5">
                         {COLOR_PALETTE.map((c) => (
                           <button
                             key={c}
                             type="button"
-                            onClick={() => updateEventField(editingEvent._id, "color", c)}
-                            className="w-7 h-7 rounded-xl transition-all hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer"
+                            onClick={() => {
+                              updateEventField(editingEvent._id, "color", c)
+                              setIsColorPickerOpen(false)
+                            }}
+                            className={`w-8 h-8 rounded-full transition-all flex items-center justify-center ${
+                              (editingEvent.color || "#00C2FF") === c
+                                ? "scale-110 ring-2 ring-offset-2 ring-offset-background shadow-md"
+                                : "hover:scale-105 opacity-80 hover:opacity-100"
+                            }`}
                             style={{ backgroundColor: c }}
+                            aria-label={`Color ${c}`}
                           >
                             {(editingEvent.color || "#00C2FF") === c && (
                               <div className="w-2 h-2 rounded-full bg-white shadow-sm" />
@@ -369,56 +381,53 @@ export function EventConfirmationModal({
                 </div>
               </div>
 
-              {/* Date & Time (Unified Card) */}
+              {/* 2. Date & Time (Unified 3-column bar, identical to manual modal) */}
               <div className="flex flex-col">
                 <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
-                  {language === "ar" ? "التاريخ والوقت" : language === "fr" ? "Date & Heure" : "DATE & TIME"}
+                  {labels.dateAndTime}
                 </label>
-                <div className="rounded-2xl border border-border/80 bg-secondary/30 p-3 flex flex-col gap-2.5">
-                  {/* Date Row */}
-                  <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-background/50 border border-border/50">
-                    <div className="flex items-center gap-2 text-muted-foreground text-xs font-semibold uppercase">
-                      <Calendar className="w-4 h-4 text-[#5BC0DE]" />
-                      <span>{labels.date}</span>
-                    </div>
+                <div className="rounded-2xl border border-border/80 bg-secondary/40 overflow-hidden grid grid-cols-3 divide-x divide-border/60 rtl:divide-x-reverse shadow-sm">
+                  {/* DATE */}
+                  <div className="p-2 sm:p-2.5 flex flex-col justify-center min-w-0 bg-transparent hover:bg-white/[0.02] transition-colors">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider block mb-1">
+                      {labels.dateLabel}
+                    </span>
                     <input
                       type="date"
                       value={editingEvent.date || ""}
                       onChange={(e) => updateEventField(editingEvent._id, "date", e.target.value)}
-                      className="bg-transparent border-none outline-none text-sm sm:text-base text-foreground font-medium text-right cursor-pointer [color-scheme:dark]"
+                      className="w-full bg-transparent border-none outline-none text-[16px] sm:text-sm font-semibold text-foreground cursor-pointer min-w-0 p-0 [color-scheme:dark]"
+                      required
                     />
                   </div>
 
-                  {/* Times Row (Start & End) */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-background/50 border border-border/50">
-                      <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-semibold uppercase">
-                        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span>{labels.startTime}</span>
-                      </div>
-                      <input
-                        type="time"
-                        value={editingEvent.start_time || editingEvent.time || ""}
-                        onChange={(e) => {
-                          updateEventField(editingEvent._id, "start_time", e.target.value)
-                          updateEventField(editingEvent._id, "time", e.target.value)
-                        }}
-                        className="bg-transparent border-none outline-none text-sm text-foreground font-medium text-right cursor-pointer [color-scheme:dark]"
-                      />
-                    </div>
+                  {/* START TIME */}
+                  <div className="p-2 sm:p-2.5 flex flex-col justify-center min-w-0 bg-transparent hover:bg-white/[0.02] transition-colors">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider block mb-1">
+                      {labels.startLabel}
+                    </span>
+                    <input
+                      type="time"
+                      value={editingEvent.start_time || editingEvent.time || ""}
+                      onChange={(e) => {
+                        updateEventField(editingEvent._id, "start_time", e.target.value)
+                        updateEventField(editingEvent._id, "time", e.target.value)
+                      }}
+                      className="w-full bg-transparent border-none outline-none text-[16px] sm:text-sm font-semibold text-foreground cursor-pointer min-w-0 p-0 [color-scheme:dark]"
+                    />
+                  </div>
 
-                    <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-background/50 border border-border/50">
-                      <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-semibold uppercase">
-                        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span>{labels.endTime}</span>
-                      </div>
-                      <input
-                        type="time"
-                        value={editingEvent.end_time || ""}
-                        onChange={(e) => updateEventField(editingEvent._id, "end_time", e.target.value)}
-                        className="bg-transparent border-none outline-none text-sm text-foreground font-medium text-right cursor-pointer [color-scheme:dark]"
-                      />
-                    </div>
+                  {/* END TIME */}
+                  <div className="p-2 sm:p-2.5 flex flex-col justify-center min-w-0 bg-transparent hover:bg-white/[0.02] transition-colors">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider block mb-1">
+                      {labels.endLabel}
+                    </span>
+                    <input
+                      type="time"
+                      value={editingEvent.end_time || ""}
+                      onChange={(e) => updateEventField(editingEvent._id, "end_time", e.target.value)}
+                      className="w-full bg-transparent border-none outline-none text-[16px] sm:text-sm font-semibold text-foreground cursor-pointer min-w-0 p-0 [color-scheme:dark]"
+                    />
                   </div>
                 </div>
 
@@ -446,7 +455,7 @@ export function EventConfirmationModal({
                 )}
               </div>
 
-              {/* Location (Physical Venue) */}
+              {/* 3. Location (Physical Venue) */}
               <div className="flex flex-col">
                 <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
                   {labels.location}
@@ -457,19 +466,13 @@ export function EventConfirmationModal({
                     type="text"
                     value={editingEvent.location || ""}
                     onChange={(e) => updateEventField(editingEvent._id, "location", e.target.value)}
-                    placeholder={
-                      language === "ar"
-                        ? "اسم القاعة، العنوان، المدينة..."
-                        : language === "fr"
-                        ? "Nom de la salle, adresse, ville..."
-                        : "Venue name, street address, city..."
-                    }
-                    className="w-full pl-11 pr-4 rtl:pl-4 rtl:pr-11 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none text-[16px] font-medium transition-all focus:border-[#5BC0DE]"
+                    placeholder={labels.locationPlaceholder}
+                    className="w-full pl-11 pr-4 rtl:pl-4 rtl:pr-11 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium"
                   />
                 </div>
               </div>
 
-              {/* Link (Meeting / Web Link) */}
+              {/* 4. Link (Meeting / Web Link) */}
               <div className="flex flex-col">
                 <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
                   {labels.link}
@@ -480,14 +483,8 @@ export function EventConfirmationModal({
                     type="text"
                     value={editingEvent.link || ""}
                     onChange={(e) => updateEventField(editingEvent._id, "link", e.target.value)}
-                    placeholder={
-                      language === "ar"
-                        ? "https://zoom.us/...، رابط ميتينج أو ويب"
-                        : language === "fr"
-                        ? "https://zoom.us/..., lien Meet, Teams..."
-                        : "https://zoom.us/..., meeting or web link"
-                    }
-                    className={`w-full pl-11 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none text-[16px] font-medium transition-all focus:border-[#5BC0DE] ${
+                    placeholder={labels.linkPlaceholder}
+                    className={`w-full pl-11 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium ${
                       editingEvent.link ? "pr-11 rtl:pr-4 rtl:pl-11" : "pr-4 rtl:pl-4 rtl:pr-11"
                     }`}
                   />
@@ -509,16 +506,16 @@ export function EventConfirmationModal({
                 </div>
               </div>
 
-              {/* Schedule (Repeat & Reminder) */}
+              {/* 5. Schedule (Repeat & Reminder) */}
               <div className="flex flex-col">
                 <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
-                  {language === "ar" ? "الجدول" : language === "fr" ? "PLANNING" : "SCHEDULE"}
+                  {labels.schedule}
                 </label>
                 <div className="grid grid-cols-2 gap-2.5">
                   <select
                     value={editingEvent.recurrence_rule || ""}
                     onChange={(e) => updateEventField(editingEvent._id, "recurrence_rule", e.target.value)}
-                    className="w-full px-3.5 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground text-[14px] font-medium outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 cursor-pointer"
+                    className="w-full px-3.5 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground text-[14px] font-medium outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 cursor-pointer"
                   >
                     <option value="">
                       {language === "ar" ? "بدون تكرار" : language === "fr" ? "Répétition : Jamais" : "Repeat: Never"}
@@ -558,7 +555,7 @@ export function EventConfirmationModal({
                         e.target.value ? [{ minutes_before: parseInt(e.target.value) }] : []
                       )
                     }
-                    className="w-full px-3.5 py-3 rounded-2xl border border-border/80 bg-secondary/40 text-foreground text-[14px] font-medium outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 cursor-pointer"
+                    className="w-full px-3.5 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground text-[14px] font-medium outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 cursor-pointer"
                   >
                     <option value="">
                       {language === "ar" ? "بدون تذكير" : language === "fr" ? "Rappel : Aucun" : "Reminder: None"}
@@ -605,18 +602,18 @@ export function EventConfirmationModal({
                 </div>
               </div>
 
-              {/* Phone */}
+              {/* 6. Phone */}
               <div className="flex flex-col">
                 <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
                   {labels.phone}
                 </label>
-                <div className="flex items-center gap-2.5 px-4 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground">
-                  <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+                <div className="relative flex items-center">
+                  <Phone className="w-4 h-4 text-muted-foreground absolute left-4 rtl:left-auto rtl:right-4 pointer-events-none" />
                   <input
                     type="tel"
                     value={editingEvent.phone || ""}
                     onChange={(e) => updateEventField(editingEvent._id, "phone", e.target.value)}
-                    className="flex-1 bg-transparent border-none outline-none text-[16px] text-foreground placeholder:text-muted-foreground/40 font-medium"
+                    className="w-full pl-11 pr-4 rtl:pl-4 rtl:pr-11 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium"
                     placeholder={
                       language === "ar"
                         ? "مثال: 0123 555 1+..."
@@ -628,7 +625,7 @@ export function EventConfirmationModal({
                 </div>
               </div>
 
-              {/* Notes */}
+              {/* 7. Notes */}
               <div className="flex flex-col">
                 <label className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
                   {labels.notes}
@@ -636,11 +633,9 @@ export function EventConfirmationModal({
                 <textarea
                   value={editingEvent.notes || ""}
                   onChange={(e) => updateEventField(editingEvent._id, "notes", e.target.value)}
-                  rows={2}
+                  rows={3}
                   className="w-full px-4 py-3.5 rounded-2xl border border-border/80 bg-secondary/40 text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-[#5BC0DE] focus:ring-2 focus:ring-[#5BC0DE]/20 text-[16px] font-medium resize-none"
-                  placeholder={
-                    language === "ar" ? "أضف ملاحظة..." : language === "fr" ? "Ajouter une note..." : "Add a note..."
-                  }
+                  placeholder={labels.notesPlaceholder}
                 />
               </div>
 
@@ -655,7 +650,7 @@ export function EventConfirmationModal({
             </div>
           ) : (
             /* ================= LIST VIEW ================= */
-            <div className="space-y-3 animate-in fade-in duration-200">
+            <div className="space-y-3 w-full min-w-0">
               {events.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground text-sm">{labels.empty}</div>
               ) : (
@@ -688,11 +683,9 @@ export function EventConfirmationModal({
                         </h4>
                         <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1.5">
-                            <Calendar className="h-3.5 w-3.5 opacity-70" />
                             {ev.date || "---"}
                           </span>
                           <span className="flex items-center gap-1.5">
-                            <Clock className="h-3.5 w-3.5 opacity-70" />
                             {ev.start_time || ev.time || "---"}
                           </span>
                           {ev.location && (
