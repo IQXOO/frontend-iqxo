@@ -137,7 +137,13 @@ export function UploadButton({
   }, [externalOpen])
 
   const processFiles = useCallback(async (files: File[]) => {
-    const validFiles = files.filter(f => (f.type.startsWith("image/") || f.type === "application/pdf") && f.size <= MAX_SIZE)
+    const isSupported = (f: File) => {
+      const isImg = f.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(f.name)
+      const isPdf = f.type === "application/pdf" || f.type === "application/x-pdf" || /\.pdf$/i.test(f.name)
+      return isImg || isPdf
+    }
+
+    const validFiles = files.filter(f => isSupported(f) && f.size <= MAX_SIZE)
     
     if (validFiles.length !== files.length) {
        toast({
@@ -371,7 +377,7 @@ export function UploadButton({
         id="iqxo-upload-input"
         type="file"
         multiple
-        accept="image/*"
+        accept="image/*,application/pdf,.pdf"
         onChange={handleFileSelect}
         className="hidden"
         aria-label={t("uploadLabel")}
