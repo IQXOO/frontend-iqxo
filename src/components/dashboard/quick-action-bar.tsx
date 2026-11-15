@@ -79,12 +79,44 @@ export function QuickActionBar({ event, language }: QuickActionBarProps) {
     {
       icon: Share2,
       label: language === "fr" ? "Partager" : language === "ar" ? "مشاركة" : "Share",
-      onClick: () => {
-        if (navigator.share) {
-          navigator.share({
-            title: event.title,
-            text: `${event.date} at ${event.time}: ${event.title}\n${event.notes}`,
-          })
+      onClick: async (e?: React.MouseEvent) => {
+        if (e?.currentTarget) {
+          (e.currentTarget as HTMLElement).blur?.()
+        }
+        if (document.activeElement && document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur()
+        }
+        const savedScrollY = window.scrollY || document.documentElement.scrollTop || 0
+        if (savedScrollY > 0) {
+          window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior })
+        }
+        const shareMsg = `${event.date} at ${event.time}: ${event.title}\n${event.notes}`;
+        if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
+          (window as any).ReactNativeWebView.postMessage(
+            JSON.stringify({
+              type: "share",
+              title: event.title,
+              message: shareMsg,
+              text: shareMsg,
+            })
+          );
+        } else if (navigator.share) {
+          try {
+            await navigator.share({
+              title: event.title,
+              text: shareMsg,
+            });
+          } catch {
+            // User cancelled
+          } finally {
+            if (savedScrollY > 0) {
+              window.scrollTo({ top: savedScrollY, behavior: "instant" as ScrollBehavior });
+            }
+          }
+        } else {
+          try {
+            await navigator.clipboard.writeText(shareMsg);
+          } catch (_) {}
         }
       },
       color: "text-purple-500",

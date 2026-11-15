@@ -137,7 +137,13 @@ export function UploadButton({
   }, [externalOpen])
 
   const processFiles = useCallback(async (files: File[]) => {
-    const validFiles = files.filter(f => (f.type.startsWith("image/") || f.type === "application/pdf") && f.size <= MAX_SIZE)
+    const isSupported = (f: File) => {
+      const isImg = f.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(f.name)
+      const isPdf = f.type === "application/pdf" || f.type === "application/x-pdf" || /\.pdf$/i.test(f.name)
+      return isImg || isPdf
+    }
+
+    const validFiles = files.filter(f => isSupported(f) && f.size <= MAX_SIZE)
     
     if (validFiles.length !== files.length) {
        toast({
@@ -248,7 +254,9 @@ export function UploadButton({
           if (user?.id) formData.append("userId", user.id)
           formData.append("language", language || "ar")
           formData.append("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC")
-          formData.append("clientDate", new Date().toISOString())
+          const now = new Date()
+          const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+          formData.append("clientDate", localDate)
 
           for (const preview of previews) {
             let fileToUpload = preview.file
@@ -272,7 +280,7 @@ export function UploadButton({
             'POST /analyze-images',
             `${import.meta.env.VITE_BACKEND_API}/analyze-images`,
             { method: "POST", headers, body: formData },
-            { timeoutMs: 120000, context: { count: previews.length } },
+            { timeoutMs: 180000, context: { count: previews.length } },
           )
 
           if (!res.ok) {
@@ -369,7 +377,7 @@ export function UploadButton({
         id="iqxo-upload-input"
         type="file"
         multiple
-        accept="image/*"
+        accept="image/*,application/pdf,.pdf"
         onChange={handleFileSelect}
         className="hidden"
         aria-label={t("uploadLabel")}

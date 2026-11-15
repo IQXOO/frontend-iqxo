@@ -56,7 +56,7 @@ export async function transcribeAudio(
       headers,
       body: form,
     },
-    { timeoutMs: 60000 },
+    { timeoutMs: 120000 },
   )
 
   if (!res.ok) {
@@ -135,7 +135,7 @@ export async function analyzeEventFromImage(imageBase64: string, imageType: stri
       headers,
       body: form,
     },
-    { timeoutMs: 60000 },
+    { timeoutMs: 120000 },
   )
 
   if (!res.ok) {

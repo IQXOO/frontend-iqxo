@@ -16,10 +16,99 @@ export function parseSafeDate(dateStr: string): Date {
   return d;
 }
 
+/**
+ * Canonical holiday key generator to unify multilingual calendar holidays.
+ */
+export function getCanonicalHolidayKey(title?: string | null): string | null {
+  if (!title || typeof title !== "string") return null;
+  const clean = title.trim().toLowerCase();
+
+  // Christmas Eve
+  if (/christmas\s*eve|vigilia\s*di\s*natale|réveillon\s*de\s*noël|ليلة\s*عيد\s*الميلاد/.test(clean)) {
+    return "holiday_christmas_eve";
+  }
+  // Christmas Day
+  if (/\bchristmas\b|\bnatale\b|\bnoël\b|\bnoel\b|عيد\s*الميلاد/.test(clean)) {
+    return "holiday_christmas_day";
+  }
+  // St. Stephen's Day / Boxing Day / Santo Stefano
+  if (/stephen|stefano|boxing\s*day|étienne|etienne|إستفانوس|استفانوس/.test(clean)) {
+    return "holiday_st_stephen";
+  }
+  // New Year's Eve
+  if (/new\s*year['’]?s\s*eve|notte\s*di\s*san\s*silvestro|vigilia\s*di\s*capodanno|réveillon|ليلة\s*رأس\s*السنة/.test(clean)) {
+    return "holiday_new_years_eve";
+  }
+  // New Year's Day
+  if (/new\s*year['’]?s\s*day|\bnew\s*year\b|capodanno|jour\s*de\s*l['’]an|رأس\s*السنة/.test(clean)) {
+    return "holiday_new_years_day";
+  }
+  // Epiphany
+  if (/epiphany|epifania|épiphanie|epiphanie|الغطاس/.test(clean)) {
+    return "holiday_epiphany";
+  }
+  // Easter Monday
+  if (/easter\s*monday|lunedì\s*dell['’]angelo|lunedi\s*dell['’]angelo|pasquetta|lundi\s*de\s*pâques|شم\s*النسيم/.test(clean)) {
+    return "holiday_easter_monday";
+  }
+  // Easter Sunday
+  if (/easter|pasqua|pâques|paques|القيامة/.test(clean)) {
+    return "holiday_easter_sunday";
+  }
+  // Labor Day
+  if (/labor\s*day|lavoratori|travail|عيد\s*العمال/.test(clean)) {
+    return "holiday_labor_day";
+  }
+  // Assumption of Mary / Ferragosto
+  if (/assumption|assunzione|ferragosto|assomption|انتقال\s*العذراء/.test(clean)) {
+    return "holiday_assumption";
+  }
+  // All Saints
+  if (/all\s*saints|tutti\s*i\s*santi|toussaint|جميع\s*القديسين/.test(clean)) {
+    return "holiday_all_saints";
+  }
+  // Immaculate Conception
+  if (/immaculate|immacolata|immaculée|immaculee|الحبل\s*بلا\s*دنس/.test(clean)) {
+    return "holiday_immaculate_conception";
+  }
+  return null;
+}
+
+/**
+ * Defensive guard against floating timezone or UTC date drift on fixed international holidays.
+ */
+export function getNormalizedHolidayDate(title?: string | null, dateStr?: string | null): string {
+  if (!dateStr || typeof dateStr !== "string") return dateStr || "";
+  const canonical = getCanonicalHolidayKey(title);
+  if (!canonical) return dateStr.split("T")[0];
+  const year = dateStr.slice(0, 4);
+
+  switch (canonical) {
+    case "holiday_st_stephen":
+      return `${year}-12-26`;
+    case "holiday_christmas_day":
+      return `${year}-12-25`;
+    case "holiday_christmas_eve":
+      return `${year}-12-24`;
+    case "holiday_new_years_day":
+      return `${year}-01-01`;
+    case "holiday_new_years_eve":
+      return `${year}-12-31`;
+    case "holiday_epiphany":
+      return `${year}-01-06`;
+    case "holiday_all_saints":
+      return `${year}-11-01`;
+    case "holiday_immaculate_conception":
+      return `${year}-12-08`;
+    default:
+      return dateStr.split("T")[0];
+  }
+}
+
 export function isEventOnDate(event: IQXOEvent, targetDateStr: string): boolean {
   if (!event || !targetDateStr) return false;
   const cleanTarget = targetDateStr.split("T")[0];
-  const cleanEvent = (event.date || "").split("T")[0];
+  const cleanEvent = getNormalizedHolidayDate(event.title, event.date);
 
   if (cleanEvent === cleanTarget) return true;
   if (!event.recurrence_rule) return false;
@@ -45,7 +134,7 @@ export function isEventOnDate(event: IQXOEvent, targetDateStr: string): boolean 
 
 export function getNextOccurrence(event: IQXOEvent): Date | null {
   const now = new Date();
-  const timeStr = event.start_time || event.time || "23:59";
+  const timeStr = event.start_time || event.time || "09:00";
   const [hours, minutes] = timeStr.split(":").map(Number);
   
   let current = parseSafeDate(event.date);

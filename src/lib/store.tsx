@@ -846,6 +846,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return [...activeEvents, ...archiveEvents];
   }, [activeEvents, archiveEvents]);
 
+  // Track dismissed virtual work shifts so deleting them persists
+  const [dismissedVirtualShifts, setDismissedVirtualShifts] = useState<Set<string>>(() => {
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem("iqxo_dismissed_virtual_shifts") : null;
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
   // Active events pagination state
   const [activePage, setActivePage] = useState(0);
   const [activeHasMore, setActiveHasMore] = useState(true);
@@ -1040,11 +1050,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setActiveEvents((prev) =>
             prev.map((ev) => (ev.id === reqId ? { ...ev, native_event_id } : ev))
           );
+          setArchiveEvents((prev) =>
+            prev.map((ev) => (ev.id === reqId ? { ...ev, native_event_id } : ev))
+          );
         } catch (err) {
           console.warn("Failed to link native_event_id", err);
         }
       }
     };
+    window.addEventListener("nativeEventCreated", handleNativeEventCreated);
     // ── Handle incoming OAuth tokens in hash (e.g., from deep link in native app) ──
     const handleHashAuth = async () => {
       if (typeof window === "undefined") return;
@@ -1813,12 +1827,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // 2-Way Sync: Push to Native App
       if (typeof window !== 'undefined' && (window as any).ReactNativeWebView && data.source !== "calendar_import") {
+        const isAllDay = !data.start_time && !data.end_time;
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({
           type: "createNativeEvent",
           reqId: row.id,
           title: data.title,
           startDate: data.date + "T" + (data.start_time || "00:00:00"),
           endDate: data.date + "T" + (data.end_time || "23:59:59"),
+          allDay: isAllDay,
+          isAllDay: isAllDay,
           notes: data.notes || "",
           location: data.location || "",
           link: data.link || "",
@@ -1835,6 +1852,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.warn("updateEvent prevented: no authenticated user");
         throw new Error("No authenticated user");
       }
+      const finalSource = data.source || "manual";
       const { data: row, error } = await supabase
         .from("events")
         .update({
@@ -1855,6 +1873,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ...(data.image_url !== undefined && { image_url: data.image_url }),
           ...(data.pdf_url !== undefined && { pdf_url: data.pdf_url }),
           ...(data.is_done !== undefined && { is_done: data.is_done }),
+          source: finalSource,
           updated_at: new Date().toISOString(),
         })
         .eq("id", id)
@@ -1869,17 +1888,78 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // 2-Way Sync: Update Native App
       const existingEvent = dbEvents.find(e => e.id === id);
-      if (existingEvent?.native_event_id && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+      const lastUnderscore = existingEvent?.native_event_id ? existingEvent.native_event_id.lastIndexOf('_') : -1;
+      const rawNativeId = (lastUnderscore !== -1 && /^\d+$/.test(existingEvent!.native_event_id!.slice(lastUnderscore + 1)))
+        ? existingEvent!.native_event_id!.slice(0, lastUnderscore)
+        : (existingEvent?.native_event_id?.includes('_')
+            ? existingEvent.native_event_id.slice(0, existingEvent.native_event_id.lastIndexOf('_'))
+            : existingEvent?.native_event_id);
+
+      // If the date or title changed on an event, tombstone the old instance
+      // so background sync from phone or cloud cannot recreate the old date as a phantom duplicate.
+      if (existingEvent && ((data.date && data.date !== existingEvent.date) || (data.title && data.title !== existingEvent.title))) {
+        const oldTk = `${(existingEvent.title || "").trim().toLowerCase()}_${existingEvent.date}_${existingEvent.start_time || existingEvent.time || ""}`;
+        const oldDateKey = `${(existingEvent.title || "").trim().toLowerCase()}_${existingEvent.date}`;
+        try {
+          const stored = JSON.parse(localStorage.getItem("iqxo_deleted_tombstones") || "[]");
+          stored.push({
+            native_event_id: existingEvent.native_event_id || null,
+            raw_native_id: rawNativeId || null,
+            title: existingEvent.title,
+            date: existingEvent.date,
+            time: existingEvent.start_time || existingEvent.time,
+            title_key: oldTk,
+            title_date_key: oldDateKey
+          });
+          if (stored.length > 500) stored.shift();
+          localStorage.setItem("iqxo_deleted_tombstones", JSON.stringify(stored));
+        } catch (_) {}
+
+        // Notify backend tombstone endpoint so server-side sync also ignores the old date
+        (async () => {
+          try {
+            const { session } = (await supabase.auth.getSession()).data;
+            const backendUrl = import.meta.env.VITE_BACKEND_API || "https://backend-iqxo.fly.dev";
+            if (session) {
+              fetch(`${backendUrl}/api/calendar/tombstone`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${session.access_token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  native_event_id: existingEvent.native_event_id || null,
+                  title: existingEvent.title,
+                  date: existingEvent.date,
+                  start_time: existingEvent.start_time || existingEvent.time,
+                  title_key: oldTk
+                })
+              }).catch(() => {});
+            }
+          } catch (_) {}
+        })();
+      }
+
+      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+
+        const finalStartTime = data.start_time !== undefined ? data.start_time : existingEvent?.start_time;
+        const finalEndTime = data.end_time !== undefined ? data.end_time : existingEvent?.end_time;
+        const isAllDay = !finalStartTime && !finalEndTime;
+
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({
           type: "updateNativeEvent",
-          native_event_id: existingEvent.native_event_id,
-          title: data.title ?? existingEvent.title,
-          startDate: (data.date ?? existingEvent.date) + "T" + (data.start_time ?? existingEvent.start_time ?? "00:00:00"),
-          endDate: (data.date ?? existingEvent.date) + "T" + (data.end_time ?? existingEvent.end_time ?? "23:59:59"),
-          notes: data.notes ?? existingEvent.notes ?? "",
-          location: data.location ?? existingEvent.location ?? "",
-          link: data.link ?? existingEvent.link ?? "",
-          url: data.link ?? existingEvent.link ?? ""
+          native_event_id: rawNativeId || null,
+          title: data.title ?? existingEvent?.title,
+          oldTitle: existingEvent?.title,
+          oldDate: existingEvent?.date,
+          startDate: (data.date ?? existingEvent?.date) + "T" + (finalStartTime || "00:00:00"),
+          endDate: (data.date ?? existingEvent?.date) + "T" + (finalEndTime || "23:59:59"),
+          allDay: isAllDay,
+          isAllDay: isAllDay,
+          notes: data.notes ?? existingEvent?.notes ?? "",
+          location: data.location ?? existingEvent?.location ?? "",
+          link: data.link ?? existingEvent?.link ?? "",
+          url: data.link ?? existingEvent?.link ?? ""
         }));
       }
       updateEventInState(id, rowToEvent(row));
@@ -1894,35 +1974,117 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         throw new Error("No authenticated user");
       }
 
+      // Handle virtual work schedule shifts immediately
+      if (id.startsWith("virtual-ws-")) {
+        setDismissedVirtualShifts((prev) => {
+          const next = new Set(prev).add(id);
+          try {
+            localStorage.setItem("iqxo_dismissed_virtual_shifts", JSON.stringify(Array.from(next)));
+          } catch (_) {}
+          return next;
+        });
+        return;
+      }
+
       const existingEvent = dbEvents.find(e => e.id === id);
       const isCloudEvent = existingEvent && (existingEvent.source === 'google' || existingEvent.source === 'azure');
 
       // Optimistically remove from state
       removeEventFromState(id);
 
+      // Persist tombstone locally in client storage immediately so that upcoming
+      // auto-syncs discard this event on this device even if DB or offline.
+      const rawNativeId = existingEvent?.native_event_id
+        ? (existingEvent.native_event_id.includes('_')
+            ? existingEvent.native_event_id.slice(0, existingEvent.native_event_id.lastIndexOf('_'))
+            : existingEvent.native_event_id)
+        : null;
+
       try {
-        if (isCloudEvent) {
-          // MUST use backend to delete from Cloud APIs, otherwise it resurrects on next sync
-          const { session } = (await supabase.auth.getSession()).data;
-          if (session) {
-            const backendUrl = import.meta.env.VITE_BACKEND_API || "https://backend-iqxo.fly.dev";
-            const res = await fetch(`${backendUrl}/api/calendar/event/${id}`, {
+        const stored = JSON.parse(localStorage.getItem("iqxo_deleted_tombstones") || "[]");
+        const cleanTitle = (existingEvent?.title || "").trim().toLowerCase();
+        const date = existingEvent?.date || "";
+        const time = existingEvent?.start_time || existingEvent?.time || "";
+        const newTombstone = {
+          native_event_id: existingEvent?.native_event_id || null,
+          raw_native_id: rawNativeId,
+          title: existingEvent?.title || "",
+          date,
+          time,
+          title_key: cleanTitle ? `${cleanTitle}_${date}_${time}` : "",
+          title_date_key: cleanTitle ? `${cleanTitle}_${date}` : "",
+        };
+
+        const filtered = stored.filter((t: any) => 
+          !(newTombstone.native_event_id && t.native_event_id === newTombstone.native_event_id) &&
+          !(newTombstone.title_key && t.title_key === newTombstone.title_key)
+        );
+        filtered.push(newTombstone);
+        if (filtered.length > 500) filtered.shift();
+        localStorage.setItem("iqxo_deleted_tombstones", JSON.stringify(filtered));
+      } catch (_) {}
+
+      try {
+        const { session } = (await supabase.auth.getSession()).data;
+        const backendUrl = import.meta.env.VITE_BACKEND_API || "https://backend-iqxo.fly.dev";
+
+        // Query parameters ensure proxies and gateways never drop tombstone data on DELETE
+        const queryParams = new URLSearchParams({
+          native_event_id: existingEvent?.native_event_id || "",
+          title: existingEvent?.title || "",
+          date: existingEvent?.date || "",
+          time: existingEvent?.start_time || existingEvent?.time || "",
+        }).toString();
+
+        // Notify backend to delete from Cloud APIs and register Tombstone
+        if (session) {
+          try {
+            await fetch(`${backendUrl}/api/calendar/event/${id}?${queryParams}`, {
               method: 'DELETE',
-              headers: { 'Authorization': `Bearer ${session.access_token}` }
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                native_event_id: existingEvent?.native_event_id,
+                title: existingEvent?.title,
+                date: existingEvent?.date,
+                start_time: existingEvent?.start_time || existingEvent?.time
+              })
             });
-            if (!res.ok) {
-              throw new Error(`Cloud deletion failed`);
-            }
+          } catch (backendErr) {
+            console.warn("Backend delete / tombstone call:", backendErr);
+            if (isCloudEvent) throw backendErr;
           }
-        } else {
-          // Local event, delete directly from Supabase
-          const { error } = await supabase.from("events").delete().eq("id", id).eq("user_id", user.id);
-          if (error) throw error;
+        }
+
+        // Also ensure deleted from Supabase events table
+        const { error } = await supabase.from("events").delete().eq("id", id).eq("user_id", user.id);
+        if (error && isCloudEvent) throw error;
+
+        // Persist tombstone directly in Supabase if table is present
+        if (existingEvent?.native_event_id || existingEvent?.title) {
+          try {
+            const titleKey = `${(existingEvent.title || "").trim().toLowerCase()}_${existingEvent.date}_${existingEvent.start_time || existingEvent.time || ""}`;
+            if (existingEvent.native_event_id) {
+              await supabase.from("deleted_events").upsert({
+                user_id: user.id,
+                native_event_id: existingEvent.native_event_id,
+                title_key: titleKey
+              }, { onConflict: "user_id,native_event_id", ignoreDuplicates: true });
+            } else {
+              await supabase.from("deleted_events").insert({
+                user_id: user.id,
+                native_event_id: null,
+                title_key: titleKey
+              });
+            }
+          } catch (_) {}
         }
       } catch (err) {
         console.error("Delete event error:", err);
-        // Revert optimistic update on failure
-        if (existingEvent) {
+        // Only revert optimistic update if cloud delete critically failed
+        if (isCloudEvent && existingEvent) {
           const isPast = existingEvent.date && new Date(`${existingEvent.date}T00:00:00`).getTime() < new Date().setHours(0,0,0,0);
           if (isPast) {
              setArchiveEvents(prev => [...prev, existingEvent]);
@@ -1934,14 +2096,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 2-Way Sync: Delete from Native App
-      if (existingEvent?.native_event_id && typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        const lastUnderscore = existingEvent?.native_event_id ? existingEvent.native_event_id.lastIndexOf('_') : -1;
+        const rawNativeId = (lastUnderscore !== -1 && /^\d+$/.test(existingEvent!.native_event_id!.slice(lastUnderscore + 1)))
+          ? existingEvent!.native_event_id!.slice(0, lastUnderscore)
+          : (existingEvent?.native_event_id?.includes('_')
+              ? existingEvent.native_event_id.slice(0, existingEvent.native_event_id.lastIndexOf('_'))
+              : existingEvent?.native_event_id);
+
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({
           type: "deleteNativeEvent",
-          native_event_id: existingEvent.native_event_id
+          native_event_id: rawNativeId || null,
+          title: existingEvent?.title,
+          date: existingEvent?.date
         }));
       }
     },
-    [user, removeEventFromState, dbEvents],
+    [user, removeEventFromState, dbEvents, setDismissedVirtualShifts],
   );
 
   // ── Generate virtual shift events from work schedule (next 30 days) ──────────
@@ -1970,8 +2141,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const shiftsForDay = workScheduleRows.filter((r) => r.day_of_week === dow);
       for (const shift of shiftsForDay) {
+        const shiftId = `virtual-ws-${dateStr}-${shift.schedule_label}-${shift.start_time}`;
+        if (dismissedVirtualShifts.has(shiftId)) continue;
+
         virtualEvents.push({
-          id: `virtual-ws-${dateStr}-${shift.schedule_label}-${shift.start_time}`,
+          id: shiftId,
           user_id: userId,
           title: shift.schedule_label && shift.schedule_label !== "Main"
             ? shift.schedule_label
@@ -1988,7 +2162,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
     return virtualEvents;
-  }, [userId, workScheduleRows, dbEvents]);
+  }, [userId, workScheduleRows, dbEvents, dismissedVirtualShifts]);
 
   // ── Merged events (DB events + virtual shift events) ─────────────────────────
   const events = React.useMemo<IQXOEvent[]>(() => {

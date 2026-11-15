@@ -124,42 +124,59 @@ export default function AppController() {
         
         syncInProgress = true;
         try {
-          const mappedEvents = result.events.map((ev: any) => {
-            let eventDate = ev.date;
+          // Read client-side deleted event tombstones
+          let localTombstones: any[] = [];
+          try {
+            localTombstones = JSON.parse(localStorage.getItem("iqxo_deleted_tombstones") || "[]");
+          } catch (_) {}
 
-            // Defensive normalization for all-day events (no time specified):
-            // Native calendars on iOS/Android anchor all-day events to UTC midnight (e.g. 23:00 on the night before in UTC+1).
-            // Using the midday (12h) timestamp from native_event_id ensures the date cleanly matches the intended calendar day
-            // across all timezones, protecting existing production users immediately even before native app updates.
-            const isAllDay = (!ev.time || String(ev.time).trim() === "") && (!ev.start_time || String(ev.start_time).trim() === "");
-            if (isAllDay && ev.native_event_id) {
-              const lastUnderscore = ev.native_event_id.lastIndexOf("_");
-              if (lastUnderscore !== -1) {
-                const ts = Number(ev.native_event_id.slice(lastUnderscore + 1));
-                if (!isNaN(ts) && ts > 1000000000000) {
-                  const noon = new Date(ts + 12 * 60 * 60 * 1000);
-                  eventDate = `${noon.getFullYear()}-${String(noon.getMonth() + 1).padStart(2, "0")}-${String(noon.getDate()).padStart(2, "0")}`;
-                }
-              }
-            }
+          const deletedNativeIds = new Set<string>();
+          const deletedTitleKeys = new Set<string>();
+          const deletedTitleDates = new Set<string>();
 
-            return {
-              native_event_id: ev.native_event_id || ev.id,
-              title: ev.title,
-              date: eventDate,
-              time: ev.time,
-              start_time: ev.start_time || ev.time,
-              end_time: ev.end_time || ev.time,
-              location: ev.location,
-              link: ev.link || null,
-              notes: ev.notes,
-              calendar_id: ev.calendar_id,
-              source: "calendar_sync",
-              reminders: (ev.reminders && Array.isArray(ev.reminders) && ev.reminders.length > 0)
-                ? ev.reminders
-                : [{ minutes_before: 60 }]
-            };
+          localTombstones.forEach((t: any) => {
+            if (t.native_event_id) deletedNativeIds.add(String(t.native_event_id));
+            if (t.raw_native_id) deletedNativeIds.add(String(t.raw_native_id));
+            if (t.title_key) deletedTitleKeys.add(String(t.title_key));
+            if (t.title_date_key) deletedTitleDates.add(String(t.title_date_key));
           });
+
+          const mappedEvents = result.events
+            .map((ev: any) => {
+              const eventDate = ev.date;
+              return {
+                native_event_id: ev.native_event_id || ev.id,
+                title: ev.title,
+                date: eventDate,
+                time: ev.time,
+                start_time: ev.start_time || ev.time,
+                end_time: ev.end_time || ev.time,
+                location: ev.location,
+                link: ev.link || null,
+                notes: ev.notes,
+                calendar_id: ev.calendar_id,
+                source: "calendar_sync",
+                reminders: (ev.reminders && Array.isArray(ev.reminders) && ev.reminders.length > 0)
+                  ? ev.reminders
+                  : [{ minutes_before: 60 }]
+              };
+            })
+            // Filter out any native event that was previously deleted by the user!
+            .filter((ev: any) => {
+              const rawId = ev.native_event_id && String(ev.native_event_id).includes('_')
+                ? String(ev.native_event_id).slice(0, String(ev.native_event_id).lastIndexOf('_'))
+                : ev.native_event_id;
+              const titleLower = String(ev.title || "").trim().toLowerCase();
+              const tk = `${titleLower}_${ev.date}_${ev.start_time || ev.time || ""}`;
+              const tDateKey = `${titleLower}_${ev.date}`;
+
+              if (ev.native_event_id && deletedNativeIds.has(String(ev.native_event_id))) return false;
+              if (rawId && deletedNativeIds.has(String(rawId))) return false;
+              if (deletedTitleKeys.has(tk)) return false;
+              if (deletedTitleDates.has(tDateKey)) return false;
+
+              return true;
+            });
 
           const { supabase } = await import("./supabase");
           const { fetchWithDiagnostics, readResponseText } = await import("./logger");
@@ -175,7 +192,10 @@ export default function AppController() {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${session?.access_token || ""}`,
               },
-              body: JSON.stringify({ events: mappedEvents }),
+              body: JSON.stringify({
+                events: mappedEvents,
+                clientTombstones: localTombstones
+              }),
             }
           );
           const data = await readResponseText(response);

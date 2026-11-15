@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, Clock, MapPin, Link as LinkIcon } from "luci
 import { useApp } from "../../lib/store"
 import { supabase } from "../../lib/supabase"
 import type { IQXOEvent } from "../../lib/types"
-import { isEventOnDate } from "../../lib/recurrence"
+import { isEventOnDate, getCanonicalHolidayKey } from "../../lib/recurrence"
 
 interface MonthlyCalendarViewProps {
   onEventClick: (event: IQXOEvent) => void
@@ -49,8 +49,29 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
   
   const dailyEvents = useMemo(() => {
     const todays = events.filter(e => isEventOnDate(e, selectedDateStr))
+
+    // Deduplicate redundant multilingual holiday copies (e.g. Christmas Day + Natale di Gesù)
+    const seenHolidays = new Set<string>();
+    const seenTimed = new Set<string>();
+
+    const deduplicated = todays.filter(e => {
+      const isAllDay = !e.start_time && !e.time;
+      if (isAllDay) {
+        const canonical = getCanonicalHolidayKey(e.title);
+        if (canonical) {
+          if (seenHolidays.has(canonical)) return false;
+          seenHolidays.add(canonical);
+          return true;
+        }
+      }
+      const key = `${(e.title || "").trim().toLowerCase()}_${e.start_time || e.time || ""}`;
+      if (seenTimed.has(key)) return false;
+      seenTimed.add(key);
+      return true;
+    });
+
     // Sort by start time
-    return todays.sort((a, b) => timeToMinutes(a.start_time || a.time) - timeToMinutes(b.start_time || b.time))
+    return deduplicated.sort((a, b) => timeToMinutes(a.start_time || a.time) - timeToMinutes(b.start_time || b.time))
   }, [events, selectedDateStr])
 
   const allDayEvents = useMemo(() => {
@@ -166,7 +187,24 @@ export function MonthlyCalendarView({ onEventClick }: MonthlyCalendarViewProps) 
           const isSelected = selectedDate.getDate() === day && selectedDate.getMonth() === currentMonth
           const isToday = new Date().getDate() === day && new Date().getMonth() === currentMonth && new Date().getFullYear() === currentYear
           
-          const dayEvents = events.filter(e => isEventOnDate(e, dateStr))
+          const rawDayEvents = events.filter(e => isEventOnDate(e, dateStr))
+          const seenGridHolidays = new Set<string>();
+          const seenGridTimed = new Set<string>();
+          const dayEvents = rawDayEvents.filter(e => {
+            const isAllDay = !e.start_time && !e.time;
+            if (isAllDay) {
+              const canonical = getCanonicalHolidayKey(e.title);
+              if (canonical) {
+                if (seenGridHolidays.has(canonical)) return false;
+                seenGridHolidays.add(canonical);
+                return true;
+              }
+            }
+            const key = `${(e.title || "").trim().toLowerCase()}_${e.start_time || e.time || ""}`;
+            if (seenGridTimed.has(key)) return false;
+            seenGridTimed.add(key);
+            return true;
+          });
 
           return (
             <button

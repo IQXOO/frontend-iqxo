@@ -9,9 +9,11 @@ import { shouldAutoOpenBillingRoute, normalizeBillingPlanStatus } from "../lib/b
 import { launchAppWithFallback } from "../lib/auth-urls";
 
 import { CommandPalette } from "../components/dashboard/command-palette";
+import { useEventNotifications } from "../hooks/use-event-notifications";
 
 function AppLayoutContent() {
   const { events, signOut, toggleTheme, user, session, planStatus, planResolved, trialEndsAt, language } = useApp();
+  useEventNotifications(events, language);
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
   const [paywallCycle, setPaywallCycle] = useState<"monthly" | "yearly">("monthly");

@@ -174,7 +174,9 @@ export function VoiceButton({
       callbackFiredRef.current = false;
       setShowDone(false);
       resetVoiceState();
-      startListening(selectedLang.code);
+      setTimeout(() => {
+        startListening(selectedLang.code);
+      }, 200);
     }
   }, [
     isListening,
@@ -190,7 +192,7 @@ export function VoiceButton({
     resetVoiceState();
     setTimeout(() => {
       startListening(selectedLang.code);
-    }, 80);
+    }, 350);
   }, [resetVoiceState, startListening, selectedLang.code]);
 
   const handleClose = useCallback(() => {
