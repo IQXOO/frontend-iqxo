@@ -303,7 +303,8 @@ ${origin}`;
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] bg-background border-0 border-none shadow-none flex flex-col p-0 gap-0 top-0 left-0 right-0 bottom-0 !transform-none sm:!transform sm:inset-auto sm:max-w-[430px] sm:h-[90dvh] sm:max-h-[850px] sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:border sm:border-border sm:shadow-2xl overflow-hidden outline-none duration-150 data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100"
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[94vw] sm:w-full max-w-[430px] h-auto max-h-[90dvh] sm:max-h-[850px] rounded-[24px] sm:rounded-[28px] border border-border bg-background shadow-2xl flex flex-col p-0 gap-0 overflow-hidden outline-none duration-150"
+          style={{ transform: "translate(-50%, -50%)" }}
           showCloseButton={false}
           dir={isRTL ? "rtl" : "ltr"}
         >
