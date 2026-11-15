@@ -1888,30 +1888,59 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // 2-Way Sync: Update Native App
       const existingEvent = dbEvents.find(e => e.id === id);
+      const lastUnderscore = existingEvent?.native_event_id ? existingEvent.native_event_id.lastIndexOf('_') : -1;
+      const rawNativeId = (lastUnderscore !== -1 && /^\d+$/.test(existingEvent!.native_event_id!.slice(lastUnderscore + 1)))
+        ? existingEvent!.native_event_id!.slice(0, lastUnderscore)
+        : (existingEvent?.native_event_id?.includes('_')
+            ? existingEvent.native_event_id.slice(0, existingEvent.native_event_id.lastIndexOf('_'))
+            : existingEvent?.native_event_id);
 
-      // If the date or title changed on a synced event, tombstone the old instance
+      // If the date or title changed on an event, tombstone the old instance
       // so background sync from phone or cloud cannot recreate the old date as a phantom duplicate.
-      if (existingEvent && (data.date && data.date !== existingEvent.date || data.title && data.title !== existingEvent.title)) {
+      if (existingEvent && ((data.date && data.date !== existingEvent.date) || (data.title && data.title !== existingEvent.title))) {
+        const oldTk = `${(existingEvent.title || "").trim().toLowerCase()}_${existingEvent.date}_${existingEvent.start_time || existingEvent.time || ""}`;
+        const oldDateKey = `${(existingEvent.title || "").trim().toLowerCase()}_${existingEvent.date}`;
         try {
           const stored = JSON.parse(localStorage.getItem("iqxo_deleted_tombstones") || "[]");
-          const oldTk = `${(existingEvent.title || "").trim().toLowerCase()}_${existingEvent.date}_${existingEvent.start_time || existingEvent.time || ""}`;
-          const oldDateKey = `${(existingEvent.title || "").trim().toLowerCase()}_${existingEvent.date}`;
           stored.push({
             native_event_id: existingEvent.native_event_id || null,
+            raw_native_id: rawNativeId || null,
+            title: existingEvent.title,
+            date: existingEvent.date,
+            time: existingEvent.start_time || existingEvent.time,
             title_key: oldTk,
             title_date_key: oldDateKey
           });
           if (stored.length > 500) stored.shift();
           localStorage.setItem("iqxo_deleted_tombstones", JSON.stringify(stored));
         } catch (_) {}
+
+        // Notify backend tombstone endpoint so server-side sync also ignores the old date
+        (async () => {
+          try {
+            const { session } = (await supabase.auth.getSession()).data;
+            const backendUrl = import.meta.env.VITE_BACKEND_API || "https://backend-iqxo.fly.dev";
+            if (session) {
+              fetch(`${backendUrl}/api/calendar/tombstone`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${session.access_token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  native_event_id: existingEvent.native_event_id || null,
+                  title: existingEvent.title,
+                  date: existingEvent.date,
+                  start_time: existingEvent.start_time || existingEvent.time,
+                  title_key: oldTk
+                })
+              }).catch(() => {});
+            }
+          } catch (_) {}
+        })();
       }
+
       if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
-        const lastUnderscore = existingEvent?.native_event_id ? existingEvent.native_event_id.lastIndexOf('_') : -1;
-        const rawNativeId = (lastUnderscore !== -1 && /^\d+$/.test(existingEvent!.native_event_id!.slice(lastUnderscore + 1)))
-          ? existingEvent!.native_event_id!.slice(0, lastUnderscore)
-          : (existingEvent?.native_event_id?.includes('_')
-              ? existingEvent.native_event_id.slice(0, existingEvent.native_event_id.lastIndexOf('_'))
-              : existingEvent?.native_event_id);
 
         const finalStartTime = data.start_time !== undefined ? data.start_time : existingEvent?.start_time;
         const finalEndTime = data.end_time !== undefined ? data.end_time : existingEvent?.end_time;
