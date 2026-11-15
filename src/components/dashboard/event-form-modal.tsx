@@ -605,7 +605,7 @@ export function EventFormModal({
           notes: notes.trim(),
           image_url: finalImageUrl, // string URL or null (which clears the image in DB!)
           pdf_url: finalPdfUrl,     // string URL or null (which clears the PDF in DB!)
-          source: editEvent.source || "manual",
+          source: "manual",         // Always set to "manual" on edit so background sync never overwrites user customizations!
           is_done: editEvent.is_done, // preserves completed status!
         });
       } else {

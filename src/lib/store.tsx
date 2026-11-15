@@ -1852,6 +1852,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.warn("updateEvent prevented: no authenticated user");
         throw new Error("No authenticated user");
       }
+      const finalSource = data.source || "manual";
       const { data: row, error } = await supabase
         .from("events")
         .update({
@@ -1872,6 +1873,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ...(data.image_url !== undefined && { image_url: data.image_url }),
           ...(data.pdf_url !== undefined && { pdf_url: data.pdf_url }),
           ...(data.is_done !== undefined && { is_done: data.is_done }),
+          source: finalSource,
           updated_at: new Date().toISOString(),
         })
         .eq("id", id)
@@ -1886,6 +1888,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // 2-Way Sync: Update Native App
       const existingEvent = dbEvents.find(e => e.id === id);
+
+      // If the date or title changed on a synced event, tombstone the old instance
+      // so background sync from phone or cloud cannot recreate the old date as a phantom duplicate.
+      if (existingEvent && (data.date && data.date !== existingEvent.date || data.title && data.title !== existingEvent.title)) {
+        try {
+          const stored = JSON.parse(localStorage.getItem("iqxo_deleted_tombstones") || "[]");
+          const oldTk = `${(existingEvent.title || "").trim().toLowerCase()}_${existingEvent.date}_${existingEvent.start_time || existingEvent.time || ""}`;
+          const oldDateKey = `${(existingEvent.title || "").trim().toLowerCase()}_${existingEvent.date}`;
+          stored.push({
+            native_event_id: existingEvent.native_event_id || null,
+            title_key: oldTk,
+            title_date_key: oldDateKey
+          });
+          if (stored.length > 500) stored.shift();
+          localStorage.setItem("iqxo_deleted_tombstones", JSON.stringify(stored));
+        } catch (_) {}
+      }
       if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
         const lastUnderscore = existingEvent?.native_event_id ? existingEvent.native_event_id.lastIndexOf('_') : -1;
         const rawNativeId = (lastUnderscore !== -1 && /^\d+$/.test(existingEvent!.native_event_id!.slice(lastUnderscore + 1)))
@@ -1943,6 +1962,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // Optimistically remove from state
       removeEventFromState(id);
+
+      // Persist tombstone locally in client storage immediately so that upcoming
+      // auto-syncs discard this event on this device even if DB or offline.
+      const rawNativeId = existingEvent?.native_event_id
+        ? (existingEvent.native_event_id.includes('_')
+            ? existingEvent.native_event_id.slice(0, existingEvent.native_event_id.lastIndexOf('_'))
+            : existingEvent.native_event_id)
+        : null;
+
+      try {
+        const stored = JSON.parse(localStorage.getItem("iqxo_deleted_tombstones") || "[]");
+        const cleanTitle = (existingEvent?.title || "").trim().toLowerCase();
+        const date = existingEvent?.date || "";
+        const time = existingEvent?.start_time || existingEvent?.time || "";
+        const newTombstone = {
+          native_event_id: existingEvent?.native_event_id || null,
+          raw_native_id: rawNativeId,
+          title: existingEvent?.title || "",
+          date,
+          time,
+          title_key: cleanTitle ? `${cleanTitle}_${date}_${time}` : "",
+          title_date_key: cleanTitle ? `${cleanTitle}_${date}` : "",
+        };
+
+        const filtered = stored.filter((t: any) => 
+          !(newTombstone.native_event_id && t.native_event_id === newTombstone.native_event_id) &&
+          !(newTombstone.title_key && t.title_key === newTombstone.title_key)
+        );
+        filtered.push(newTombstone);
+        if (filtered.length > 500) filtered.shift();
+        localStorage.setItem("iqxo_deleted_tombstones", JSON.stringify(filtered));
+      } catch (_) {}
 
       try {
         const { session } = (await supabase.auth.getSession()).data;
