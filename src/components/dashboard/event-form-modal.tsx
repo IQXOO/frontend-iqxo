@@ -708,8 +708,7 @@ export function EventFormModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[94vw] sm:w-full max-w-[430px] h-auto max-h-[90dvh] sm:max-h-[850px] rounded-[24px] sm:rounded-[28px] border border-border bg-background shadow-2xl flex flex-col p-0 gap-0 overflow-hidden outline-none duration-150"
-        style={{ transform: "translate(-50%, -50%)" }}
+        className="w-full max-w-[430px] h-auto max-h-[88dvh] rounded-[24px] sm:rounded-[28px] border border-border bg-background shadow-2xl flex flex-col p-0 gap-0 overflow-hidden outline-none"
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">
