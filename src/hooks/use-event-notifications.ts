@@ -87,10 +87,10 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
   }, [requestPermission])
 
   // ── Native app: sync reminders and calendar ─────────────
-  useEffect(() => {
+  const syncWithNative = useCallback(() => {
     const win = typeof window !== "undefined" ? (window as unknown as MobileWindow) : null
     const isNativeApp = win && (!!win.isNativeApp || !!(win as any).ReactNativeWebView)
-    if (!isNativeApp || !win?.ReactNativeWebView || !events?.length) return
+    if (!isNativeApp || !win?.ReactNativeWebView) return
 
     const now = Date.now()
     const notificationsToSchedule: {
@@ -100,39 +100,41 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
       triggerAt: number
     }[] = []
 
-    events.forEach((event) => {
-      if (event.is_done) return; // Do not schedule notifications for completed events
-      const nextOcc = getNextOccurrence(event);
-      if (!nextOcc) return; // Event is entirely in the past or invalid
+    if (events && events.length > 0) {
+      events.forEach((event) => {
+        if (event.is_done) return; // Do not schedule notifications for completed events
+        const nextOcc = getNextOccurrence(event);
+        if (!nextOcc) return; // Event is entirely in the past or invalid
 
-      // Synced events default to 1-hour (60m) reminder if none specified
-      const isSynced = event.source === "calendar_sync" || event.source === "google" || event.source === "azure";
-      const reminderMinutes = (event.reminders && event.reminders.length > 0)
-        ? Array.from(new Set(event.reminders.map(r => r.minutes_before)))
-        : (isSynced ? [60] : [60]);
+        // Synced events default to 1-hour (60m) reminder if none specified
+        const isSynced = event.source === "calendar_sync" || event.source === "google" || event.source === "azure";
+        const reminderMinutes = (event.reminders && event.reminders.length > 0)
+          ? Array.from(new Set(event.reminders.map(r => r.minutes_before)))
+          : (isSynced ? [60] : [60]);
 
-      reminderMinutes.forEach(minutesBefore => {
-        const reminderTime = new Date(nextOcc.getTime() - minutesBefore * 60 * 1000)
-        if (reminderTime.getTime() > now) {
-          const notificationTitle = minutesBefore === 60
-            ? (language === "ar" ? `تذكير (بعد ساعة): ${event.title}` : language === "fr" ? `Rappel (dans 1h) : ${event.title}` : `In 1 hour: ${event.title}`)
-            : minutesBefore === 0
-            ? (language === "ar" ? `حان الآن: ${event.title}` : language === "fr" ? `Maintenant : ${event.title}` : `Starting now: ${event.title}`)
-            : minutesBefore < 60
-            ? (language === "ar" ? `تذكير (بعد ${minutesBefore} دقيقة): ${event.title}` : language === "fr" ? `Rappel (dans ${minutesBefore}m) : ${event.title}` : `In ${minutesBefore}m: ${event.title}`)
-            : (language === "ar" ? `تذكير: ${event.title}` : `Reminder: ${event.title}`);
+        reminderMinutes.forEach(minutesBefore => {
+          const reminderTime = new Date(nextOcc.getTime() - minutesBefore * 60 * 1000)
+          if (reminderTime.getTime() > now) {
+            const notificationTitle = minutesBefore === 60
+              ? (language === "ar" ? `تذكير (بعد ساعة): ${event.title}` : language === "fr" ? `Rappel (dans 1h) : ${event.title}` : `In 1 hour: ${event.title}`)
+              : minutesBefore === 0
+              ? (language === "ar" ? `حان الآن: ${event.title}` : language === "fr" ? `Maintenant : ${event.title}` : `Starting now: ${event.title}`)
+              : minutesBefore < 60
+              ? (language === "ar" ? `تذكير (بعد ${minutesBefore} دقيقة): ${event.title}` : language === "fr" ? `Rappel (dans ${minutesBefore}m) : ${event.title}` : `In ${minutesBefore}m: ${event.title}`)
+              : (language === "ar" ? `تذكير: ${event.title}` : `Reminder: ${event.title}`);
 
-          notificationsToSchedule.push({
-            id: `${event.id}-${minutesBefore}m`,
-            title: notificationTitle,
-            body: event.location ? `${event.title} · ${event.location}` : (strings.oneHourBody(event.title) || event.title),
-            triggerAt: reminderTime.getTime(),
-          })
-        }
-      });
-    })
+            notificationsToSchedule.push({
+              id: `${event.id}-${minutesBefore}m`,
+              title: notificationTitle,
+              body: event.location ? `${event.title} · ${event.location}` : (strings.oneHourBody(event.title) || event.title),
+              triggerAt: reminderTime.getTime(),
+            })
+          }
+        });
+      })
+    }
 
-    // Sync Notifications
+    // Sync Notifications (even if empty, to clear previously scheduled reminders)
     win.ReactNativeWebView.postMessage(
       JSON.stringify({
         type: "syncScheduledNotifications",
@@ -141,22 +143,41 @@ export function useEventNotifications(events: IQXOEvent[], language: string = "e
     )
 
     // Sync to Device Calendar via expo-calendar
-    win.ReactNativeWebView.postMessage(
-      JSON.stringify({
-        type: "syncCalendar",
-        events: events.map(e => ({
-          id: e.id,
-          title: e.title,
-          startDate: `${e.date}T${e.start_time || e.time || "09:00"}:00`,
-          endDate: e.end_time ? `${e.date}T${e.end_time}:00` : new Date(new Date(`${e.date}T${e.start_time || e.time || "09:00"}:00`).getTime() + 60*60*1000).toISOString(),
-          location: e.location,
-          link: e.link,
-          notes: e.notes,
-          recurrenceRule: e.recurrence_rule
-        })),
-      })
-    )
+    if (events && events.length > 0) {
+      win.ReactNativeWebView.postMessage(
+        JSON.stringify({
+          type: "syncCalendar",
+          events: events.map(e => ({
+            id: e.id,
+            title: e.title,
+            startDate: `${e.date}T${e.start_time || e.time || "09:00"}:00`,
+            endDate: e.end_time ? `${e.date}T${e.end_time}:00` : new Date(new Date(`${e.date}T${e.start_time || e.time || "09:00"}:00`).getTime() + 60*60*1000).toISOString(),
+            location: e.location,
+            link: e.link,
+            notes: e.notes,
+            recurrenceRule: e.recurrence_rule
+          })),
+        })
+      )
+    }
   }, [events, strings, language])
+
+  useEffect(() => {
+    syncWithNative()
+  }, [syncWithNative])
+
+  // Re-sync when app resumes from background or tab becomes active
+  useEffect(() => {
+    const handleResume = () => {
+      syncWithNative()
+    }
+    window.addEventListener("nativeAppResume", handleResume)
+    document.addEventListener("visibilitychange", handleResume)
+    return () => {
+      window.removeEventListener("nativeAppResume", handleResume)
+      document.removeEventListener("visibilitychange", handleResume)
+    }
+  }, [syncWithNative])
 
   return { requestPermission }
 }
