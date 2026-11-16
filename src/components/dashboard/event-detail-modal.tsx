@@ -192,6 +192,16 @@ export function EventDetailModal({
           className="w-full max-w-[430px] h-auto max-h-[88dvh] rounded-[24px] sm:rounded-[28px] border border-border bg-background shadow-2xl flex flex-col p-0 gap-0 overflow-hidden outline-none"
           showCloseButton={false}
           dir={isRTL ? "rtl" : "ltr"}
+          onPointerDownOutside={(e) => {
+            if (showShareModal || showDeleteConfirm || showImageLightbox) {
+              e.preventDefault();
+            }
+          }}
+          onInteractOutside={(e) => {
+            if (showShareModal || showDeleteConfirm || showImageLightbox) {
+              e.preventDefault();
+            }
+          }}
         >
           {/* visually hidden titles for accessibility */}
           <DialogTitle className="sr-only">{event.title}</DialogTitle>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   Copy,
   Check,
@@ -77,13 +77,30 @@ export function EventShareModal({
 
   const shareText = buildEventShareText(event, language);
 
-  const handleCopy = async () => {
+  const postNativeMessage = (msg: Record<string, unknown>) => {
+    try {
+      if (
+        typeof window !== "undefined" &&
+        (window as any).ReactNativeWebView?.postMessage
+      ) {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify(msg));
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  };
+
+  const handleCopy = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(shareText);
       } else {
         const textarea = document.createElement("textarea");
         textarea.value = shareText;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
         document.body.appendChild(textarea);
         textarea.select();
         document.execCommand("copy");
@@ -97,49 +114,89 @@ export function EventShareModal({
     }
   };
 
-  const handleWhatsApp = () => {
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
-    window.open(url, "_blank");
+  const handleWhatsApp = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const encoded = encodeURIComponent(shareText);
+    const sent = postNativeMessage({
+      type: "openExternal",
+      url: `whatsapp://send?text=${encoded}`,
+    });
+    if (!sent) {
+      window.open(`https://api.whatsapp.com/send?text=${encoded}`, "_blank");
+    }
   };
 
-  const handleTelegram = () => {
-    const url = `https://t.me/share/url?url=${encodeURIComponent("https://iqxo.ai")}&text=${encodeURIComponent(shareText)}`;
-    window.open(url, "_blank");
+  const handleTelegram = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const encoded = encodeURIComponent(shareText);
+    const sent = postNativeMessage({
+      type: "openExternal",
+      url: `tg://msg_url?url=${encodeURIComponent("https://iqxo.ai")}&text=${encoded}`,
+    });
+    if (!sent) {
+      window.open(
+        `https://t.me/share/url?url=${encodeURIComponent("https://iqxo.ai")}&text=${encoded}`,
+        "_blank"
+      );
+    }
   };
 
-  const handleEmail = () => {
-    const url = `mailto:?subject=${encodeURIComponent(event.title)}&body=${encodeURIComponent(shareText)}`;
-    window.location.href = url;
+  const handleEmail = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const subject = encodeURIComponent(event.title);
+    const body = encodeURIComponent(shareText);
+    const mailUrl = `mailto:?subject=${subject}&body=${body}`;
+    const sent = postNativeMessage({
+      type: "openExternal",
+      url: mailUrl,
+    });
+    if (!sent) {
+      window.location.href = mailUrl;
+    }
   };
 
-  const handleSMS = () => {
+  const handleSMS = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     const isIOS =
       typeof navigator !== "undefined" &&
       /iPad|iPhone|iPod/.test(navigator.userAgent);
     const prefix = isIOS ? "sms:&body=" : "sms:?body=";
-    window.location.href = prefix + encodeURIComponent(shareText);
+    const smsUrl = prefix + encodeURIComponent(shareText);
+    const sent = postNativeMessage({
+      type: "openExternal",
+      url: smsUrl,
+    });
+    if (!sent) {
+      window.location.href = smsUrl;
+    }
   };
 
-  const handleSystemShare = async () => {
-    if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
-      (window as any).ReactNativeWebView.postMessage(
-        JSON.stringify({
-          type: "share",
-          title: event.title,
-          message: shareText,
-          text: shareText,
-          url: "https://iqxo.ai",
-        })
-      );
-    } else if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({
-          title: event.title,
-          text: shareText,
-        });
-      } catch (_) {}
-    } else {
-      handleCopy();
+  const handleSystemShare = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const sent = postNativeMessage({
+      type: "share",
+      title: event.title,
+      message: shareText,
+      text: shareText,
+      url: "https://iqxo.ai",
+    });
+
+    if (!sent) {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        try {
+          await navigator.share({
+            title: event.title,
+            text: shareText,
+          });
+        } catch (_) {}
+      } else {
+        handleCopy(e);
+      }
     }
   };
 
@@ -175,31 +232,49 @@ export function EventShareModal({
   };
 
   return (
-    <AnimatePresence>
-      {open && (
-        <div className="fixed inset-0 z-[120] flex items-end justify-center pointer-events-auto">
-          {/* Backdrop */}
-          <motion.div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={() => onOpenChange(false)}
-          />
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        {/* Backdrop Overlay */}
+        <DialogPrimitive.Overlay
+          className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-200"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenChange(false);
+          }}
+        />
 
-          {/* Bottom Sheet Card */}
-          <motion.div
-            className="relative z-10 w-full max-w-md mx-auto bg-[#10141d] border-t border-white/10 rounded-t-[32px] p-5 pt-3 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] max-h-[88vh] overflow-y-auto"
+        {/* Bottom Sheet Drawer Container */}
+        <div
+          className="fixed inset-0 z-[120] flex items-end justify-center pointer-events-none"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              onOpenChange(false);
+            }
+          }}
+        >
+          <DialogPrimitive.Content
+            className="pointer-events-auto relative w-full max-w-md mx-auto bg-[#10141d] border-t border-white/10 rounded-t-[32px] p-5 pt-3 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] max-h-[88vh] overflow-y-auto outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-full data-[state=open]:slide-in-from-bottom duration-300"
             style={{
               paddingBottom: "max(1.75rem, env(safe-area-inset-bottom, 24px))",
             }}
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 28, stiffness: 320 }}
             dir={isRTL ? "rtl" : "ltr"}
+            onPointerDownOutside={(e) => {
+              e.preventDefault();
+              onOpenChange(false);
+            }}
+            onInteractOutside={(e) => {
+              e.preventDefault();
+              onOpenChange(false);
+            }}
           >
+            {/* Accessibility hidden titles */}
+            <DialogPrimitive.Title className="sr-only">
+              {L.title}
+            </DialogPrimitive.Title>
+            <DialogPrimitive.Description className="sr-only">
+              {event.title}
+            </DialogPrimitive.Description>
+
             {/* Pull handle indicator */}
             <div className="w-10 h-1 bg-white/25 rounded-full mx-auto mb-3" />
 
@@ -213,14 +288,19 @@ export function EventShareModal({
                   {L.title}
                 </h3>
               </div>
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/15 active:scale-95 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <DialogPrimitive.Close asChild>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenChange(false);
+                  }}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/15 active:scale-95 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </DialogPrimitive.Close>
             </div>
 
             {/* ── Event Summary Card ── */}
@@ -343,9 +423,9 @@ export function EventShareModal({
               <Share2 className="w-3.5 h-3.5 text-[#5BC0DE]" />
               <span>{L.more}</span>
             </button>
-          </motion.div>
+          </DialogPrimitive.Content>
         </div>
-      )}
-    </AnimatePresence>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
