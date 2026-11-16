@@ -1,7 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { Phone, MapPin, Calendar, Share2, Link as LinkIcon } from "lucide-react"
 import type { IQXOEvent } from "@/lib/types"
+import { EventShareModal } from "./event-share-modal"
 
 interface QuickActionBarProps {
   event: IQXOEvent
@@ -9,6 +11,7 @@ interface QuickActionBarProps {
 }
 
 export function QuickActionBar({ event, language }: QuickActionBarProps) {
+  const [showShareModal, setShowShareModal] = useState(false)
   const isLink = !!event.location && (event.location.startsWith("http://") || event.location.startsWith("https://"))
 
   const actions = [
@@ -79,46 +82,7 @@ export function QuickActionBar({ event, language }: QuickActionBarProps) {
     {
       icon: Share2,
       label: language === "fr" ? "Partager" : language === "ar" ? "مشاركة" : "Share",
-      onClick: async (e?: React.MouseEvent) => {
-        if (e?.currentTarget) {
-          (e.currentTarget as HTMLElement).blur?.()
-        }
-        if (document.activeElement && document.activeElement instanceof HTMLElement) {
-          document.activeElement.blur()
-        }
-        const savedScrollY = window.scrollY || document.documentElement.scrollTop || 0
-        if (savedScrollY > 0) {
-          window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior })
-        }
-        const shareMsg = `${event.date} at ${event.time}: ${event.title}\n${event.notes}`;
-        if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
-          (window as any).ReactNativeWebView.postMessage(
-            JSON.stringify({
-              type: "share",
-              title: event.title,
-              message: shareMsg,
-              text: shareMsg,
-            })
-          );
-        } else if (navigator.share) {
-          try {
-            await navigator.share({
-              title: event.title,
-              text: shareMsg,
-            });
-          } catch {
-            // User cancelled
-          } finally {
-            if (savedScrollY > 0) {
-              window.scrollTo({ top: savedScrollY, behavior: "instant" as ScrollBehavior });
-            }
-          }
-        } else {
-          try {
-            await navigator.clipboard.writeText(shareMsg);
-          } catch (_) {}
-        }
-      },
+      onClick: () => setShowShareModal(true),
       color: "text-purple-500",
     },
   ].filter(Boolean) as Array<{
@@ -129,18 +93,27 @@ export function QuickActionBar({ event, language }: QuickActionBarProps) {
   }>
 
   return (
-    <div className={`flex gap-2 ${language === "ar" ? "flex-row-reverse" : ""}`}>
-      {actions.map((action, idx) => (
-        <button
-          key={idx}
-          onClick={action.onClick}
-          className={`flex-1 flex flex-col items-center justify-center py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/20 transition-all active:scale-95 ${action.color}`}
-          title={action.label}
-        >
-          <action.icon className="w-5 h-5 mb-1" />
-          <span className="text-xs font-medium">{action.label}</span>
-        </button>
-      ))}
-    </div>
+    <>
+      <div className={`flex gap-2 ${language === "ar" ? "flex-row-reverse" : ""}`}>
+        {actions.map((action, idx) => (
+          <button
+            key={idx}
+            onClick={action.onClick}
+            className={`flex-1 flex flex-col items-center justify-center py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/20 transition-all active:scale-95 ${action.color}`}
+            title={action.label}
+          >
+            <action.icon className="w-5 h-5 mb-1" />
+            <span className="text-xs font-medium">{action.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <EventShareModal
+        event={event}
+        open={showShareModal}
+        onOpenChange={setShowShareModal}
+        language={language}
+      />
+    </>
   )
 }
