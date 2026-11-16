@@ -31,7 +31,7 @@ import { useApp } from "@/lib/store";
 import { parseLocalDate } from "@/lib/store";
 import { ImageLightbox } from "./image-lightbox";
 import { parseImageUrls } from "./event-form-modal";
-import { EventShareModal } from "./event-share-modal";
+import { EventShareModal, buildEventShareText } from "./event-share-modal";
 import type { IQXOEvent } from "@/lib/types";
 import { format, isToday, isTomorrow } from "@/lib/date-utils";
 import { getNextOccurrence, getEventDisplayDate, computeEventPriority } from "@/lib/recurrence";
@@ -179,9 +179,49 @@ export function EventDetailModal({
 
   const [showShareModal, setShowShareModal] = useState(false);
 
-  const handleShare = (e?: React.MouseEvent) => {
+  const handleShare = async (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!event) return;
+
+    const isIOS =
+      typeof navigator !== "undefined" &&
+      (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
+    const isNativeApp =
+      typeof window !== "undefined" && !!(window as any).ReactNativeWebView;
+
+    // ── On iPhone / iOS: Trigger native default iOS share sheet directly ──
+    if (isIOS) {
+      const shareText = buildEventShareText(event, language);
+
+      if (isNativeApp) {
+        (window as any).ReactNativeWebView.postMessage(
+          JSON.stringify({
+            type: "share",
+            title: event.title,
+            message: shareText,
+            text: shareText,
+            url: "https://iqxo.ai",
+          })
+        );
+        return;
+      }
+
+      if (typeof navigator !== "undefined" && navigator.share) {
+        try {
+          await navigator.share({
+            title: event.title,
+            text: shareText,
+          });
+          return;
+        } catch (err: any) {
+          if (err?.name === "AbortError") return;
+        }
+      }
+    }
+
+    // ── For any other device (Android, Web, Desktop): Open custom drawer ──
     setShowShareModal(true);
   };
 
