@@ -31,6 +31,7 @@ import { useApp } from "@/lib/store";
 import { parseLocalDate } from "@/lib/store";
 import { ImageLightbox } from "./image-lightbox";
 import { parseImageUrls } from "./event-form-modal";
+import { EventShareModal } from "./event-share-modal";
 import type { IQXOEvent } from "@/lib/types";
 import { format, isToday, isTomorrow } from "@/lib/date-utils";
 import { getNextOccurrence, getEventDisplayDate, computeEventPriority } from "@/lib/recurrence";
@@ -176,127 +177,12 @@ export function EventDetailModal({
     }
   };
 
-  const handleShare = async (e?: React.MouseEvent) => {
+  const [showShareModal, setShowShareModal] = useState(false);
+
+  const handleShare = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!event) return;
-
-    // 1. Remove focus from the share button and any active element so WebKit
-    // does not miscalculate the popover anchor on iOS WKWebView.
-    if (e?.currentTarget) {
-      (e.currentTarget as HTMLElement).blur?.();
-    }
-    if (document.activeElement && document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-
-    // 2. Temporarily reset page scroll position while modal is open.
-    // In WKWebView on iOS, if the background document was scrolled before opening
-    // the dialog, WebKit mistakenly adds window.scrollY to the fixed header's coordinates,
-    // pushing the native UIActivityViewController sourceRect into the bottom-right corner.
-    const savedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
-    if (savedScrollY > 0) {
-      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-    }
-
-    const origin = "https://iqxo.ai";
-    let shareText;
-
-    if (language === "ar") {
-      shareText = `🌟 *تفاصيل الحدث من IQXO* 🌟
-
-📝 *العنوان:* ${event.title}
-📅 *التاريخ:* ${dateStr}${event.time ? `\n⏰ *الوقت:* ${event.time}` : ""}${event.location ? `\n📍 *الموقع:* ${event.location}` : ""}${event.link ? `\n🔗 *الرابط:* ${event.link}` : ""}${event.phone ? `\n📞 *الهاتف:* ${event.phone}` : ""}${event.email ? `\n✉️ *البريد الإلكتروني:* ${event.email}` : ""}${event.notes ? `\n\n💬 *ملاحظات إضافية:*\n${event.notes}` : ""}
-
----
-🔗 تنظيم ومتابعة مهامك عبر منصة IQXO:
-${origin}`;
-    } else if (language === "fr") {
-      shareText = `🌟 *Détails de l'événement depuis IQXO* 🌟
-
-📝 *Titre :* ${event.title}
-📅 *Date :* ${dateStr}${event.time ? `\n⏰ *Heure :* ${event.time}` : ""}${event.location ? `\n📍 *Lieu :* ${event.location}` : ""}${event.link ? `\n🔗 *Lien :* ${event.link}` : ""}${event.phone ? `\n📞 *Téléphone :* ${event.phone}` : ""}${event.email ? `\n✉️ *E-mail :* ${event.email}` : ""}${event.notes ? `\n\n💬 *Remarques :*\n${event.notes}` : ""}
-
----
-🔗 Organisez et suivez vos événements sur IQXO :
-${origin}`;
-    } else {
-      shareText = `🌟 *Event Details from IQXO* 🌟
-
-📝 *Title:* ${event.title}
-📅 *Date:* ${dateStr}${event.time ? `\n⏰ *Time:* ${event.time}` : ""}${event.location ? `\n📍 *Location:* ${event.location}` : ""}${event.link ? `\n🔗 *Link:* ${event.link}` : ""}${event.phone ? `\n📞 *Phone:* ${event.phone}` : ""}${event.email ? `\n✉️ *Email:* ${event.email}` : ""}${event.notes ? `\n\n💬 *Notes:*\n${event.notes}` : ""}
-
----
-🔗 Organize and track your events on IQXO:
-${origin}`;
-    }
-
-    try {
-      if (typeof window !== "undefined" && (window as any).ReactNativeWebView) {
-        (window as any).ReactNativeWebView.postMessage(
-          JSON.stringify({
-            type: "share",
-            title: event.title,
-            message: shareText,
-            text: shareText,
-            url: origin,
-          })
-        );
-      } else if (typeof navigator !== "undefined" && navigator.share) {
-        await navigator.share({
-          title: event.title,
-          text: shareText,
-        });
-      } else {
-        await navigator.clipboard.writeText(shareText);
-        toast({
-          title:
-            language === "ar"
-              ? "تم نسخ التفاصيل"
-              : language === "fr"
-                ? "Détails copiés"
-                : "Details copied",
-          description:
-            language === "ar"
-              ? "تم نسخ تفاصيل الحدث إلى الحافظة بنجاح."
-              : language === "fr"
-                ? "Détails de l'événement copiés dans le presse-papiers مع succès."
-                : "Event details copied to clipboard successfully.",
-        });
-      }
-    } catch (err) {
-      if (err instanceof Error && err.name !== "AbortError") {
-        console.error("Failed to share:", err);
-        try {
-          await navigator.clipboard.writeText(shareText);
-          toast({
-            title:
-              language === "ar"
-                ? "تم نسخ التفاصيل"
-                : language === "fr"
-                  ? "Détails copiés"
-                  : "Details copied",
-            description:
-              language === "ar"
-                ? "تم نسخ تفاصيل الحدث إلى الحافظة بنجاح."
-                : "Event details copied to clipboard successfully.",
-          });
-        } catch (_) {
-          toast({
-            title:
-              language === "ar"
-                ? "فشلت المشاركة"
-                : language === "fr"
-                  ? "Échec du partage"
-                  : "Share failed",
-            description: String(err),
-            variant: "destructive",
-          });
-        }
-      }
-    } finally {
-      if (savedScrollY > 0) {
-        window.scrollTo({ top: savedScrollY, behavior: "instant" as ScrollBehavior });
-      }
-    }
+    setShowShareModal(true);
   };
 
   return (
@@ -823,6 +709,14 @@ ${origin}`;
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── SHARE MODAL ── */}
+      <EventShareModal
+        event={event}
+        open={showShareModal}
+        onOpenChange={setShowShareModal}
+        language={language}
+      />
     </>
   );
 }
