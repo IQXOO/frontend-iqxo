@@ -12,6 +12,7 @@ import {
   Circle,
   AlertCircle,
   ChevronRight,
+  ChevronLeft,
   Check,
   Home,
   Smartphone,
@@ -838,6 +839,32 @@ export const BottomNav = memo(function BottomNav({
     }
   };
 
+  const handlePhotoLibrarySelect = () => {
+    setMenuOpen(false);
+    setShowPhotoOptions(false);
+    if (hiddenFileInputRef.current) {
+      hiddenFileInputRef.current.accept = "image/*";
+      hiddenFileInputRef.current.removeAttribute("capture");
+      hiddenFileInputRef.current.multiple = true;
+      hiddenFileInputRef.current.click();
+    }
+  };
+
+  const handleCameraCaptureSelect = () => {
+    handleTakePhotoOption("environment");
+  };
+
+  const handleFilesSelect = () => {
+    setMenuOpen(false);
+    setShowPhotoOptions(false);
+    if (hiddenFileInputRef.current) {
+      hiddenFileInputRef.current.accept = "application/pdf,image/*,.pdf";
+      hiddenFileInputRef.current.removeAttribute("capture");
+      hiddenFileInputRef.current.multiple = true;
+      hiddenFileInputRef.current.click();
+    }
+  };
+
   const handleManualEvent = () => {
     setMenuOpen(false);
     setShowPhotoOptions(false);
@@ -1095,7 +1122,7 @@ export const BottomNav = memo(function BottomNav({
                     <div className="p-3 space-y-2">
                       {/* Photo option */}
                       <motion.button
-                        onClick={() => handleTakePhotoOption(undefined)}
+                        onClick={() => setShowPhotoOptions(true)}
                         className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-secondary/60 transition-colors text-left group"
                         whileTap={{ scale: 0.98 }}
                       >
@@ -1110,6 +1137,7 @@ export const BottomNav = memo(function BottomNav({
                             {language === "ar" ? "كاميرا، مكتبة أو ملف" : language === "fr" ? "Caméra, galerie ou fichier" : "Camera, gallery or file"}
                           </p>
                         </div>
+                        <span className="text-muted-foreground text-xs rtl:rotate-180">›</span>
                       </motion.button>
 
                       {/* Manual event */}
@@ -1158,6 +1186,95 @@ export const BottomNav = memo(function BottomNav({
                           </p>
                         </div>
                         <span className="text-muted-foreground text-xs">›</span>
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ── Photo / Document options (Like iOS: Photo Library, Take Photo, Choose Files) ── */}
+                {showPhotoOptions && (
+                  <motion.div
+                    key="photo-options"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="rounded-2xl bg-background border border-border shadow-2xl overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                      <button
+                        onClick={() => setShowPhotoOptions(false)}
+                        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
+                        <span>{language === "ar" ? "رجوع" : language === "fr" ? "Retour" : "Back"}</span>
+                      </button>
+                      <span className="text-sm font-semibold text-foreground">
+                        {language === "ar" ? "إضافة صورة أو ملف" : language === "fr" ? "Ajouter photo ou fichier" : "Add Photo or File"}
+                      </span>
+                      <button
+                        onClick={handleClose}
+                        className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="p-3 space-y-2">
+                      {/* 1. Photo Library / Gallery */}
+                      <motion.button
+                        onClick={handlePhotoLibrarySelect}
+                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-secondary/60 transition-colors text-left group"
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                          <ImageIcon className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">
+                            {language === "ar" ? "مكتبة الصور" : language === "fr" ? "Photothèque" : "Photo Library"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {language === "ar" ? "اختر صورة من معرض الصور (Gallery)" : language === "fr" ? "Choisir depuis la galerie" : "Choose from your photo gallery"}
+                          </p>
+                        </div>
+                      </motion.button>
+
+                      {/* 2. Take Photo / Camera */}
+                      <motion.button
+                        onClick={handleCameraCaptureSelect}
+                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-secondary/60 transition-colors text-left group"
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                          <Camera className="w-5 h-5 text-emerald-500" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">
+                            {language === "ar" ? "التقاط صورة" : language === "fr" ? "Prendre une photo" : "Take Photo"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {language === "ar" ? "استخدم كاميرا الهاتف مباشرة" : language === "fr" ? "Utiliser l'appareil photo" : "Use device camera directly"}
+                          </p>
+                        </div>
+                      </motion.button>
+
+                      {/* 3. Choose Files / Documents */}
+                      <motion.button
+                        onClick={handleFilesSelect}
+                        className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl hover:bg-secondary/60 transition-colors text-left group"
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                          <FolderOpen className="w-5 h-5 text-amber-500" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">
+                            {language === "ar" ? "اختيار ملفات" : language === "fr" ? "Choisir des fichiers" : "Choose Files"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {language === "ar" ? "مستندات، PDF أو ملفات جدول" : language === "fr" ? "Documents, PDF ou plannings" : "Documents, PDFs or schedule files"}
+                          </p>
+                        </div>
                       </motion.button>
                     </div>
                   </motion.div>
