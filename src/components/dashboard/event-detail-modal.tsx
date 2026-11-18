@@ -31,7 +31,7 @@ import { useApp } from "@/lib/store";
 import { parseLocalDate } from "@/lib/store";
 import { ImageLightbox } from "./image-lightbox";
 import { parseImageUrls } from "./event-form-modal";
-import { EventShareModal } from "./event-share-modal";
+import { EventShareModal, buildEventShareText } from "./event-share-modal";
 import type { IQXOEvent } from "@/lib/types";
 import { format, isToday, isTomorrow } from "@/lib/date-utils";
 import { getNextOccurrence, getEventDisplayDate, computeEventPriority } from "@/lib/recurrence";
@@ -179,9 +179,50 @@ export function EventDetailModal({
 
   const [showShareModal, setShowShareModal] = useState(false);
 
-  const handleShare = (e?: React.MouseEvent) => {
+  const handleShare = async (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!event) return;
+
+    const isNativeApp =
+      typeof window !== "undefined" && !!(window as any).ReactNativeWebView;
+
+    const shareText = buildEventShareText(event, language);
+
+    // ── 1. Inside Mobile App (both iOS & Android): Use native system share bridge ──
+    if (isNativeApp) {
+      (window as any).ReactNativeWebView.postMessage(
+        JSON.stringify({
+          type: "share",
+          title: event.title,
+          message: shareText,
+          text: shareText,
+          url: "https://iqxo.ai",
+        })
+      );
+      return;
+    }
+
+    // ── 2. On Mobile Browsers (iOS Safari, Android Chrome): Use Web Share API ──
+    const isMobileDevice =
+      typeof navigator !== "undefined" &&
+      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      ) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
+    if (isMobileDevice && typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: event.title,
+          text: shareText,
+        });
+        return;
+      } catch (err: any) {
+        if (err?.name === "AbortError") return;
+      }
+    }
+
+    // ── 3. Desktop / Non-mobile Web: Open custom bottom sheet drawer ──
     setShowShareModal(true);
   };
 
