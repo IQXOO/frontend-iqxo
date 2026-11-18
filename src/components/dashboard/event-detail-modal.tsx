@@ -183,45 +183,46 @@ export function EventDetailModal({
     e?.stopPropagation();
     if (!event) return;
 
-    const isIOS =
-      typeof navigator !== "undefined" &&
-      (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
-
     const isNativeApp =
       typeof window !== "undefined" && !!(window as any).ReactNativeWebView;
 
-    // ── On iPhone / iOS: Trigger native default iOS share sheet directly ──
-    if (isIOS) {
-      const shareText = buildEventShareText(event, language);
+    const shareText = buildEventShareText(event, language);
 
-      if (isNativeApp) {
-        (window as any).ReactNativeWebView.postMessage(
-          JSON.stringify({
-            type: "share",
-            title: event.title,
-            message: shareText,
-            text: shareText,
-            url: "https://iqxo.ai",
-          })
-        );
+    // ── 1. Inside Mobile App (both iOS & Android): Use native system share bridge ──
+    if (isNativeApp) {
+      (window as any).ReactNativeWebView.postMessage(
+        JSON.stringify({
+          type: "share",
+          title: event.title,
+          message: shareText,
+          text: shareText,
+          url: "https://iqxo.ai",
+        })
+      );
+      return;
+    }
+
+    // ── 2. On Mobile Browsers (iOS Safari, Android Chrome): Use Web Share API ──
+    const isMobileDevice =
+      typeof navigator !== "undefined" &&
+      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      ) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
+    if (isMobileDevice && typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: event.title,
+          text: shareText,
+        });
         return;
-      }
-
-      if (typeof navigator !== "undefined" && navigator.share) {
-        try {
-          await navigator.share({
-            title: event.title,
-            text: shareText,
-          });
-          return;
-        } catch (err: any) {
-          if (err?.name === "AbortError") return;
-        }
+      } catch (err: any) {
+        if (err?.name === "AbortError") return;
       }
     }
 
-    // ── For any other device (Android, Web, Desktop): Open custom drawer ──
+    // ── 3. Desktop / Non-mobile Web: Open custom bottom sheet drawer ──
     setShowShareModal(true);
   };
 

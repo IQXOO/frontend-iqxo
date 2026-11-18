@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Phone, MapPin, Calendar, Share2, Link as LinkIcon } from "lucide-react"
 import type { IQXOEvent } from "@/lib/types"
-import { EventShareModal } from "./event-share-modal"
+import { EventShareModal, buildEventShareText } from "./event-share-modal"
 
 interface QuickActionBarProps {
   event: IQXOEvent
@@ -82,7 +82,45 @@ export function QuickActionBar({ event, language }: QuickActionBarProps) {
     {
       icon: Share2,
       label: language === "fr" ? "Partager" : language === "ar" ? "مشاركة" : "Share",
-      onClick: () => setShowShareModal(true),
+      onClick: async () => {
+        const isNativeApp =
+          typeof window !== "undefined" && !!(window as any).ReactNativeWebView;
+        const shareText = buildEventShareText(event, language);
+
+        if (isNativeApp) {
+          (window as any).ReactNativeWebView.postMessage(
+            JSON.stringify({
+              type: "share",
+              title: event.title,
+              message: shareText,
+              text: shareText,
+              url: "https://iqxo.ai",
+            })
+          );
+          return;
+        }
+
+        const isMobileDevice =
+          typeof navigator !== "undefined" &&
+          (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+            navigator.userAgent
+          ) ||
+            (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
+        if (isMobileDevice && typeof navigator !== "undefined" && navigator.share) {
+          try {
+            await navigator.share({
+              title: event.title,
+              text: shareText,
+            });
+            return;
+          } catch (err: any) {
+            if (err?.name === "AbortError") return;
+          }
+        }
+
+        setShowShareModal(true);
+      },
       color: "text-purple-500",
     },
   ].filter(Boolean) as Array<{
