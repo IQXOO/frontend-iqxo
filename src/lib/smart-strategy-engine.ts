@@ -1,6 +1,7 @@
 "use client"
 
 import type { IQXOEvent } from "./types"
+import { normalizeCategoryText } from "./event-category"
 
 /* ---- 1. STRATEGIC RADAR: Days Remaining & Color Coding ---- */
 export function calculateDaysRemaining(eventDate: string): number {
@@ -257,33 +258,56 @@ export type ContentCategory =
 
 const CATEGORY_KEYWORDS: Record<ContentCategory, string[]> = {
   medical: [
-    "doctor", "appointment", "hospital", "clinic", "checkup", "medicine",
-    "prescription", "دكتور", "عيادة", "فحص"
+    // English
+    "doctor", "appointment", "hospital", "clinic", "checkup", "medicine", "prescription", "dentist", "medical", "physician", "therapy",
+    // French
+    "medecin", "docteur", "hopital", "clinique", "dentiste", "ordonnance", "consultation", "medical", "sante", "rdv", "traitement",
+    // Arabic
+    "طبيب", "دكتور", "عيادة", "عياده", "مستشفى", "مستشفي", "فحص", "كشف", "تحليل", "تحاليل", "دواء", "علاج", "أسنان", "اسنان", "روشتة", "روشته"
   ],
   work: [
-    "meeting", "conference", "presentation", "project", "deadline", "work",
-    "اجتماع", "عمل", "مشروع"
+    // English
+    "meeting", "conference", "presentation", "project", "deadline", "work", "job", "client", "office", "shift", "colleague", "sync",
+    // French
+    "travail", "bureau", "reunion", "conference", "projet", "client", "stage", "emploi", "poste", "planning", "point",
+    // Arabic
+    "اجتماع", "إجتماع", "عمل", "مشروع", "شغل", "وظيفة", "وظيفه", "دوام", "شيفت", "مكتب", "عميل", "مؤتمر", "شركة", "شركه"
   ],
   travel: [
-    "trip", "flight", "hotel", "travel", "vacation", "drive",
-    "رحلة", "سفر", "عطلة"
+    // English
+    "trip", "flight", "hotel", "travel", "vacation", "drive", "airport", "boarding", "reservation",
+    // French
+    "voyage", "vol", "avion", "hotel", "vacances", "gare", "aeroport", "reservation", "sejour",
+    // Arabic
+    "رحلة", "سفر", "عطلة", "عطله", "طيران", "طيارة", "طياره", "فندق", "مطار", "تذكرة", "تذكره", "إجازة", "اجازة", "اجازه", "حجز"
   ],
   finance: [
-    "payment", "invoice", "tax", "insurance", "renewal", "bill",
-    "دفع", "فاتورة", "ضريبة"
+    // English
+    "payment", "invoice", "tax", "insurance", "renewal", "bill", "bank", "rent", "fee", "loan", "installment", "mortgage", "subscription",
+    // French
+    "paiement", "facture", "impot", "assurance", "banque", "loyer", "echeance", "virement", "prelevement", "credit", "reglement", "frais",
+    // Arabic
+    "دفع", "فاتورة", "فاتوره", "فواتير", "ضريبة", "ضريبه", "ضرائب", "تامين", "تأمين", "تجديد", "بنك", "قسط", "اقساط", "أقساط", "سداد", "تسديد", "ايجار", "إيجار", "مصاريف", "رسوم", "مستحقات"
   ],
   personal: [
-    "birthday", "anniversary", "friend", "family", "shopping", "hobby",
-    "عيد ميلاد", "عائلة", "صديق"
+    // English
+    "birthday", "anniversary", "friend", "family", "shopping", "hobby", "dinner", "lunch", "party", "wedding", "sport", "gym", "workout",
+    // French
+    "anniversaire", "fete", "famille", "ami", "diner", "dejeuner", "soiree", "sport", "gym", "mariage", "courses", "cafe",
+    // Arabic
+    "عيد ميلاد", "عائلة", "عائله", "صديق", "حفلة", "حفله", "عشاء", "غداء", "زفاف", "فرح", "خطوبة", "خطوبه", "رياضة", "رياضه", "جيم", "تمرين"
   ],
   other: [],
 }
 
 export function categorizeEvent(event: IQXOEvent): ContentCategory {
-  const textToSearch = (event.title + " " + event.notes).toLowerCase()
+  const textToSearch = normalizeCategoryText((event.title || "") + " " + (event.notes || ""));
 
   for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some(keyword => textToSearch.includes(keyword))) {
+    if (keywords.some(keyword => {
+      const normKw = normalizeCategoryText(keyword);
+      return textToSearch.includes(normKw);
+    })) {
       return category as ContentCategory
     }
   }

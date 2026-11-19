@@ -1,4 +1,5 @@
 import type { IQXOEvent } from "./types"
+import { normalizeCategoryText } from "./event-category"
 
 export interface AIInsight {
   text: string
@@ -7,13 +8,82 @@ export interface AIInsight {
   priority: number
 }
 
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function matchesInsightKeyword(normText: string, keyword: string): boolean {
+  const normKw = normalizeCategoryText(keyword).trim();
+  if (!normKw) return false;
+
+  if (normKw.includes(" ")) {
+    return normText.includes(normKw);
+  }
+
+  const regex = new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRegExp(normKw)}([^\\p{L}\\p{N}]|$)`, "u");
+  return regex.test(normText);
+}
+
+function matchesAnyInsight(normText: string, keywords: string[]): boolean {
+  return keywords.some((kw) => matchesInsightKeyword(normText, kw));
+}
+
+// Multilingual keywords for Insights (EN / FR / AR)
+const INSIGHT_PAYMENT_KEYWORDS = [
+  // English
+  "payment", "bill", "invoice", "due", "rent", "installment", "tuition", "bank", "credit card", "utility", "loan", "tax",
+  // French
+  "paiement", "facture", "payer", "loyer", "echeance", "échéance", "banque", "virement", "prelevement", "prélèvement", "reglement", "règlement", "credit", "crédit", "frais",
+  // Arabic
+  "دفع", "فاتورة", "فاتوره", "فواتير", "سداد", "تسديد", "قسط", "اقساط", "أقساط", "بنك", "ايجار", "إيجار", "مصاريف", "رسوم", "مستحقات", "مديونية", "مديونيه"
+];
+
+const INSIGHT_MEDICAL_KEYWORDS = [
+  // English
+  "doctor", "dr", "dr.", "dentist", "clinic", "hospital", "checkup", "appointment", "consultation", "medical", "physician",
+  // French
+  "medecin", "médecin", "docteur", "dr", "dr.", "dentiste", "clinique", "hopital", "hôpital", "rdv", "rendez-vous", "consultation", "medical", "médical",
+  // Arabic
+  "طبيب", "دكتور", "د.", "عيادة", "عياده", "مستشفى", "مستشفي", "كشف", "فحص", "تحليل", "تحاليل", "اسنان", "أسنان", "موعد طبي", "روشتة", "روشته"
+];
+
+const INSIGHT_INSURANCE_KEYWORDS = [
+  // English
+  "insurance", "renewal", "renew", "policy", "subscription",
+  // French
+  "assurance", "renouvellement", "renouveler", "mutuelle", "abonnement",
+  // Arabic
+  "تامين", "تأمين", "تجديد", "بوليصة", "بوليصه", "اشتراك"
+];
+
+const INSIGHT_TRAVEL_DOC_KEYWORDS = [
+  // English
+  "visa", "passport", "boarding pass", "flight",
+  // French
+  "visa", "passeport", "titre de sejour", "titre de séjour", "carte de sejour", "carte de séjour", "vol", "billet d'avion",
+  // Arabic
+  "تاشيرة", "تأشيرة", "تاشيره", "فيزا", "جواز", "جواز سفر", "اقامة", "إقامة", "اقامه", "طيران", "تذكرة طيران"
+];
+
+const INSIGHT_URGENT_KEYWORDS = [
+  // English
+  "urgent", "critical", "emergency", "asap", "important", "priority",
+  // French
+  "urgent", "urgence", "critique", "important", "importante", "prioritaire",
+  // Arabic
+  "عاجل", "طارئ", "حرج", "مهم", "مهمة", "مهمه", "هام", "ضروري", "ضروري جدا", "أولوية", "اولوية"
+];
+
 export function generateAIInsight(event: IQXOEvent, language: string = "en"): AIInsight | null {
   const eventDate = new Date(event.date)
   const now = new Date()
   const daysUntil = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
-  // Insurance/Legal documents renewal check
-  if (event.title.toLowerCase().includes("insurance") || event.title.toLowerCase().includes("renewal")) {
+  const normTitle = normalizeCategoryText(event.title || "");
+  const normNotes = normalizeCategoryText(event.notes || "");
+
+  // 1. Insurance/Legal documents renewal check (EN / FR / AR)
+  if (matchesAnyInsight(normTitle, INSIGHT_INSURANCE_KEYWORDS)) {
     if (daysUntil <= 7 && daysUntil > 0) {
       return {
         text: language === "ar"
@@ -28,9 +98,14 @@ export function generateAIInsight(event: IQXOEvent, language: string = "en"): AI
     }
   }
 
-  // Medical/Health appointments
-  if (event.title.toLowerCase().includes("doctor") || event.title.toLowerCase().includes("checkup") || event.title.toLowerCase().includes("appointment")) {
-    if (event.notes?.toLowerCase().includes("fasting")) {
+  // 2. Medical/Health appointments (EN / FR / AR)
+  if (matchesAnyInsight(normTitle, INSIGHT_MEDICAL_KEYWORDS)) {
+    if (
+      normNotes.includes("fasting") ||
+      normNotes.includes("jeune") ||
+      normNotes.includes("صيام") ||
+      normNotes.includes("صائم")
+    ) {
       return {
         text: language === "ar"
           ? "تذكر الصيام قبل الموعد"
@@ -42,7 +117,16 @@ export function generateAIInsight(event: IQXOEvent, language: string = "en"): AI
         priority: 1,
       }
     }
-    if (event.notes?.toLowerCase().includes("dosage") || event.notes?.toLowerCase().includes("mg")) {
+    if (
+      normNotes.includes("dosage") ||
+      normNotes.includes("dose") ||
+      normNotes.includes("mg") ||
+      normNotes.includes("posologie") ||
+      normNotes.includes("جرعة") ||
+      normNotes.includes("جرعه") ||
+      normNotes.includes("علاج") ||
+      normNotes.includes("دواء")
+    ) {
       return {
         text: language === "ar"
           ? "ضبط تذكير للجرعة القادمة؟"
@@ -56,8 +140,8 @@ export function generateAIInsight(event: IQXOEvent, language: string = "en"): AI
     }
   }
 
-  // Travel documents (Visa/Passport)
-  if (event.title.toLowerCase().includes("visa") || event.title.toLowerCase().includes("passport")) {
+  // 3. Travel documents (Visa/Passport/Flight) (EN / FR / AR)
+  if (matchesAnyInsight(normTitle, INSIGHT_TRAVEL_DOC_KEYWORDS)) {
     if (daysUntil <= 7 && daysUntil > 0) {
       return {
         text: language === "ar"
@@ -72,8 +156,8 @@ export function generateAIInsight(event: IQXOEvent, language: string = "en"): AI
     }
   }
 
-  // Payment deadlines
-  if (event.title.toLowerCase().includes("payment") || event.title.toLowerCase().includes("bill")) {
+  // 4. Payment & Bill deadlines (EN / FR / AR)
+  if (matchesAnyInsight(normTitle, INSIGHT_PAYMENT_KEYWORDS)) {
     if (daysUntil <= 3 && daysUntil > 0) {
       return {
         text: language === "ar"
@@ -88,7 +172,7 @@ export function generateAIInsight(event: IQXOEvent, language: string = "en"): AI
     }
   }
 
-  // General upcoming events
+  // 5. General upcoming events
   if (daysUntil <= 1 && daysUntil > 0) {
     return {
       text: language === "ar"
@@ -105,6 +189,10 @@ export function generateAIInsight(event: IQXOEvent, language: string = "en"): AI
   return null
 }
 
+const FLIGHT_KEYWORDS = [
+  "flight", "vol", "avion", "طيران", "رحلة طيران", "طياره", "طيارة"
+];
+
 export function getSmartGreeting(userName: string | undefined, events: IQXOEvent[], language: string = "en"): string {
   const urgentCount = events.filter(e => {
     const eventDate = new Date(e.date)
@@ -113,7 +201,11 @@ export function getSmartGreeting(userName: string | undefined, events: IQXOEvent
     return daysUntil <= 7 && daysUntil >= 0
   }).length
 
-  const flightCount = events.filter(e => e.title.toLowerCase().includes("flight")).length
+  const flightCount = events.filter(e => {
+    const norm = normalizeCategoryText(e.title || "");
+    return matchesAnyInsight(norm, FLIGHT_KEYWORDS);
+  }).length
+
   const name = userName?.trim() || (language === "ar" ? "صديقي" : language === "fr" ? "l'ami" : "there")
 
   if (urgentCount === 0) {
@@ -166,12 +258,13 @@ export function computeCriticalityScore(event: IQXOEvent): number {
   else if (daysUntil <= 30) score += 10
   else score += 5
 
-  // Category criticality
-  const title = event.title.toLowerCase()
-  if (title.includes("legal") || title.includes("visa") || title.includes("passport")) score += 30
-  if (title.includes("doctor") || title.includes("medical") || title.includes("health")) score += 25
-  if (title.includes("payment") || title.includes("bill") || title.includes("deadline")) score += 20
-  if (title.includes("important") || title.includes("critical")) score += 15
+  // Category criticality (Multilingual EN / FR / AR)
+  const normTitle = normalizeCategoryText(event.title || "")
+
+  if (matchesAnyInsight(normTitle, INSIGHT_TRAVEL_DOC_KEYWORDS)) score += 30
+  if (matchesAnyInsight(normTitle, INSIGHT_MEDICAL_KEYWORDS)) score += 25
+  if (matchesAnyInsight(normTitle, INSIGHT_PAYMENT_KEYWORDS)) score += 20
+  if (matchesAnyInsight(normTitle, INSIGHT_URGENT_KEYWORDS)) score += 15
 
   // Notes/details indicator
   if (event.notes && event.notes.length > 20) score += 5
