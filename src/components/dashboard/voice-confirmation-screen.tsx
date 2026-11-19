@@ -45,6 +45,10 @@ export function VoiceConfirmationScreen({
         link: link || undefined,
         notes: notes || "",
         image_url: undefined,
+        reminders:
+          data && "reminders" in data && Array.isArray((data as any).reminders) && (data as any).reminders.length > 0
+            ? (data as any).reminders
+            : [{ minutes_before: 15 }],
         source: "voice",
         is_done: false,
       })
@@ -63,6 +67,10 @@ export function VoiceConfirmationScreen({
       link: link || undefined,
       notes: notes || "",
       image_url: undefined,
+      reminders:
+        data && "reminders" in data && Array.isArray((data as any).reminders) && (data as any).reminders.length > 0
+          ? (data as any).reminders
+          : [{ minutes_before: 15 }],
       source: "voice",
       is_done: false,
       createdAt: new Date().toISOString(),
