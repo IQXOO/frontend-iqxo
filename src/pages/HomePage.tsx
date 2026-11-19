@@ -156,7 +156,7 @@ export default function Page() {
     (data: any) => {
       const parsed: ParsedEvent =
         typeof data === "string"
-          ? { title: data }
+          ? { title: data, reminders: [{ minutes_before: 15 }] }
           : {
               title: data.title || "",
               date: data.date || undefined,
@@ -169,7 +169,10 @@ export default function Page() {
               notes: data.notes || undefined,
               color: data.color || undefined,
               recurrence_rule: data.recurrence_rule || undefined,
-              reminders: data.reminders || undefined,
+              reminders:
+                data.reminders && Array.isArray(data.reminders) && data.reminders.length > 0
+                  ? data.reminders
+                  : [{ minutes_before: 15 }],
             };
       openEventForm(null, { prefillData: parsed });
     },

@@ -175,7 +175,7 @@ export function EventFormModal({
   const [endTime, setEndTime] = useState(() => getDefaultEndTimeString(getDefaultStartTimeString()));
   const [color, setColor] = useState("#00C2FF");
   const [recurrence, setRecurrence] = useState("");
-  const [reminders, setReminders] = useState<{ minutes_before: number }[]>([]);
+  const [reminders, setReminders] = useState<{ minutes_before: number }[]>([{ minutes_before: 15 }]);
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [location, setLocation] = useState("");
@@ -274,7 +274,11 @@ export function EventFormModal({
       setEndTime(prefillData.end_time || "");
       setColor(prefillData.color || "#00C2FF");
       setRecurrence(prefillData.recurrence_rule || "");
-      setReminders(prefillData.reminders || []);
+      setReminders(
+        prefillData.reminders && prefillData.reminders.length > 0
+          ? prefillData.reminders
+          : [{ minutes_before: 15 }]
+      );
       setPhone(prefillData.phone || "");
       let pLoc = prefillData.location || "";
       let pLnk = (prefillData as any).link || "";
@@ -302,7 +306,7 @@ export function EventFormModal({
       setEndTime(defaultEnd);
       setColor("#00C2FF");
       setRecurrence("");
-      setReminders([]);
+      setReminders([{ minutes_before: 15 }]);
       setPhone("");
       setEmail("");
       setLocation("");
@@ -325,7 +329,11 @@ export function EventFormModal({
       setEndTime(voiceData.end_time || "");
       if (voiceData.color) setColor(voiceData.color);
       if (voiceData.recurrence_rule) setRecurrence(voiceData.recurrence_rule);
-      if (voiceData.reminders) setReminders(voiceData.reminders);
+      setReminders(
+        voiceData.reminders && voiceData.reminders.length > 0
+          ? voiceData.reminders
+          : [{ minutes_before: 15 }]
+      );
       let vLoc = voiceData.location || "";
       let vLnk = (voiceData as any).link || "";
       if (!vLnk && vLoc && /^(https?:\/\/|www\.|zoom\.us|meet\.google\.com|teams\.microsoft\.com)/i.test(vLoc)) {

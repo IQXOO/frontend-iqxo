@@ -181,6 +181,7 @@ export function parseVoiceInput(text: string): ParsedEvent {
     location,
     link,
     phone,
+    reminders: [{ minutes_before: 15 }],
   }
 }
 

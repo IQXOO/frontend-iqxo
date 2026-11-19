@@ -92,7 +92,10 @@ export function EventConfirmationModal({
           notes: ev.notes || "",
           color: ev.color || "#00C2FF",
           recurrence_rule: ev.recurrence_rule || "",
-          reminders: ev.reminders || [],
+          reminders:
+            ev.reminders && Array.isArray(ev.reminders) && ev.reminders.length > 0
+              ? ev.reminders
+              : [{ minutes_before: 15 }],
           _id: Math.random().toString(36).substring(7),
           selected: true,
         }))
