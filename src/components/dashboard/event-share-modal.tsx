@@ -79,12 +79,16 @@ export function EventShareModal({
 
   const postNativeMessage = (msg: Record<string, unknown>) => {
     try {
-      if (
-        typeof window !== "undefined" &&
-        (window as any).ReactNativeWebView?.postMessage
-      ) {
-        (window as any).ReactNativeWebView.postMessage(JSON.stringify(msg));
-        return true;
+      if (typeof window !== "undefined") {
+        const win = window as any;
+        if (typeof win.__IQXO_postMessage === "function") {
+          win.__IQXO_postMessage(JSON.stringify(msg));
+          return true;
+        }
+        if (win.ReactNativeWebView?.postMessage) {
+          win.ReactNativeWebView.postMessage(JSON.stringify(msg));
+          return true;
+        }
       }
     } catch (_) {}
     return false;
