@@ -80,7 +80,13 @@ function InfoCard({
   );
 
   if (href) {
-    const isNative = typeof window !== "undefined" && !!(window as any).ReactNativeWebView;
+    const win = typeof window !== "undefined" ? (window as any) : null;
+    const isNative =
+      win &&
+      (win.__IQXO_IS_NATIVE === true ||
+        win.isNativeApp ||
+        !!win.ReactNativeWebView ||
+        typeof win.__IQXO_postMessage === "function");
     
     if (isNative) {
       return (
@@ -88,10 +94,17 @@ function InfoCard({
           type="button"
           onClick={(e) => {
             e.preventDefault();
-            (window as any).ReactNativeWebView.postMessage(JSON.stringify({
-              type: "openExternal",
-              url: href
-            }));
+            const post =
+              win.__IQXO_postMessage ||
+              (win.ReactNativeWebView && win.ReactNativeWebView.postMessage.bind(win.ReactNativeWebView));
+            if (post) {
+              post(
+                JSON.stringify({
+                  type: "openExternal",
+                  url: href,
+                })
+              );
+            }
           }}
           className="w-full text-left block hover:opacity-80 transition-opacity"
         >
@@ -183,23 +196,34 @@ export function EventDetailModal({
     e?.stopPropagation();
     if (!event) return;
 
+    const win = typeof window !== "undefined" ? (window as any) : null;
     const isNativeApp =
-      typeof window !== "undefined" && !!(window as any).ReactNativeWebView;
+      win &&
+      (win.__IQXO_IS_NATIVE === true ||
+        win.isNativeApp ||
+        !!win.ReactNativeWebView ||
+        typeof win.__IQXO_postMessage === "function");
 
     const shareText = buildEventShareText(event, language);
 
     // ── 1. Inside Mobile App (both iOS & Android): Use native system share bridge ──
     if (isNativeApp) {
-      (window as any).ReactNativeWebView.postMessage(
-        JSON.stringify({
-          type: "share",
-          title: event.title,
-          message: shareText,
-          text: shareText,
-          url: "https://iqxo.ai",
-        })
-      );
-      return;
+      const post =
+        win.__IQXO_postMessage ||
+        (win.ReactNativeWebView &&
+          win.ReactNativeWebView.postMessage.bind(win.ReactNativeWebView));
+      if (post) {
+        post(
+          JSON.stringify({
+            type: "share",
+            title: event.title,
+            message: shareText,
+            text: shareText,
+            url: "https://iqxo.ai",
+          })
+        );
+        return;
+      }
     }
 
     // ── 2. On Mobile Browsers (iOS Safari, Android Chrome): Use Web Share API ──
@@ -264,7 +288,7 @@ export function EventDetailModal({
                 className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-all select-none"
                 title={language === "ar" ? "مشاركة" : "Share"}
               >
-                <Share2 className="w-4.5 h-4.5" />
+                <Share2 className="w-4.5 h-4.5 pointer-events-none" />
               </button>
               <button
                 type="button"

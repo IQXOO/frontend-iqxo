@@ -83,21 +83,32 @@ export function QuickActionBar({ event, language }: QuickActionBarProps) {
       icon: Share2,
       label: language === "fr" ? "Partager" : language === "ar" ? "مشاركة" : "Share",
       onClick: async () => {
+        const win = typeof window !== "undefined" ? (window as any) : null;
         const isNativeApp =
-          typeof window !== "undefined" && !!(window as any).ReactNativeWebView;
+          win &&
+          (win.__IQXO_IS_NATIVE === true ||
+            win.isNativeApp ||
+            !!win.ReactNativeWebView ||
+            typeof win.__IQXO_postMessage === "function");
         const shareText = buildEventShareText(event, language);
 
         if (isNativeApp) {
-          (window as any).ReactNativeWebView.postMessage(
-            JSON.stringify({
-              type: "share",
-              title: event.title,
-              message: shareText,
-              text: shareText,
-              url: "https://iqxo.ai",
-            })
-          );
-          return;
+          const post =
+            win.__IQXO_postMessage ||
+            (win.ReactNativeWebView &&
+              win.ReactNativeWebView.postMessage.bind(win.ReactNativeWebView));
+          if (post) {
+            post(
+              JSON.stringify({
+                type: "share",
+                title: event.title,
+                message: shareText,
+                text: shareText,
+                url: "https://iqxo.ai",
+              })
+            );
+            return;
+          }
         }
 
         const isMobileDevice =
