@@ -254,7 +254,7 @@ export function EventDetailModal({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="w-full max-w-[430px] h-auto max-h-[88dvh] rounded-[24px] sm:rounded-[28px] border border-border bg-background shadow-2xl flex flex-col p-0 gap-0 overflow-hidden outline-none"
+          className="w-full max-w-[430px] h-auto max-h-[88dvh] rounded-[24px] sm:rounded-[28px] border border-border bg-background shadow-2xl flex flex-col p-0 gap-0 outline-none"
           showCloseButton={false}
           dir={isRTL ? "rtl" : "ltr"}
           onPointerDownOutside={(e) => {
@@ -275,7 +275,7 @@ export function EventDetailModal({
           </DialogDescription>
 
           {/* ── STICKY HEADER ── */}
-          <div className="flex justify-between items-center px-5 py-4 border-b border-border bg-background/90 backdrop-blur-xl sticky top-0 z-50 shrink-0">
+          <div className="flex justify-between items-center px-5 py-4 border-b border-border bg-background rounded-t-[24px] sm:rounded-t-[28px] sticky top-0 z-10 shrink-0">
             <div className="text-xl font-bold tracking-tight">
               <span className="text-foreground">IQ</span>
               <span className="text-[#5BC0DE]">X</span>
@@ -627,7 +627,7 @@ export function EventDetailModal({
           </div>
 
           {/* ── ACTION BUTTONS FOOTER ── */}
-          <div className="px-3 sm:px-4 py-4 shrink-0 flex gap-2 sm:gap-3 border-t border-border">
+          <div className="px-3 sm:px-4 py-4 shrink-0 flex gap-2 sm:gap-3 border-t border-border rounded-b-[24px] sm:rounded-b-[28px] bg-background">
             {/* Edit — amber */}
             {!isVirtual && (
               <button
