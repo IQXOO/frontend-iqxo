@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Phone, MapPin, Calendar, Share2, Link as LinkIcon } from "lucide-react"
 import type { IQXOEvent } from "@/lib/types"
 import { EventShareModal, buildEventShareText } from "./event-share-modal"
+import { isIQXONativeApp, shareViaNativeBridge } from "@/lib/native-bridge"
 
 interface QuickActionBarProps {
   event: IQXOEvent
@@ -83,32 +84,19 @@ export function QuickActionBar({ event, language }: QuickActionBarProps) {
       icon: Share2,
       label: language === "fr" ? "Partager" : language === "ar" ? "مشاركة" : "Share",
       onClick: async () => {
-        const win = typeof window !== "undefined" ? (window as any) : null;
-        const isNativeApp =
-          win &&
-          (win.__IQXO_IS_NATIVE === true ||
-            win.isNativeApp ||
-            !!win.ReactNativeWebView ||
-            typeof win.__IQXO_postMessage === "function");
         const shareText = buildEventShareText(event, language);
 
-        if (isNativeApp) {
-          const post =
-            win.__IQXO_postMessage ||
-            (win.ReactNativeWebView &&
-              win.ReactNativeWebView.postMessage.bind(win.ReactNativeWebView));
-          if (post) {
-            post(
-              JSON.stringify({
-                type: "share",
-                title: event.title,
-                message: shareText,
-                text: shareText,
-                url: "https://iqxo.ai",
-              })
-            );
-            return;
-          }
+        // ── 1. Inside Mobile App (both iOS & Android): Use native system share bridge ──
+        if (isIQXONativeApp()) {
+          shareViaNativeBridge({
+            title: event.title,
+            message: shareText,
+            text: shareText,
+            url: "https://iqxo.ai",
+          });
+          // CRITICAL: Always return immediately inside the native app.
+          // Never fall through to WebKit's navigator.share()!
+          return;
         }
 
         const isMobileDevice =

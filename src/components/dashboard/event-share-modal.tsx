@@ -15,6 +15,7 @@ import {
   MapPin,
 } from "lucide-react";
 import type { IQXOEvent } from "@/lib/types";
+import { isIQXONativeApp, postToNativeBridge, shareViaNativeBridge, openExternalNative } from "@/lib/native-bridge";
 
 interface EventShareModalProps {
   event: IQXOEvent | null;
@@ -78,20 +79,7 @@ export function EventShareModal({
   const shareText = buildEventShareText(event, language);
 
   const postNativeMessage = (msg: Record<string, unknown>) => {
-    try {
-      if (typeof window !== "undefined") {
-        const win = window as any;
-        if (typeof win.__IQXO_postMessage === "function") {
-          win.__IQXO_postMessage(JSON.stringify(msg));
-          return true;
-        }
-        if (win.ReactNativeWebView?.postMessage) {
-          win.ReactNativeWebView.postMessage(JSON.stringify(msg));
-          return true;
-        }
-      }
-    } catch (_) {}
-    return false;
+    return postToNativeBridge(msg);
   };
 
   const handleCopy = async (e?: React.MouseEvent) => {
@@ -182,25 +170,26 @@ export function EventShareModal({
   const handleSystemShare = async (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
-    const sent = postNativeMessage({
-      type: "share",
-      title: event.title,
-      message: shareText,
-      text: shareText,
-      url: "https://iqxo.ai",
-    });
 
-    if (!sent) {
-      if (typeof navigator !== "undefined" && navigator.share) {
-        try {
-          await navigator.share({
-            title: event.title,
-            text: shareText,
-          });
-        } catch (_) {}
-      } else {
-        handleCopy(e);
-      }
+    if (isIQXONativeApp()) {
+      shareViaNativeBridge({
+        title: event.title,
+        message: shareText,
+        text: shareText,
+        url: "https://iqxo.ai",
+      });
+      return;
+    }
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: event.title,
+          text: shareText,
+        });
+      } catch (_) {}
+    } else {
+      handleCopy(e);
     }
   };
 
