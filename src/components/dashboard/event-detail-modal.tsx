@@ -32,6 +32,7 @@ import { parseLocalDate } from "@/lib/store";
 import { ImageLightbox } from "./image-lightbox";
 import { parseImageUrls } from "./event-form-modal";
 import { EventShareModal, buildEventShareText } from "./event-share-modal";
+import { isIQXONativeApp, shareViaNativeBridge, openExternalNative } from "@/lib/native-bridge";
 import type { IQXOEvent } from "@/lib/types";
 import { format, isToday, isTomorrow } from "@/lib/date-utils";
 import { getNextOccurrence, getEventDisplayDate, computeEventPriority } from "@/lib/recurrence";
@@ -80,31 +81,13 @@ function InfoCard({
   );
 
   if (href) {
-    const win = typeof window !== "undefined" ? (window as any) : null;
-    const isNative =
-      win &&
-      (win.__IQXO_IS_NATIVE === true ||
-        win.isNativeApp ||
-        !!win.ReactNativeWebView ||
-        typeof win.__IQXO_postMessage === "function");
-    
-    if (isNative) {
+    if (isIQXONativeApp()) {
       return (
         <button
           type="button"
           onClick={(e) => {
             e.preventDefault();
-            const post =
-              win.__IQXO_postMessage ||
-              (win.ReactNativeWebView && win.ReactNativeWebView.postMessage.bind(win.ReactNativeWebView));
-            if (post) {
-              post(
-                JSON.stringify({
-                  type: "openExternal",
-                  url: href,
-                })
-              );
-            }
+            openExternalNative(href);
           }}
           className="w-full text-left block hover:opacity-80 transition-opacity"
         >
@@ -196,34 +179,19 @@ export function EventDetailModal({
     e?.stopPropagation();
     if (!event) return;
 
-    const win = typeof window !== "undefined" ? (window as any) : null;
-    const isNativeApp =
-      win &&
-      (win.__IQXO_IS_NATIVE === true ||
-        win.isNativeApp ||
-        !!win.ReactNativeWebView ||
-        typeof win.__IQXO_postMessage === "function");
-
     const shareText = buildEventShareText(event, language);
 
     // ── 1. Inside Mobile App (both iOS & Android): Use native system share bridge ──
-    if (isNativeApp) {
-      const post =
-        win.__IQXO_postMessage ||
-        (win.ReactNativeWebView &&
-          win.ReactNativeWebView.postMessage.bind(win.ReactNativeWebView));
-      if (post) {
-        post(
-          JSON.stringify({
-            type: "share",
-            title: event.title,
-            message: shareText,
-            text: shareText,
-            url: "https://iqxo.ai",
-          })
-        );
-        return;
-      }
+    if (isIQXONativeApp()) {
+      shareViaNativeBridge({
+        title: event.title,
+        message: shareText,
+        text: shareText,
+        url: "https://iqxo.ai",
+      });
+      // CRITICAL: Always return immediately inside the native app.
+      // Never fall through to WebKit's navigator.share(), which spawns an anchored popover!
+      return;
     }
 
     // ── 2. On Mobile Browsers (iOS Safari, Android Chrome): Use Web Share API ──
