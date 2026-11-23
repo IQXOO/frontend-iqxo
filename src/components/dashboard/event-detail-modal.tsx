@@ -194,7 +194,16 @@ export function EventDetailModal({
       return;
     }
 
-    // ── 2. On Mobile Browsers (iOS Safari, Android Chrome): Use Web Share API ──
+    // ── 2. Standalone / Installed PWA / WebView Fallback ──
+    // If we are in standalone mode or inside a mobile webview that didn't match native bridge,
+    // NEVER call navigator.share() inside this dialog because WebKit anchors the share sheet
+    // to the modal button and produces a narrow, cut-off popover.
+    const isStandalone =
+      typeof window !== "undefined" &&
+      ((window.navigator as any).standalone === true ||
+        window.matchMedia("(display-mode: standalone)").matches);
+
+    // ── 3. On Mobile Browsers (iOS Safari, Android Chrome): Use Web Share API ──
     const isMobileDevice =
       typeof navigator !== "undefined" &&
       (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -202,7 +211,7 @@ export function EventDetailModal({
       ) ||
         (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
 
-    if (isMobileDevice && typeof navigator !== "undefined" && navigator.share) {
+    if (isMobileDevice && !isStandalone && typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
           title: event.title,
@@ -214,7 +223,7 @@ export function EventDetailModal({
       }
     }
 
-    // ── 3. Desktop / Non-mobile Web: Open custom bottom sheet drawer ──
+    // ── 4. Desktop / Fallback: Open custom bottom sheet drawer ──
     setShowShareModal(true);
   };
 
