@@ -23,6 +23,12 @@ export function isIQXONativeApp(): boolean {
     }
   }
 
+  if (typeof window.location !== "undefined" && window.location.search) {
+    if (window.location.search.includes("isNative=true")) {
+      return true;
+    }
+  }
+
   return false;
 }
 
