@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppProvider, useApp } from "./lib/store";
 import { ThemeProvider } from "./components/theme-provider";
@@ -8,6 +8,7 @@ import {
 } from "./lib/billing-utils";
 import "./styles/globals.css";
 import { launchAppWithFallback } from "./lib/auth-urls";
+import { lazyNamed, lazyWithRetry } from "./lib/lazy";
 
 // ── Native app OAuth redirect ─────────────────────────────────────────────────
 // When Google OAuth completes in the external browser, Supabase redirects to
@@ -38,25 +39,25 @@ function useNativeAppOAuthRedirect() {
   }, []);
 }
 
-const HomePage = lazy(() => import("./pages/HomePage"));
-const LoginPage = lazy(() => import("./pages/LoginPage"));
-const ProfilePage = lazy(() => import("./pages/ProfilePage"));
-const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
-const WelcomeSplashPage = lazy(() => import("./pages/WelcomeSplashPage"));
-const ConnectCalendarsPage = lazy(() => import("./pages/ConnectCalendarsPage"));
-const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
-const PricingPage = lazy(() => import("./pages/PricingPage"));
-const TermsPage = lazy(() => import("./pages/TermsPage"));
-const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
-const TomorrowPage = lazy(() => import("./pages/TomorrowPage"));
-const FuturePage = lazy(() => import("./pages/FuturePage"));
-const SchedulePage = lazy(() => import("./pages/SchedulePage"));
-const ArchivePage = lazy(() => import("./pages/ArchivePage"));
-const PdfPreviewPage = lazy(() => import("./pages/PdfPreviewPage").then(m => ({ default: m.PdfPreviewPage })));
-const AppLayout = lazy(() => import("./components/AppLayout"));
-const ProtectedRoute = lazy(() => import("./components/ProtectedRoute"));
-const RouterInit = lazy(() => import("./lib/router-init"));
-const AppController = lazy(() => import("./lib/app-controller"));
+const HomePage = lazyWithRetry(() => import("./pages/HomePage"), "HomePage");
+const LoginPage = lazyWithRetry(() => import("./pages/LoginPage"), "LoginPage");
+const ProfilePage = lazyWithRetry(() => import("./pages/ProfilePage"), "ProfilePage");
+const OnboardingPage = lazyWithRetry(() => import("./pages/OnboardingPage"), "OnboardingPage");
+const WelcomeSplashPage = lazyWithRetry(() => import("./pages/WelcomeSplashPage"), "WelcomeSplashPage");
+const ConnectCalendarsPage = lazyWithRetry(() => import("./pages/ConnectCalendarsPage"), "ConnectCalendarsPage");
+const ResetPasswordPage = lazyWithRetry(() => import("./pages/ResetPasswordPage"), "ResetPasswordPage");
+const PricingPage = lazyWithRetry(() => import("./pages/PricingPage"), "PricingPage");
+const TermsPage = lazyWithRetry(() => import("./pages/TermsPage"), "TermsPage");
+const PrivacyPage = lazyWithRetry(() => import("./pages/PrivacyPage"), "PrivacyPage");
+const TomorrowPage = lazyWithRetry(() => import("./pages/TomorrowPage"), "TomorrowPage");
+const FuturePage = lazyWithRetry(() => import("./pages/FuturePage"), "FuturePage");
+const SchedulePage = lazyWithRetry(() => import("./pages/SchedulePage"), "SchedulePage");
+const ArchivePage = lazyWithRetry(() => import("./pages/ArchivePage"), "ArchivePage");
+const PdfPreviewPage = lazyNamed(() => import("./pages/PdfPreviewPage"), "PdfPreviewPage");
+const AppLayout = lazyWithRetry(() => import("./components/AppLayout"), "AppLayout");
+const ProtectedRoute = lazyWithRetry(() => import("./components/ProtectedRoute"), "ProtectedRoute");
+const RouterInit = lazyWithRetry(() => import("./lib/router-init"), "RouterInit");
+const AppController = lazyWithRetry(() => import("./lib/app-controller"), "AppController");
 
 function RouteFallback() {
   return (
