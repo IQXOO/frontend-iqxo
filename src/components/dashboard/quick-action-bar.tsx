@@ -99,6 +99,17 @@ export function QuickActionBar({ event, language }: QuickActionBarProps) {
           return;
         }
 
+        // ── 2. Standalone / Installed PWA / WebView Fallback ──
+        const isStandalone =
+          typeof window !== "undefined" &&
+          ((window.navigator as any).standalone === true ||
+            window.matchMedia("(display-mode: standalone)").matches);
+
+        const isIOS =
+          typeof navigator !== "undefined" &&
+          (/iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+            (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
         const isMobileDevice =
           typeof navigator !== "undefined" &&
           (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -106,7 +117,7 @@ export function QuickActionBar({ event, language }: QuickActionBarProps) {
           ) ||
             (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
 
-        if (isMobileDevice && typeof navigator !== "undefined" && navigator.share) {
+        if (isMobileDevice && !isIOS && !isStandalone && typeof navigator !== "undefined" && navigator.share) {
           try {
             await navigator.share({
               title: event.title,
