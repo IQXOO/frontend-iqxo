@@ -219,12 +219,13 @@ export function EventFormModal({
     setIsDuplicate(false);
     setIsColorPickerOpen(false);
 
-    // Fetch user's work schedule only once if not loaded
-    if (user && workSchedule.length === 0) {
+    // Fetch user's active work schedule on modal open
+    if (user) {
       supabase
         .from("work_schedules")
         .select("day_of_week,start_time,end_time")
         .eq("user_id", user.id)
+        .eq("is_active", true)
         .then(({ data, error }) => {
           if (!error && data) setWorkSchedule(data);
         });
@@ -406,25 +407,42 @@ export function EventFormModal({
         return;
       }
 
-      // Check against work schedule for that day-of-week
+      // Check against work schedule for that day-of-week (including overnight spill from previous day)
       const dow = new Date(d + "T12:00:00").getDay();
-      const ws = workSchedule.find((w) => w.day_of_week === dow);
-      if (ws) {
-        const [sh, sm] = ws.start_time.split(":").map(Number);
-        const [eh, em] = ws.end_time.split(":").map(Number);
-        const wsStart = sh * 60 + sm;
-        const wsEnd = eh * 60 + em < wsStart ? eh * 60 + em + 24 * 60 : eh * 60 + em;
-        const checkAdjusted = checkMins < wsStart ? checkMins + 24 * 60 : checkMins;
-        if (checkAdjusted >= wsStart && checkAdjusted < wsEnd) {
-          const workHoursLabel =
-            language === "ar"
-              ? `ساعات العمل (${ws.start_time}–${ws.end_time})`
-              : language === "fr"
-              ? `Heures de travail (${ws.start_time}–${ws.end_time})`
-              : `Work hours (${ws.start_time}–${ws.end_time})`;
-          setConflictTitle(workHoursLabel);
-          return;
-        }
+      const prevDow = (dow + 6) % 7;
+      const toMins = (tStr: string) => {
+        const [h, m] = tStr.split(":").map(Number);
+        return h * 60 + (m || 0);
+      };
+
+      const matchingShift =
+        workSchedule.find((w) => {
+          if (w.day_of_week !== dow || !w.start_time || !w.end_time) return false;
+          const wsStart = toMins(w.start_time);
+          const wsEnd = toMins(w.end_time);
+          if (wsEnd <= wsStart) {
+            // Overnight shift on `dow` covers [wsStart, 24:00) on `dow`
+            return checkMins >= wsStart;
+          }
+          return checkMins >= wsStart && checkMins < wsEnd;
+        }) ||
+        workSchedule.find((w) => {
+          if (w.day_of_week !== prevDow || !w.start_time || !w.end_time) return false;
+          const wsStart = toMins(w.start_time);
+          const wsEnd = toMins(w.end_time);
+          // Previous day's overnight shift spills into [00:00, wsEnd) on `dow`
+          return wsEnd < wsStart && checkMins < wsEnd;
+        });
+
+      if (matchingShift) {
+        const workHoursLabel =
+          language === "ar"
+            ? `ساعات العمل (${matchingShift.start_time}–${matchingShift.end_time})`
+            : language === "fr"
+            ? `Heures de travail (${matchingShift.start_time}–${matchingShift.end_time})`
+            : `Work hours (${matchingShift.start_time}–${matchingShift.end_time})`;
+        setConflictTitle(workHoursLabel);
+        return;
       }
 
       setConflictTitle(null);
