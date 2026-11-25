@@ -819,6 +819,8 @@ function rowToEvent(row: Record<string, any>): IQXOEvent {
 // ─── Work schedule row type ───────────────────────────────────────────────────
 interface WorkScheduleRow {
   day_of_week: number;
+  shift_date?: string | null;
+  is_recurring?: boolean;
   start_time: string;
   end_time: string;
   is_active: boolean;
@@ -1220,7 +1222,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const [eventsRes, scheduleRes] = await Promise.all([
+      const [eventsRes, scheduleResPrimary] = await Promise.all([
         supabase
           .from("events")
           .select(
@@ -1232,9 +1234,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           .range(0, ACTIVE_PAGE_SIZE - 1),
         supabase
           .from("work_schedules")
-          .select("day_of_week,start_time,end_time,is_active,location,schedule_label")
+          .select("day_of_week,shift_date,is_recurring,start_time,end_time,is_active,location,schedule_label")
           .eq("user_id", uid),
       ]);
+
+      let scheduleData: any[] | null = scheduleResPrimary.data;
+      let scheduleError = scheduleResPrimary.error;
+      if (scheduleError && /shift_date|is_recurring|column/i.test(scheduleError.message || "")) {
+        const fallback = await supabase
+          .from("work_schedules")
+          .select("day_of_week,start_time,end_time,is_active,location,schedule_label")
+          .eq("user_id", uid);
+        scheduleData = fallback.data;
+        scheduleError = fallback.error;
+      }
 
       if (eventsRes.error) throw eventsRes.error;
 
@@ -1244,12 +1257,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       setActiveHasMore(formatted.length === ACTIVE_PAGE_SIZE);
 
-      if (!scheduleRes.error && scheduleRes.data) {
+      if (!scheduleError && scheduleData) {
         setWorkScheduleRows(
-          scheduleRes.data
+          scheduleData
             .filter((r) => r.is_active)
             .map((r) => ({
               day_of_week: r.day_of_week,
+              shift_date: r.shift_date ?? null,
+              is_recurring: r.is_recurring ?? true,
               start_time: r.start_time,
               end_time: r.end_time,
               is_active: r.is_active,
@@ -2115,52 +2130,73 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [user, removeEventFromState, dbEvents, setDismissedVirtualShifts],
   );
 
-  // ── Generate virtual shift events from work schedule (next 30 days) ──────────
+  // ── Generate virtual shift events from work schedule ─────────────────────────
   const virtualShiftEvents = React.useMemo<IQXOEvent[]>(() => {
     if (!userId || workScheduleRows.length === 0) return [];
     const now = new Date();
     const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStr = toLocalDateStr(todayMidnight);
     const virtualEvents: IQXOEvent[] = [];
+    const seenIds = new Set<string>();
 
-    // Build a set of dates that already have a work_schedule calendar event
-    // so we don't duplicate if the user clicked "Add to calendar" on that day.
+    // Build a set of date+start_time keys that already have a work_schedule calendar event
+    // so we don't duplicate if the user clicked "Add to calendar" on that shift.
     const alreadyAdded = new Set(
       dbEvents
         .filter((e) => e.source === "work_schedule")
-        .map((e) => e.date)
+        .map((e) => `${e.date}_${(e.start_time || e.time || "").slice(0, 5)}`)
     );
 
-    for (let daysAhead = 0; daysAhead <= 30; daysAhead++) {
-      const d = new Date(todayMidnight);
-      d.setDate(todayMidnight.getDate() + daysAhead);
-      const dow = d.getDay();
-      const dateStr = toLocalDateStr(d);
+    const pushVirtualShift = (dateStr: string, shift: WorkScheduleRow) => {
+      const startKey = `${dateStr}_${(shift.start_time || "").slice(0, 5)}`;
+      if (alreadyAdded.has(startKey)) return;
 
-      // Skip if user already manually added this day to their calendar
-      if (alreadyAdded.has(dateStr)) continue;
+      const shiftId = `virtual-ws-${dateStr}-${shift.schedule_label}-${shift.start_time}`;
+      if (seenIds.has(shiftId) || dismissedVirtualShifts.has(shiftId)) return;
+      seenIds.add(shiftId);
 
-      const shiftsForDay = workScheduleRows.filter((r) => r.day_of_week === dow);
-      for (const shift of shiftsForDay) {
-        const shiftId = `virtual-ws-${dateStr}-${shift.schedule_label}-${shift.start_time}`;
-        if (dismissedVirtualShifts.has(shiftId)) continue;
+      virtualEvents.push({
+        id: shiftId,
+        user_id: userId,
+        title: shift.schedule_label && shift.schedule_label !== "Main"
+          ? shift.schedule_label
+          : "Work Day",
+        notes: `${shift.start_time} – ${shift.end_time}`,
+        date: dateStr,
+        time: shift.start_time,
+        location: shift.location ?? undefined,
+        source: "work_schedule_virtual",
+        is_done: false,
+        createdAt: "",
+        updatedAt: "",
+      });
+    };
 
-        virtualEvents.push({
-          id: shiftId,
-          user_id: userId,
-          title: shift.schedule_label && shift.schedule_label !== "Main"
-            ? shift.schedule_label
-            : "Work Day",
-          notes: `${shift.start_time} – ${shift.end_time}`,
-          date: dateStr,
-          time: shift.start_time,
-          location: shift.location ?? undefined,
-          source: "work_schedule_virtual",
-          is_done: false,
-          createdAt: "",
-          updatedAt: "",
-        });
+    // 1. Recurring weekly rows -> next 30 days
+    const recurringRows = workScheduleRows.filter((r) => r.is_recurring !== false);
+    if (recurringRows.length > 0) {
+      for (let daysAhead = 0; daysAhead <= 30; daysAhead++) {
+        const d = new Date(todayMidnight);
+        d.setDate(todayMidnight.getDate() + daysAhead);
+        const dow = d.getDay();
+        const dateStr = toLocalDateStr(d);
+
+        for (const shift of recurringRows) {
+          if (shift.day_of_week === dow) {
+            pushVirtualShift(dateStr, shift);
+          }
+        }
       }
     }
+
+    // 2. Fixed-date rows -> ONLY on their exact shift_date (including dates > 30 days ahead)
+    const datedRows = workScheduleRows.filter(
+      (r) => r.is_recurring === false && r.shift_date && r.shift_date >= todayStr
+    );
+    for (const shift of datedRows) {
+      pushVirtualShift(shift.shift_date!, shift);
+    }
+
     return virtualEvents;
   }, [userId, workScheduleRows, dbEvents, dismissedVirtualShifts]);
 

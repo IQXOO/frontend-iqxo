@@ -166,7 +166,7 @@ export function EventFormModal({
   const { addEvent, updateEvent, user, theme, language, events } = useApp();
   const { toast } = useToast();
   const [workSchedule, setWorkSchedule] = useState<
-    { day_of_week: number; start_time: string; end_time: string }[]
+    { day_of_week: number; shift_date?: string | null; is_recurring?: boolean; start_time: string; end_time: string }[]
   >([]);
 
   const [title, setTitle] = useState("");
@@ -223,11 +223,20 @@ export function EventFormModal({
     if (user) {
       supabase
         .from("work_schedules")
-        .select("day_of_week,start_time,end_time")
+        .select("day_of_week,shift_date,is_recurring,start_time,end_time")
         .eq("user_id", user.id)
         .eq("is_active", true)
-        .then(({ data, error }) => {
-          if (!error && data) setWorkSchedule(data);
+        .then(async ({ data, error }) => {
+          if (!error && data) {
+            setWorkSchedule(data);
+          } else if (error && /shift_date|is_recurring|column/i.test(error.message || "")) {
+            const fallback = await supabase
+              .from("work_schedules")
+              .select("day_of_week,start_time,end_time")
+              .eq("user_id", user.id)
+              .eq("is_active", true);
+            if (!fallback.error && fallback.data) setWorkSchedule(fallback.data);
+          }
         });
     }
 
@@ -407,9 +416,25 @@ export function EventFormModal({
         return;
       }
 
-      // Check against work schedule for that day-of-week (including overnight spill from previous day)
-      const dow = new Date(d + "T12:00:00").getDay();
-      const prevDow = (dow + 6) % 7;
+      // Check against work schedule (fixed-date shifts match exact date; recurring shifts match weekday)
+      const targetDateObj = new Date(d + "T12:00:00");
+      const dow = targetDateObj.getDay();
+      const prevDateObj = new Date(targetDateObj);
+      prevDateObj.setDate(targetDateObj.getDate() - 1);
+      const prevDateStr = `${prevDateObj.getFullYear()}-${String(prevDateObj.getMonth() + 1).padStart(2, "0")}-${String(prevDateObj.getDate()).padStart(2, "0")}`;
+      const prevDow = prevDateObj.getDay();
+
+      const appliesToDate = (
+        w: { day_of_week: number; shift_date?: string | null; is_recurring?: boolean },
+        targetDate: string,
+        targetDow: number,
+      ) => {
+        if (w.is_recurring === false) {
+          return w.shift_date === targetDate;
+        }
+        return w.day_of_week === targetDow;
+      };
+
       const toMins = (tStr: string) => {
         const [h, m] = tStr.split(":").map(Number);
         return h * 60 + (m || 0);
@@ -417,20 +442,20 @@ export function EventFormModal({
 
       const matchingShift =
         workSchedule.find((w) => {
-          if (w.day_of_week !== dow || !w.start_time || !w.end_time) return false;
+          if (!w.start_time || !w.end_time || !appliesToDate(w, d, dow)) return false;
           const wsStart = toMins(w.start_time);
           const wsEnd = toMins(w.end_time);
           if (wsEnd <= wsStart) {
-            // Overnight shift on `dow` covers [wsStart, 24:00) on `dow`
+            // Overnight shift on `d` covers [wsStart, 24:00) on `d`
             return checkMins >= wsStart;
           }
           return checkMins >= wsStart && checkMins < wsEnd;
         }) ||
         workSchedule.find((w) => {
-          if (w.day_of_week !== prevDow || !w.start_time || !w.end_time) return false;
+          if (!w.start_time || !w.end_time || !appliesToDate(w, prevDateStr, prevDow)) return false;
           const wsStart = toMins(w.start_time);
           const wsEnd = toMins(w.end_time);
-          // Previous day's overnight shift spills into [00:00, wsEnd) on `dow`
+          // Previous day's overnight shift spills into [00:00, wsEnd) on `d`
           return wsEnd < wsStart && checkMins < wsEnd;
         });
 
