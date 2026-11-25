@@ -835,8 +835,14 @@ export function WorkScheduleView() {
             const result: AIScheduleResult = await r.json();
             console.log("message", result);
             // Update totalUsage directly from the API response
-            if (typeof result.total_usage === "number") {
-              setTotalUsage(result.total_usage);
+            const parsedUsage =
+              typeof result.total_usage === "number"
+                ? result.total_usage
+                : typeof result.total_usage === "string"
+                  ? Number(result.total_usage)
+                  : NaN;
+            if (Number.isFinite(parsedUsage)) {
+              setTotalUsage(parsedUsage);
             }
             setAiResult(result);
             applyAIResult(result);
@@ -1163,6 +1169,11 @@ export function WorkScheduleView() {
                       <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
                       <span className="text-xl font-bold text-foreground tracking-tight">
                         {shift.start_time} – {shift.end_time}
+                        {shift.end_time < shift.start_time && (
+                          <span className="ml-1.5 text-xs font-semibold text-blue-400 align-middle">
+                            (+1)
+                          </span>
+                        )}
                       </span>
                       <span className="text-xs text-muted-foreground ml-auto">
                         {shift.schedule_label}
@@ -1568,6 +1579,11 @@ export function WorkScheduleView() {
                                           }
                                           className="flex-1 min-w-0 bg-transparent text-sm text-foreground outline-none [color-scheme:dark]"
                                         />
+                                        {day.start_time && day.end_time && day.end_time < day.start_time && (
+                                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-400 shrink-0">
+                                            +1
+                                          </span>
+                                        )}
                                         <button
                                           onClick={() => removeShift(day.id!)}
                                           className="p-1 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
