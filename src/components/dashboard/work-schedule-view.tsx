@@ -15,10 +15,12 @@ import {
   ChevronDown,
   ChevronUp,
   CalendarPlus,
+  Calendar,
+  Repeat,
   Trash2,
   Plus,
 } from "lucide-react";
-import { useApp } from "../../lib/store";
+import { useApp, toLocalDateStr } from "../../lib/store";
 import { supabase } from "../../lib/supabase";
 import {
   devError,
@@ -34,6 +36,8 @@ import { compressImage } from "../../lib/compress-image";
 interface WorkDay {
   id?: string;
   day_of_week: number;
+  shift_date?: string | null;
+  is_recurring: boolean;
   start_time: string;
   end_time: string;
   is_active: boolean;
@@ -42,14 +46,18 @@ interface WorkDay {
 }
 
 interface AIShift {
-  date: string;
+  date?: string | null;
   day_name: string;
   start: string;
   end: string;
+  is_overnight?: boolean;
   location?: string | null;
+  notes?: string | null;
 }
 
 interface AIScheduleResult {
+  schedule_type?: "dated" | "recurring";
+  week_range?: { from?: string | null; to?: string | null } | null;
   person_name_found: string;
   found: boolean;
   shifts?: AIShift[];
@@ -166,26 +174,19 @@ function nextDatesForDow(dow: number, count = 3): string[] {
   return dates;
 }
 
-function fmtDate(iso: string, language: string): string {
+function fmtDate(iso: string, language: string, includeYear?: boolean): string {
   try {
     const d = new Date(iso + "T12:00:00");
-    if (language === "ar")
-      return d.toLocaleDateString("ar-SA", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      });
-    if (language === "fr")
-      return d.toLocaleDateString("fr-FR", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-      });
-    return d.toLocaleDateString("en-US", {
+    const showYear = includeYear ?? d.getFullYear() !== new Date().getFullYear();
+    const opts: Intl.DateTimeFormatOptions = {
       weekday: "short",
       month: "short",
       day: "numeric",
-    });
+      ...(showYear ? { year: "numeric" } : {}),
+    };
+    if (language === "ar") return d.toLocaleDateString("ar-SA", opts);
+    if (language === "fr") return d.toLocaleDateString("fr-FR", opts);
+    return d.toLocaleDateString("en-US", opts);
   } catch {
     return iso;
   }
@@ -295,11 +296,37 @@ export function WorkScheduleView() {
   }, [showNamePrompt]);
 
   // ── Derived: rows for the active label only ────────────────────────────────
+  const todayIso = toLocalDateStr();
   const schedule = allRows.filter((r) => r.schedule_label === activeLabel);
   const activeDays = schedule.filter((d) => d.is_active);
+  const activeIsRecurring =
+    schedule.length === 0 ? true : schedule.some((d) => d.is_recurring);
+
+  // Shifts that actually apply to TODAY (across active schedule: recurring weekday OR exact todayIso)
+  const isRowOnDate = (r: WorkDay, dateIso: string, dow: number) =>
+    r.is_recurring ? r.day_of_week === dow : r.shift_date === dateIso;
+
   const todayShifts = schedule.filter(
-    (d) => d.day_of_week === today && d.is_active,
+    (d) => d.is_active && isRowOnDate(d, todayIso, today),
   );
+
+  // Current week Sunday..Saturday ISO map for Today Card weekly strip
+  const currentWeekIsoByDow = (() => {
+    const now = new Date();
+    const sunday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+    const map: Record<number, string> = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sunday);
+      d.setDate(sunday.getDate() + i);
+      map[i] = toLocalDateStr(d);
+    }
+    return map;
+  })();
+
+  // Upcoming dated schedule summary when today has no shifts
+  const nextDatedShift = schedule
+    .filter((d) => d.is_active && !d.is_recurring && d.shift_date && d.shift_date > todayIso)
+    .sort((a, b) => (a.shift_date || "").localeCompare(b.shift_date || ""))[0];
 
   // ── Load from Supabase ─────────────────────────────────────────────────────
   const loadSchedule = useCallback(async () => {
@@ -309,20 +336,36 @@ export function WorkScheduleView() {
       // SECURITY: ensure Supabase Row Level Security (RLS) is enabled for
       // `work_schedules` so users cannot access other users' rows. Client-side
       // filters (eq("user_id", ...)) are not a security boundary.
-      const { data } = await supabase
+      let { data, error: loadErr } = await supabase
         .from("work_schedules")
         .select(
-          "id,user_id,day_of_week,start_time,end_time,is_active,location,schedule_label,updated_at",
+          "id,user_id,day_of_week,shift_date,is_recurring,start_time,end_time,is_active,location,schedule_label,updated_at",
         )
         .eq("user_id", user.id)
         .order("day_of_week");
+
+      if (loadErr && /shift_date|is_recurring|column/i.test(loadErr.message || "")) {
+        const fallback = await supabase
+          .from("work_schedules")
+          .select(
+            "id,user_id,day_of_week,start_time,end_time,is_active,location,schedule_label,updated_at",
+          )
+          .eq("user_id", user.id)
+          .order("day_of_week");
+        data = fallback.data as any;
+        loadErr = fallback.error;
+      }
+      if (loadErr) throw loadErr;
+
       devLog("WorkSchedule", "Schedule load completed", {
         rowCount: data?.length ?? 0,
       });
       if (data?.length) {
-        const rows: WorkDay[] = data.map((r) => ({
+        const rows: WorkDay[] = (data as any[]).map((r) => ({
           id: r.id || generateId(),
           day_of_week: r.day_of_week,
+          shift_date: r.shift_date ?? null,
+          is_recurring: r.is_recurring ?? true,
           start_time: r.start_time,
           end_time: r.end_time,
           is_active: r.is_active,
@@ -371,33 +414,63 @@ export function WorkScheduleView() {
           (d) => !(d.day_of_week === dow && d.schedule_label === activeLabel),
         );
       } else {
-        // Toggle on: add one default shift
+        // Toggle on: add one default shift preserving active tab's recurrence mode
+        const recurring = activeIsRecurring;
         return [
           ...prev,
           {
             id: generateId(),
             day_of_week: dow,
+            shift_date: recurring ? null : nextDatesForDow(dow, 1)[0] || null,
+            is_recurring: recurring,
             ...DEFAULT_WORK_DAY,
             location: globalLocation,
             schedule_label: activeLabel,
           },
-        ].sort((a, b) => a.day_of_week - b.day_of_week);
+        ].sort(
+          (a, b) =>
+            (a.shift_date || "").localeCompare(b.shift_date || "") ||
+            a.day_of_week - b.day_of_week,
+        );
       }
     });
   };
 
-  const addShift = (dow: number) => {
+  const addShift = (dow: number, shiftDate?: string | null) => {
+    const recurring = activeIsRecurring;
     setAllRows((prev) =>
       [
         ...prev,
         {
           id: generateId(),
           day_of_week: dow,
+          shift_date: recurring ? null : shiftDate || nextDatesForDow(dow, 1)[0] || null,
+          is_recurring: recurring,
           ...DEFAULT_WORK_DAY,
           location: globalLocation,
           schedule_label: activeLabel,
         },
-      ].sort((a, b) => a.day_of_week - b.day_of_week),
+      ].sort(
+        (a, b) =>
+          (a.shift_date || "").localeCompare(b.shift_date || "") ||
+          a.day_of_week - b.day_of_week,
+      ),
+    );
+  };
+
+  const toggleActiveRecurrence = (nextRecurring: boolean) => {
+    setAllRows((prev) =>
+      prev.map((d) => {
+        if (d.schedule_label !== activeLabel) return d;
+        return {
+          ...d,
+          is_recurring: nextRecurring,
+          shift_date:
+            !nextRecurring && !d.shift_date
+              ? nextDatesForDow(d.day_of_week, 1)[0] || null
+              : d.shift_date ?? null,
+        };
+      }),
     );
   };
 
@@ -451,22 +524,62 @@ export function WorkScheduleView() {
       }
 
       if (active.length) {
-        console.log("message");
-        const { error: e } = await supabase.from("work_schedules").upsert(
-          active.map((d) => ({
-            ...(isDbId(d.id) ? { id: d.id } : {}),
-            user_id: user.id,
-            day_of_week: d.day_of_week,
-            start_time: d.start_time,
-            end_time: d.end_time,
-            is_active: true,
-            location: d.location || globalLocation || null,
-            schedule_label: activeLabel,
-            updated_at: new Date().toISOString(),
-          })),
-          { onConflict: "user_id,day_of_week,start_time,end_time" },
-        );
-        if (e) throw e;
+        const nowIso = new Date().toISOString();
+        const buildPayload = (d: WorkDay, includeDateCols: boolean) => ({
+          user_id: user.id,
+          day_of_week: d.day_of_week,
+          ...(includeDateCols
+            ? {
+                shift_date: d.is_recurring ? null : d.shift_date || null,
+                is_recurring: d.is_recurring,
+              }
+            : {}),
+          start_time: d.start_time,
+          end_time: d.end_time,
+          is_active: true,
+          location: d.location || globalLocation || null,
+          schedule_label: activeLabel,
+          updated_at: nowIso,
+        });
+
+        const existingRows = active.filter((d) => isDbId(d.id));
+        const newRows = active.filter((d) => !isDbId(d.id));
+
+        const persistRows = async (includeDateCols: boolean) => {
+          for (const d of existingRows) {
+            const { error: updErr } = await supabase
+              .from("work_schedules")
+              .update(buildPayload(d, includeDateCols))
+              .eq("id", d.id!)
+              .eq("user_id", user.id);
+            if (updErr) throw updErr;
+          }
+          if (newRows.length > 0) {
+            const { error: insErr } = await supabase
+              .from("work_schedules")
+              .insert(newRows.map((d) => buildPayload(d, includeDateCols)));
+            if (insErr) throw insErr;
+          }
+        };
+
+        try {
+          await persistRows(true);
+        } catch (saveErr: any) {
+          if (/shift_date|is_recurring|column/i.test(saveErr?.message || "")) {
+            if (!activeIsRecurring) {
+              throw new Error(
+                language === "ar"
+                  ? "يرجى تنفيذ ملف الترحيل 07_add_work_schedule_dates.sql في قاعدة البيانات لحفظ التواريخ المحددة."
+                  : language === "fr"
+                    ? "Veuillez exécuter la migration SQL 07_add_work_schedule_dates.sql pour enregistrer les dates exactes."
+                    : "Please run migration 07_add_work_schedule_dates.sql in Supabase to save fixed-date schedules.",
+              );
+            }
+            await persistRows(false);
+          } else {
+            throw saveErr;
+          }
+        }
       }
       setSaved(true);
       setUploadState("idle");
@@ -510,6 +623,7 @@ export function WorkScheduleView() {
       setLabels(remainingLabels);
       setActiveLabel(remainingLabels[0]);
       setShowEditor(false);
+      await refreshEvents();
     } catch (e) {
       const message = getFriendlyErrorMessage(
         e,
@@ -705,12 +819,24 @@ export function WorkScheduleView() {
     if (loc) setGlobalLocation(loc);
     const shifts = result.shifts || [];
     if (shifts.length > 0) {
+      const hasAnyExplicitDate =
+        result.schedule_type === "dated" ||
+        shifts.some((s) => typeof s.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s.date));
+      const isRecurringSchedule =
+        result.schedule_type === "recurring" && !hasAnyExplicitDate;
+
       const newRows: WorkDay[] = shifts
         .map((s) => {
-          const dow = parseDayOfWeek(s.day_name, s.date);
+          const validDate =
+            typeof s.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s.date)
+              ? s.date
+              : null;
+          const dow = parseDayOfWeek(s.day_name, validDate || undefined);
           return {
             id: generateId(),
             day_of_week: dow >= 0 ? dow : 0,
+            shift_date: isRecurringSchedule ? null : validDate,
+            is_recurring: isRecurringSchedule,
             start_time: s.start || "",
             end_time: s.end || "",
             is_active: true,
@@ -719,7 +845,12 @@ export function WorkScheduleView() {
           };
         })
         .filter((r) => r.day_of_week >= 0 && r.start_time && r.end_time)
-        .sort((a, b) => a.day_of_week - b.day_of_week);
+        .sort(
+          (a, b) =>
+            (a.shift_date || "").localeCompare(b.shift_date || "") ||
+            a.day_of_week - b.day_of_week ||
+            a.start_time.localeCompare(b.start_time),
+        );
 
       if (newRows.length > 0) {
         // Replace rows for this label
@@ -808,6 +939,8 @@ export function WorkScheduleView() {
           formData.append("userName", searchName);
           formData.append("userEmail", user?.email || "");
           formData.append("userId", user?.id || "");
+          formData.append("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
+          formData.append("clientDate", toLocalDateStr());
 
           const headers: Record<string, string> = {};
           const { data } = await supabase.auth.getSession();
@@ -1193,23 +1326,40 @@ export function WorkScheduleView() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                {language === "ar"
-                  ? "لا يوجد جدول عمل لليوم"
-                  : language === "fr"
-                    ? "Pas d'horaire défini"
-                    : "No schedule defined for today"}
-              </p>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  {language === "ar"
+                    ? "لا يوجد جدول عمل لليوم"
+                    : language === "fr"
+                      ? "Pas d'horaire défini"
+                      : "No schedule defined for today"}
+                </p>
+                {nextDatedShift?.shift_date && (
+                  <p className="text-xs text-blue-400/90 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      {language === "ar"
+                        ? `أقرب وردية مجدولة: ${fmtDate(nextDatedShift.shift_date, language, true)}`
+                        : language === "fr"
+                          ? `Prochain shift planifié : ${fmtDate(nextDatedShift.shift_date, language, true)}`
+                          : `Next scheduled shift: ${fmtDate(nextDatedShift.shift_date, language, true)}`}
+                    </span>
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
-          {/* Weekly strip — shows ALL active days from ALL schedules */}
-          {allRows.filter((d) => d.is_active).length > 0 && (
+          {/* Weekly strip — shows active shifts falling in THIS current week */}
+          {allRows.some(
+            (s) => s.is_active && isRowOnDate(s, currentWeekIsoByDow[s.day_of_week] || "", s.day_of_week),
+          ) && (
             <div className="px-4 pb-4">
               <div className="flex gap-1.5">
                 {[0, 1, 2, 3, 4, 5, 6].map((dow) => {
+                  const dateIso = currentWeekIsoByDow[dow] || "";
                   const dayShifts = allRows.filter(
-                    (s) => s.day_of_week === dow && s.is_active,
+                    (s) => s.is_active && isRowOnDate(s, dateIso, dow),
                   );
                   const firstShift = dayShifts[0];
                   const hasMore = dayShifts.length > 1;
@@ -1435,6 +1585,77 @@ export function WorkScheduleView() {
                     </div>
                   </div>
 
+                  {/* Schedule mode: Fixed dates vs Recurring weekly (requires explicit user confirmation) */}
+                  {activeDays.length > 0 && (
+                    <div
+                      className={`flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border ${
+                        activeIsRecurring
+                          ? "bg-blue-500/10 border-blue-500/25"
+                          : "bg-secondary/35 border-border"
+                      } ${isRTL ? "flex-row-reverse" : ""}`}
+                    >
+                      <div className={`flex items-center gap-2 min-w-0 ${isRTL ? "flex-row-reverse text-right" : ""}`}>
+                        {activeIsRecurring ? (
+                          <Repeat className="w-4 h-4 text-blue-400 shrink-0" />
+                        ) : (
+                          <Calendar className="w-4 h-4 text-blue-400 shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-foreground">
+                            {activeIsRecurring
+                              ? language === "ar"
+                                ? "يتكرر أسبوعياً"
+                                : language === "fr"
+                                  ? "Récurrent chaque semaine"
+                                  : "Repeats weekly"
+                              : language === "ar"
+                                ? "تواريخ محددة (بدون تكرار)"
+                                : language === "fr"
+                                  ? "Dates fixes (non récurrent)"
+                                  : "Fixed dates (non-recurring)"}
+                          </p>
+                          {!activeIsRecurring && (() => {
+                            const dated = activeDays
+                              .map((d) => d.shift_date)
+                              .filter((v): v is string => !!v)
+                              .sort();
+                            if (!dated.length) return null;
+                            const first = dated[0];
+                            const last = dated[dated.length - 1];
+                            return (
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                {first === last
+                                  ? fmtDate(first, language, true)
+                                  : `${fmtDate(first, language, true)} → ${fmtDate(last, language, true)}`}
+                              </p>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleActiveRecurrence(!activeIsRecurring)}
+                        className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                          activeIsRecurring
+                            ? "bg-blue-500 text-white hover:bg-blue-600"
+                            : "bg-secondary text-foreground hover:bg-secondary/80"
+                        }`}
+                      >
+                        {activeIsRecurring
+                          ? language === "ar"
+                            ? "إيقاف التكرار"
+                            : language === "fr"
+                              ? "Dates fixes"
+                              : "Set fixed"
+                          : language === "ar"
+                            ? "تكرار أسبوعي"
+                            : language === "fr"
+                              ? "Répéter / sem."
+                              : "Repeat weekly"}
+                      </button>
+                    </div>
+                  )}
+
                   {/* Day chips */}
                   <div className="flex gap-1.5 flex-wrap">
                     {[0, 1, 2, 3, 4, 5, 6].map((dow) => {
@@ -1511,17 +1732,38 @@ export function WorkScheduleView() {
                       </p>
                     ) : (
                       <div className="space-y-4">
-                        {Array.from(
-                          new Set(activeDays.map((d) => d.day_of_week)),
-                        )
-                          .sort((a, b) => a - b)
-                          .map((dow) => {
-                            const shiftsForDay = activeDays.filter(
-                              (d) => d.day_of_week === dow,
-                            );
-                            return (
+                        {(() => {
+                          const groupMap = new Map<
+                            string,
+                            { key: string; dow: number; shiftDate: string | null; shifts: WorkDay[] }
+                          >();
+                          for (const d of activeDays) {
+                            const hasDate = !activeIsRecurring && !!d.shift_date;
+                            const key = hasDate ? `date-${d.shift_date}` : `dow-${d.day_of_week}`;
+                            const existing = groupMap.get(key);
+                            if (existing) {
+                              existing.shifts.push(d);
+                            } else {
+                              groupMap.set(key, {
+                                key,
+                                dow: d.day_of_week,
+                                shiftDate: hasDate ? d.shift_date! : null,
+                                shifts: [d],
+                              });
+                            }
+                          }
+                          const groups = Array.from(groupMap.values()).sort((a, b) => {
+                            if (a.shiftDate && b.shiftDate) {
+                              return a.shiftDate.localeCompare(b.shiftDate);
+                            }
+                            if (a.shiftDate) return -1;
+                            if (b.shiftDate) return 1;
+                            return a.dow - b.dow;
+                          });
+
+                          return groups.map(({ key, dow, shiftDate, shifts: shiftsForDay }) => (
                               <motion.div
-                                key={dow}
+                                key={key}
                                 initial={{ opacity: 0, y: -4 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 className="space-y-2.5 p-3 rounded-2xl border border-border/80 bg-secondary/10"
@@ -1529,11 +1771,18 @@ export function WorkScheduleView() {
                                 <div
                                   className={`flex items-center justify-between border-b border-border/40 pb-2 ${isRTL ? "flex-row-reverse" : ""}`}
                                 >
-                                  <span className="text-xs font-bold text-foreground">
-                                    {DAY_NAMES[dow]}
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-foreground">
+                                      {DAY_NAMES[dow]}
+                                    </span>
+                                    {shiftDate && (
+                                      <span className="text-[11px] font-medium text-blue-400">
+                                        · {fmtDate(shiftDate, language, true)}
+                                      </span>
+                                    )}
+                                  </div>
                                   <button
-                                    onClick={() => addShift(dow)}
+                                    onClick={() => addShift(dow, shiftDate)}
                                     className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors"
                                   >
                                     <Plus className="w-3.5 h-3.5" />
@@ -1624,7 +1873,10 @@ export function WorkScheduleView() {
                                 <div
                                   className={`flex items-center gap-1.5 pt-1.5 flex-wrap ${isRTL ? "flex-row-reverse" : ""}`}
                                 >
-                                  {nextDatesForDow(dow, 3).map((dateStr) => (
+                                  {(shiftDate && !activeIsRecurring
+                                    ? [shiftDate]
+                                    : nextDatesForDow(dow, 3)
+                                  ).map((dateStr) => (
                                     <button
                                       key={dateStr}
                                       onClick={async () => {
@@ -1635,13 +1887,13 @@ export function WorkScheduleView() {
                                       className="flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-medium hover:bg-blue-500/20 transition-colors"
                                     >
                                       <CalendarPlus className="w-2.5 h-2.5" />
-                                      {fmtDate(dateStr, language)}
+                                      {fmtDate(dateStr, language, !activeIsRecurring)}
                                     </button>
                                   ))}
                                 </div>
                               </motion.div>
-                            );
-                          })}
+                          ));
+                        })()}
                       </div>
                     )}
                   </AnimatePresence>
